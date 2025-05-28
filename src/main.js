@@ -4,13 +4,6 @@ import Map from "@arcgis/core/Map.js";
 // Import MapView class - handles the visual display and user interaction with the map
 import MapView from "@arcgis/core/views/MapView.js";
 
-// Import Calcite UI components for building the user interface (optional)
-// These imports register the custom web components for use in HTML
-import "@esri/calcite-components/dist/components/calcite-shell.js";      // Main app shell container
-import "@esri/calcite-components/dist/components/calcite-shell-panel.js"; // Side panels within shell
-import "@esri/calcite-components/dist/components/calcite-action.js";      // Action buttons
-import "@esri/calcite-components/dist/components/calcite-action-bar.js";  // Container for action buttons
-
 // Create a new Map instance with a basemap
 const map = new Map({
     basemap: "streets-vector" // Set the basemap style (vector-based streets map)

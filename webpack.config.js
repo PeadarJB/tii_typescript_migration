@@ -83,10 +83,5 @@ module.exports = {
         hot: true, // Enable Hot Module Replacement (updates without full page reload)
     },
     
-    // Node.js polyfills configuration (disable Node.js features in browser)
-    node: {
-        process: false, // Don't provide process polyfill
-        global: false,  // Don't provide global polyfill
-        fs: "empty"     // Provide empty object for fs module
-    }
+    
 };
