@@ -1,41 +1,49 @@
-import { initializeMapView, getMapView, getWebMap } from './components/MapView.js';
-import './styles/main.css'; // Import main CSS file
-// Import other top-level component initializers here later (e.g., FilterManager, StatsManager)
+import { initializeMapView } from './components/MapView.js'; // getMapView, getWebMap removed for simplicity here, can be added back if needed elsewhere
+import { FilterManager } from './components/FilterManager.js';
+import { StatisticsManager } from './components/StatisticsManager.js';
+import { CONFIG } from './config/appConfig.js'; // Assuming CONFIG is used by managers directly or passed
+import './styles/main.css';
 
-// This function will be the main entry point for our application logic
 async function startApp() {
     try {
-        // Initialize the map. The initializeMapView function now returns a promise
-        // that resolves with the view and webmap instances.
-        const { view, webmap } = await initializeMapView("viewDiv"); // "viewDiv" is the ID from your index.html
+        const { view, webmap } = await initializeMapView("viewDiv");
+        console.log("main.js: Map initialized.");
 
-        // Now you have access to the 'view' and 'webmap' objects here.
-        // You can pass them to other modules or components that need them.
-        console.log("main.js: Map initialized. View extent:", view.extent);
+        // Get the road network layer from the WebMap
+        // Important: Ensure CONFIG.roadNetworkLayerTitle exactly matches the title of the layer in your WebMap
+        const roadNetworkLayer = webmap.layers.find(layer => layer.title === CONFIG.roadNetworkLayerTitle);
 
-        // --- Placeholder for initializing other components ---
-        // For example, once FilterManager and StatisticsManager are created:
-        // const roadNetworkLayer = webmap.layers.find(layer => layer.title === CONFIG.roadNetworkLayerTitle);
-        // if (roadNetworkLayer) {
-        //     const filterManager = new FilterManager(view, roadNetworkLayer);
-        //     const statsManager = new StatisticsManager(roadNetworkLayer);
-        //
-        //     // Example of connecting them (conceptual)
-        //     filterManager.on('filterChange', (newDefinitionExpression) => {
-        //         statsManager.updateStatistics(newDefinitionExpression);
-        //     });
-        // } else {
-        //     console.error(`main.js: Road network layer "${CONFIG.roadNetworkLayerTitle}" not found in WebMap.`);
-        // }
-        // --- End of placeholder ---
+        if (roadNetworkLayer) {
+            // Make sure the layer is loaded before using it for queries
+            await roadNetworkLayer.load();
+            console.log(`main.js: Found road network layer: "${roadNetworkLayer.title}"`);
+
+            // Initialize Filter Manager
+            // Pass the ID of the HTML container for filters from index.html
+            const filterManager = new FilterManager('filter-controls-container', view, roadNetworkLayer);
+            await filterManager.initializeFilters(); // Asynchronously populates and creates filters
+
+            // Initialize Statistics Manager
+            // Pass IDs of HTML containers for stats and chart from index.html
+            const statsManager = new StatisticsManager('indicator-boxes-container', 'pie-chart-container', roadNetworkLayer);
+            await statsManager.updateStatistics(); // Display initial statistics for all data
+
+            // Connect FilterManager changes to StatisticsManager updates
+            filterManager.onFilterChange((newDefinitionExpression) => {
+                console.log("main.js: Filter changed, updating statistics with expression:", newDefinitionExpression);
+                statsManager.updateStatistics(newDefinitionExpression);
+            });
+
+        } else {
+            console.error(`main.js: Road network layer "${CONFIG.roadNetworkLayerTitle}" not found in WebMap.`);
+            // Display an error to the user in a UI element if desired
+            document.getElementById('filter-controls-container').innerHTML = `<p style="color: red;">Error: Critical data layer not found. Dashboard cannot operate.</p>`;
+        }
 
     } catch (error) {
         console.error("main.js: Failed to initialize the application.", error);
-        // Display a general error message to the user if the map couldn't load.
-        const appContainer = document.body; // Or a more specific error div
-        appContainer.innerHTML = `<p style="color: red; text-align: center; padding: 20px;">Critical error: Could not start the application. ${error.message}</p>`;
+        // Consider a more user-friendly error display on the page
     }
 }
 
-// Start the application
 startApp();
