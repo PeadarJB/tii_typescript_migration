@@ -35,21 +35,19 @@
             </div>
         </header>
 
-        <div id="main-content-area" style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
-
-            {/* New Row for Indicator Blocks - Above the Map */}
-            <div id="indicator-block-row">
-                {/* StatisticsManager will populate this with indicator boxes */}
-                {/* Example: <div class="indicator-box">...</div> <div class="indicator-box">...</div> ... */}
+        <calcite-shell-panel slot="primary-panel" position="start" display-mode="dock" width-scale="m">
+            <div id="statistics-panel">
+                <h2>Dashboard Statistics</h2>
+                <div id="indicator-boxes-container">
+                    <p>(Indicator Boxes Placeholder)</p>
+                </div>
+                <div id="pie-chart-container">
+                    <p>(Pie Chart Placeholder)</p>
+                </div>
             </div>
+        </calcite-shell-panel>
 
-            {/* Map Container - Takes remaining space */}
-            <div id="viewDiv" style="flex-grow: 1; /* Allows map to take remaining vertical space */
-                                     position: relative; /* Needed for map controls to position correctly */">
-                {/* MapView.js will render the map here */}
-            </div>
-
-        </div>
+        <div id="viewDiv"></div> 
 
         
     </calcite-shell>

@@ -52,24 +52,7 @@ async function startApp() {
             await roadNetworkLayer.load();
             console.log(`main.js: Successfully found and loaded road network layer: "${roadNetworkLayer.title}"`);
 
-            const filterContainerId = 'filter-controls-container';
-            const indicatorContainerId = 'indicator-block-row'; // Correct ID for the new layout
-            const chartContainerId = 'pie-chart-container'; // ID for the pie chart
-
-            // Explicitly check if containers exist *before* passing them to constructors
-            if (!document.getElementById(filterContainerId)) {
-                console.error(`main.js: Filter container with ID '${filterContainerId}' not found!`);
-                return; // Stop if critical UI element is missing
-            }
-            if (!document.getElementById(indicatorContainerId)) {
-                console.error(`main.js: Indicator container with ID '${indicatorContainerId}' not found!`);
-                return; // Stop
-            }
-            // Pie chart container is optional for now if you haven't added the div back
-            if (!document.getElementById(chartContainerId)) {
-                console.warn(`main.js: Pie chart container with ID '${chartContainerId}' not found. Pie chart will not be initialized.`);
-            }
-
+            
             // --- Initialize Filter Manager ---
             // Create a new instance of our FilterManager class.
             // We pass it:
