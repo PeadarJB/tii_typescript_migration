@@ -1,7 +1,8 @@
 export const CONFIG = {
+     portalUrl: "https://pms-ie.maps.arcgis.com/home/index.html",
     webMapId: "13a98c8641b84ac4aeb17255e6901e9b", // Replace this!
     roadNetworkLayerTitle: "TII_CAIP_NM_Updated", // e.g., "Ireland Road Network" - Used to find it in the WebMap
-    apiKey: "YOUR_ARCGIS_API_KEY_IF_NEEDED", // Only if accessing secured services or premium content not covered by user login
+    //apiKey: "YOUR_ARCGIS_API_KEY_IF_NEEDED", // Only if accessing secured services or premium content not covered by user login
 
     // Field names from your road network feature layer
     // (It's good to define these early, even if you refine them later)
