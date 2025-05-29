@@ -216,12 +216,19 @@ export class FilterManager {
 
         // --- Populate with other options ---
         // 'options.forEach(...)' loops through each string in the 'options' array.
-        options.forEach(optionValue => {
-            const optionElement = document.createElement("calcite-option");
-            optionElement.setAttribute("value", optionValue); // The actual value to filter by
-            optionElement.innerText = optionValue; // The text displayed in the dropdown
-            select.appendChild(optionElement);
-        });
+        options.forEach(optionInput => {
+        const optionElement = document.createElement("calcite-option");
+        if (typeof optionInput === 'object' && optionInput !== null && 'value' in optionInput && 'label' in optionInput) {
+            // If the option is an object with label and value properties
+            optionElement.setAttribute("value", optionInput.value);
+            optionElement.innerText = optionInput.label;
+        } else {
+            // If the option is a simple string (for dynamically populated lists like County)
+            optionElement.setAttribute("value", optionInput);
+            optionElement.innerText = optionInput;
+        }
+        select.appendChild(optionElement);
+    });
 
         // --- Event Listener for Dropdown Changes ---
         // 'addEventListener' attaches an event handler function that will run
@@ -230,7 +237,7 @@ export class FilterManager {
         select.addEventListener("calciteSelectChange", (event) => {
             // 'event.target' is the 'calcite-select' element that triggered the event.
             // 'event.target.selectedOption.value' gets the 'value' attribute of the chosen <calcite-option>.
-            const selectedValue = event.target.selectedOption.value;
+            const selectedValue = event.target.value;
 
             // Update our 'this.currentFilters' object.
             if (selectedValue === "") {

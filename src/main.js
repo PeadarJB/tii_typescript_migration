@@ -71,7 +71,7 @@ async function startApp() {
             const statsManager = new StatisticsManager('indicator-boxes-container', 'pie-chart-container', roadNetworkLayer);
             // Call the method to calculate and display the initial set of statistics (showing all data).
             // This is async because it involves querying the layer.
-            await statsManager.updateStatistics(); // Default is "1=1" (all data)
+            await statsManager.updateAllStatistics(); // Default is "1=1" (all data)
 
             // --- Connect Filter Changes to Statistics Updates ---
             // This is a crucial part for interactivity!
@@ -83,7 +83,7 @@ async function startApp() {
                 // This code runs when a filter is changed by the user.
                 console.log("main.js: Filter has changed. New definitionExpression:", newDefinitionExpression);
                 // Tell the StatisticsManager to update its display using the new filter expression.
-                statsManager.updateStatistics(newDefinitionExpression);
+                statsManager.updateAllStatistics(newDefinitionExpression);
             });
 
         } else {

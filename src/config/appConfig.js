@@ -23,7 +23,13 @@ export const CONFIG = {
     // Initial filter options can be placeholders or defined if static
     // You planned to populate many dynamically, which is good.
     filterOptions: {
-        criticality: ["Very High", "High", "Medium", "Low", "Very Low"],
+        criticality: [
+            { label: "Very High", value: "5" },
+            { label: "High", value: "4" },
+            { label: "Medium", value: "3" },
+            { label: "Low", value: "2" },
+            { label: "Very Low", value: "1" },
+        ],
         county: [], // Will be populated dynamically from the layer
         subnet: [], // Will be populated dynamically from the layer
         lifeline: [], // Will be populated dynamically from the layer
