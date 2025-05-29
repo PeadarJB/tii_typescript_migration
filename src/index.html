@@ -24,20 +24,29 @@
     <script type="module" src="https://cdn.jsdelivr.net/npm/@esri/calcite-components/dist/calcite/calcite.esm.js"></script>
     
     <!-- Internal CSS styles -->
-    <style>
-        /* Remove default padding and margins from html, body, and map container */
-        /* Make them fill the entire viewport (100% height and width) */
-        html, body, #viewDiv {
-            padding: 0;
-            margin: 0;
-            height: 100%;
-            width: 100%;
-        }
-    </style>
+    
 </head>
 <body>
-    <!-- Container div where the ArcGIS map will be rendered -->
-    <!-- The id "viewDiv" is referenced in the JavaScript code -->
-    <div id="viewDiv"></div>
+    <calcite-shell>
+        <header id="app-header" slot="header">
+            <h1>TII Flood Risk Dashboard</h1>
+            <div id="filter-controls-container">
+                <p style="text-align:center; color: #555;">(Filter Controls Placeholder)</p>
+            </div>
+        </header>
+
+        <calcite-shell-panel slot="primary-panel" position="start" display-mode="dock">
+             <div id="statistics-panel">
+                <h2>Dashboard Statistics</h2>
+                <div id="indicator-boxes-container">
+                     <p>(Indicator Boxes Placeholder)</p>
+                </div>
+                <div id="pie-chart-container">
+                     <p>(Pie Chart Placeholder)</p>
+                </div>
+             </div>
+        </calcite-shell-panel>
+
+        <div id="viewDiv"></div> </calcite-shell>
 </body>
 </html>

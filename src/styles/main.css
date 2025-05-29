@@ -1,3 +1,31 @@
- body {
-    font-family: sans-serif;
+/* src/styles/main.css */
+html, body, calcite-shell {
+    padding: 0;
+    margin: 0;
+    height: 100%;
+    width: 100%;
+    overflow: hidden; /* Prevent scrollbars on the shell itself */
+}
+
+#app-header h1 {
+    margin: 0;
+    padding: 10px 15px;
+    font-size: 1.5em;
+}
+
+#filter-controls-container {
+    padding: 10px 15px;
+    background-color: #f0f0f0;
+    border-bottom: 1px solid #ccc;
+}
+
+#statistics-panel {
+    padding: 15px;
+}
+
+#viewDiv {
+    padding: 0;
+    margin: 0;
+    height: 100%; /* Ensure it fills the main content area of calcite-shell */
+    width: 100%;
 }
