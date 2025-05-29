@@ -1,3 +1,5 @@
+// src/components/StatisticsManager.js
+
 // --- Importing Necessary Modules ---
 
 // Import the CONFIG object from our application's configuration file.
@@ -16,7 +18,8 @@ import Query from "@arcgis/core/rest/support/Query.js";
 // --- Class Definition ---
 
 // This 'StatisticsManager' class will be responsible for calculating statistical information
-// from the roadNetworkLayer (e.g., total length, counts) and displaying it in the dashboard.
+// from the roadNetworkLayer (e.g., count of affected segments and derived length)
+// and displaying it in the dashboard.
 export class StatisticsManager {
     // The 'constructor' is called when we create a new 'StatisticsManager' object.
     // It sets up the initial properties for our statistics manager.
@@ -24,32 +27,23 @@ export class StatisticsManager {
     /**
      * JSDoc comment: Describes the constructor and its parameters.
      * @param {HTMLElement|string} indicatorContainer - The HTML element itself, or its ID (string),
-     * where general statistics (like total length, count) will be displayed.
+     * where general statistics will be displayed.
      * @param {HTMLElement|string} chartContainer - The HTML element itself, or its ID (string),
-     * where charts (like a pie chart) will be rendered.
+     * where charts (like a pie chart) will be rendered. (Currently a placeholder for future use)
      * @param {__esri.FeatureLayer} roadNetworkLayer - The ArcGIS FeatureLayer object representing the road network.
      * This is the layer from which we'll calculate statistics.
      */
     constructor(indicatorContainer, chartContainer, roadNetworkLayer) {
         // 'this' refers to the current instance of the StatisticsManager.
 
-        // Store the HTML element for displaying main indicator boxes.
-        // If a string ID is passed, get the element; otherwise, assume it's the element itself.
         this.indicatorContainer = typeof indicatorContainer === 'string' ? document.getElementById(indicatorContainer) : indicatorContainer;
-
-        // Store the HTML element for displaying charts.
         this.chartContainer = typeof chartContainer === 'string' ? document.getElementById(chartContainer) : chartContainer;
-
-        // Store the reference to the road network feature layer.
         this.layer = roadNetworkLayer;
+        // this.pieChartInstance = null; // To hold a Chart.js instance later
 
-        // Placeholder property to hold an instance of a chart (e.g., from Chart.js) if we create one.
-        // this.pieChartInstance = null;
-
-        // Basic check: if the containers weren't found, log an error and stop.
-        if (!this.indicatorContainer || !this.chartContainer) {
-            console.error("StatisticsManager: One or more containers (for indicators or charts) were not found in the HTML.");
-            return; // Exit constructor
+        if (!this.indicatorContainer) { // chartContainer can be optional if not used yet
+            console.error("StatisticsManager: Indicator container not found.");
+            return; 
         }
         console.log("StatisticsManager initialized successfully.");
     }
@@ -57,140 +51,174 @@ export class StatisticsManager {
     // --- Methods of the StatisticsManager Class ---
 
     /**
-     * This is an 'async' function (can use 'await') that updates all statistical displays.
-     * It takes a 'definitionExpression' which is a SQL-like WHERE clause (e.g., "COUNTY = 'Dublin'").
-     * This expression comes from the FilterManager and tells us which features to include in the stats.
-     * By default, if no expression is passed, it's "1=1" (meaning "include all features").
-     * @param {string} definitionExpression - The current filter criteria.
+     * Main public method to update all statistics displays.
+     * It fetches and displays stats for general flood intersection and CFRAM specific flood type.
+     * @param {string} baseDefinitionExpression - The current filter criteria from user selections (e.g., "COUNTY = 'Dublin'").
+     * This is combined with specific conditions for each statistic.
      */
-    async updateStatistics(definitionExpression = "1=1") {
-        // If the layer isn't available (e.g., not loaded yet or an error occurred), do nothing.
+    async updateAllStatistics(baseDefinitionExpression = "1=1") {
+        // If the layer isn't available, do nothing.
         if (!this.layer) {
             console.warn("StatisticsManager: Road network layer is not available. Cannot update statistics.");
+            this.indicatorContainer.innerHTML = `<p style="color: orange;">Statistics unavailable: Layer not ready.</p>`;
             return;
         }
 
         // Provide immediate feedback to the user that statistics are being loaded.
-        // 'innerHTML' allows us to directly set the HTML content of an element.
-        this.indicatorContainer.innerHTML = '<p><em>Loading statistics...</em></p>';
+        this.indicatorContainer.innerHTML = '<p><em>Loading all statistics...</em></p>';
 
         try {
-            // --- Constructing a Statistical Query ---
-            // We want to ask the ArcGIS server to calculate some statistics for us.
-            // This is more efficient than downloading all features and calculating in the browser,
-            // especially for large datasets.
+            // --- Calculate Statistics for "future_flood_intersection" ---
+            // We pass:
+            // 1. baseDefinitionExpression: Current user filters (e.g., County, Criticality).
+            // 2. Specific condition: Only count segments where 'future_flood_intersection' is 1.
+            // 3. Label for this statistic set.
+            // 4. Alias for the output count field from the query.
+            const generalFloodStats = await this.querySegmentCountAndDerivedLength(
+                baseDefinitionExpression,
+                `${CONFIG.fields.floodAffected} = 1`, 
+                "Any Future Flood Intersection", 
+                "count_general_flood" 
+            );
 
-            const statsQuery = new Query({
-                // 'where': This is the filter condition. Only features matching this expression
-                // will be included in the statistical calculation.
-                where: definitionExpression,
+            // --- Calculate Statistics for "cfram_f_m_0010" ---
+            const cframFluvialStats = await this.querySegmentCountAndDerivedLength(
+                baseDefinitionExpression,
+                `${CONFIG.fields.cfram_m_f_0010} = 1`,
+                "CFRAM Fluvial Model (0.1% AEP)",
+                "count_cfram_fluvial"
+            );
+            
+            // TODO: Add more calls to querySegmentCountAndDerivedLength for other binary fields
+            // if needed, for example:
+            // const anotherFloodStat = await this.querySegmentCountAndDerivedLength(
+            //     baseDefinitionExpression,
+            //     `${CONFIG.fields.another_binary_field} = 1`,
+            //     "Label for Another Flood Stat",
+            //     "count_another_flood"
+            // );
 
-                // 'outStatistics': This is an array that defines what statistics we want.
-                // Each object in the array defines one statistical calculation.
-                outStatistics: [
-                    {
-                        // 'statisticType': The type of calculation (e.g., "sum", "count", "avg", "min", "max").
-                        statisticType: "sum",
-                        // 'onStatisticField': The field in the feature layer to perform the calculation on.
-                        // We get the actual field name from our CONFIG object.
-                        onStatisticField: CONFIG.fields.length, // e.g., a field named "Shape_Length" or "LENGTH_KM"
-                        // 'outStatisticFieldName': The name we want for this calculated statistic in the results.
-                        // This can be any name we choose.
-                        outStatisticFieldName: "total_length_affected"
-                    },
-                    {
-                        statisticType: "count",
-                        // For "count", 'onStatisticField' can be any field that is present in all features,
-                        // or often people use the primary key (ObjectID) or an indexed field.
-                        // Here, we use the same length field, but it's just counting records.
-                        onStatisticField: CONFIG.fields.length,
-                        outStatisticFieldName: "total_segments_affected"
-                    }
-                    // You can add more statistic definitions here for other calculations.
-                ]
-            });
+            // Once all stats are fetched, update the UI.
+            this.displayAllStatsUI(generalFloodStats, cframFluvialStats /*, pass other stats here */);
 
-            // --- Executing the Query ---
-            // 'await this.layer.queryFeatures(statsQuery)' sends our statistical query to the ArcGIS server.
-            // The server processes it and sends back a result (a "FeatureSet").
-            // For statistical queries, this FeatureSet usually contains just ONE "feature"
-            // whose "attributes" object holds all the calculated statistics.
-            const results = await this.layer.queryFeatures(statsQuery);
-
-            // --- Processing and Displaying Results ---
-            // Check if the server returned any features (it should return one feature with attributes for stats).
-            if (results.features.length > 0) {
-                // Get the attributes from the first (and usually only) feature in the results.
-                const stats = results.features[0].attributes;
-
-                // Extract the calculated statistics using the 'outStatisticFieldName' we defined.
-                // Use '|| 0' to default to 0 if a statistic is unexpectedly null or undefined.
-                const totalLength = stats.total_length_affected || 0;
-                const segmentCount = stats.total_segments_affected || 0;
-
-                // Call another method to actually update the HTML with these values.
-                this.displayMainIndicators(totalLength, segmentCount);
-
-                // TODO: Placeholder for where you'll add more advanced statistics.
-                // For example, to get stats grouped by "Criticality" or "County" for a pie chart,
-                // you would add 'groupByFieldsForStatistics: [CONFIG.fields.criticality]' to your Query object.
-                // The results would then be an array of features, one for each group.
-                // Examples:
-                // - Percentage of total network (this needs the *overall* total length, which you might query once at the start).
-                // - Statistics by flood prediction model (would involve querying different fields or using different `where` clauses).
-                // - Managing authority pie chart (query statistics grouped by the managing authority field).
-
-            } else {
-                // If no features matched the filter (e.g., "County = 'NonExistentCounty'"),
-                // the stats query might return no features. In this case, display 0 for all indicators.
-                this.displayMainIndicators(0, 0);
-                console.log("StatisticsManager: No features matched the current filter for statistics.");
-            }
         } catch (error) {
-            // If an error occurs during the query (network, server, bad field name, etc.),
-            // log it to the console and display an error message in the UI.
-            console.error("StatisticsManager: Error calculating statistics:", error);
-            this.indicatorContainer.innerHTML = `<p style="color: red;">Error loading statistics.</p>`;
+            // Catch any errors that occurred during the process.
+            console.error("StatisticsManager: Error in updateAllStatistics pipeline:", error);
+            this.indicatorContainer.innerHTML = `<p style="color: red;">Error loading statistics. (Check console)</p>`;
         }
     }
 
     /**
-     * Updates the HTML content of the 'indicatorContainer' to display the main summary statistics.
-     * This uses JavaScript template literals (backticks ``) to create an HTML string.
-     * @param {number} totalLength - The total length of the road network affected by current filters (in meters, presumably).
-     * @param {number} segmentCount - The number of road segments affected by current filters.
+     * Helper function to query the count of segments for a specific condition 
+     * (combined with base filters) and calculate the derived length.
+     * @param {string} baseDefinitionExpression - Filters from user selections.
+     * @param {string} specificCondition - Additional condition for this stat set (e.g., "binary_field = 1").
+     * @param {string} statLabel - A label for this statistic set (used for display/logging).
+     * @param {string} outCountFieldName - An alias for the count statistic in the query result.
+     * @returns {Promise<object>} A promise resolving to an object with:
+     * { count: number, derivedLengthKm: number, label: string }
+     * Returns 0 for count/length if no features match or on error.
      */
-    displayMainIndicators(totalLength, segmentCount) {
-        // Convert totalLength from meters (assuming it is) to kilometers and format to one decimal place.
-        // 'toFixed(1)' converts a number to a string, keeping one decimal place.
-        const totalLengthKm = (totalLength / 1000).toFixed(1);
+    async querySegmentCountAndDerivedLength(baseDefinitionExpression, specificCondition, statLabel, outCountFieldName) {
+        // Combine the base filters (e.g., County, Criticality from user) 
+        // with the specific condition for this particular statistic (e.g., future_flood_intersection = 1).
+        const combinedWhereClause = `(${baseDefinitionExpression}) AND (${specificCondition})`;
+        
+        // Log what we're about to query for easier debugging.
+        console.log(`StatisticsManager: Querying for "${statLabel}" with WHERE clause: ${combinedWhereClause}`);
 
-        // Set the innerHTML of the indicator container with the new statistics.
-        // This will replace any previous content (like "Loading statistics...").
-        // We use CSS classes like "indicator-box", "value", "label" for styling these elements.
-        // You would define these classes in your main.css file.
-        this.indicatorContainer.innerHTML = `
-            <div class="indicator-box">
-                <div class="value">${totalLengthKm} km</div> 
-                <div class="label">Total Network Affected</div>
-            </div>
-            <div class="indicator-box">
-                <div class="value">${segmentCount}</div>
-                <div class="label">Affected Road Segments</div>
-            </div>
-            `;
-        // Reminder: The actual styling for '.indicator-box', '.value', '.label'
-        // should be defined in your CSS file (e.g., main.css or panels.css).
+        // Define the statistical query. We only need to count the segments.
+        const statsQuery = new Query({
+            where: combinedWhereClause,
+            outStatistics: [
+                {
+                    statisticType: "count",
+                    // For 'count', 'onStatisticField' can be any field that is reliably present in your records.
+                    // 'OBJECTID' is often the best choice if you know it.
+                    // Otherwise, a field like the one used for 'Route' or 'County' from your CONFIG is okay,
+                    // as long as it's guaranteed to be there for the features you're counting.
+                    // Let's use CONFIG.fields.route as an example from your config.
+                    onStatisticField: CONFIG.fields.route, // Or "OBJECTID" or CONFIG.fields.county
+                    outStatisticFieldName: outCountFieldName // e.g., "count_general_flood"
+                }
+            ]
+        });
+        
+        // Log the JSON representation of the query for detailed debugging if needed.
+        console.log(`StatisticsManager: Query object for "${statLabel}":`, statsQuery.toJSON());
+
+        try {
+            // Execute the query against the layer.
+            const results = await this.layer.queryFeatures(statsQuery);
+
+            let count = 0;
+            // If the query returns features (it should return one feature with the statistics).
+            if (results.features.length > 0) {
+                // The statistics are in the 'attributes' of the first feature.
+                const attributes = results.features[0].attributes;
+                // Get the count using the alias we defined. Default to 0 if not found.
+                count = attributes[outCountFieldName] || 0;
+            } else {
+                console.log(`StatisticsManager: No features matched for "${statLabel}". Count will be 0.`);
+            }
+
+            // Calculate derived length: each segment is 100m, so 0.1 km.
+            const derivedLengthKm = count * 0.1;
+
+            // Return an object containing the count, calculated length, and the label.
+            return {
+                count: count,
+                derivedLengthKm: derivedLengthKm,
+                label: statLabel
+            };
+        } catch (error) {
+            // If an error happens specifically for this query.
+            console.error(`StatisticsManager: Error querying stats for "${statLabel}":`, error);
+            // Return a default object so the UI can still try to render something.
+            return { count: 0, derivedLengthKm: 0, label: `${statLabel} (Error)` };
+        }
     }
 
-    // TODO: Placeholder for methods to create and update charts.
-    // For example, if using Chart.js:
-    // async updatePieChart(definitionExpression = "1=1") {
-    //     // 1. Query data grouped by the category for the pie chart (e.g., 'Lifeline').
-    //     //    This query would use 'groupByFieldsForStatistics' and 'outStatistics' (e.g., sum of length per category).
-    //     // 2. Process the results into the format Chart.js expects (labels, data arrays).
-    //     // 3. If 'this.pieChartInstance' exists, update its data and call .update().
-    //     // 4. If not, create a new Chart instance:
-    //     //    this.pieChartInstance = new Chart(this.chartContainer.getContext('2d'), { /* chart config */ });
-    // }
+    /**
+     * Displays all the gathered statistics in the UI.
+     * This function will now receive objects that include the label, count, and derivedLengthKm.
+     * @param {...object} statsObjects - One or more statistics objects, each from querySegmentCountAndDerivedLength.
+     */
+    displayAllStatsUI(...statsObjects) { // Using rest parameter to accept multiple stat objects
+        // Start with an empty string and build up the HTML for all statistic sets.
+        let htmlContent = '';
+
+        statsObjects.forEach(stats => {
+            if (stats) { // Check if the stats object is valid
+                htmlContent += `
+                    <div class="indicator-set" style="margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #eee;">
+                        <h4>${stats.label}</h4>
+                        <div class="indicator-box">
+                            <div class="value">${stats.derivedLengthKm.toFixed(1)} km</div> 
+                            <div class="label">Affected Network Length</div>
+                        </div>
+                        <div class="indicator-box">
+                            <div class="value">${stats.count}</div>
+                            <div class="label">Affected Road Segments</div>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+        
+        if (htmlContent === '') {
+            htmlContent = "<p>No statistics to display or an error occurred.</p>";
+        }
+
+        // Update the indicator container with the generated HTML.
+        this.indicatorContainer.innerHTML = htmlContent;
+
+        // Reminder: Add CSS for '.indicator-set', '.indicator-box', '.value', '.label'
+        // in your main.css file for proper styling.
+        // Example for .indicator-set if needed:
+        // .indicator-set h4 { margin-top: 0; margin-bottom: 10px; color: #333; }
+    }
+
+    // TODO: Add methods for pie chart (e.g., using Chart.js)
+    // async updatePieChart(baseDefinitionExpression = "1=1") { ... }
 }
