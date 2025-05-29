@@ -21,6 +21,10 @@ html, body, calcite-shell {
 
 #statistics-panel {
     padding: 15px;
+    box-sizing: border-box; /* Important if you add borders/padding */
+    height: 100%; /* Make it fill the shell-panel */
+    overflow-y: auto; /* Allow scrolling if content exceeds height */
+    background-color: #f8f8f8; /* Light background to distinguish it */
 }
 
 #viewDiv {
