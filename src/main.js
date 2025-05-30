@@ -12,6 +12,10 @@ import { FilterManager } from './components/FilterManager.js';
 // Import the StatisticsManager class from its component file.
 import { StatisticsManager } from './components/StatisticsManager.js';
 
+// Import the SwipeWidgetManager class from its component file.
+// This will handle the layer comparison functionality using ArcGIS Swipe widget.
+import { SwipeWidgetManager } from './components/SwipeWidgetManager.js';
+
 // Import the global application CONFIG object.
 // The path './config/appConfig.js' means "from the current directory (src/),
 // go into 'config' directory, and find 'appConfig.js'".
@@ -43,6 +47,18 @@ async function startApp() {
         // The condition here is that the layer's 'title' property must exactly match
         // the 'roadNetworkLayerTitle' we defined in our CONFIG.
         const roadNetworkLayer = webmap.layers.find(layer => layer.title === CONFIG.roadNetworkLayerTitle);
+
+        // --- Initialize Swipe Widget Manager ---
+        // Create a new instance of our SwipeWidgetManager class.
+        // We pass it the 'view' (MapView) and 'webmap' that it needs to function.
+        // This manager will handle all swipe widget functionality throughout the app.
+        const swipeManager = new SwipeWidgetManager(view, webmap);
+        console.log("main.js: SwipeWidgetManager has been initialized.");
+
+        // --- Setup Swipe Widget Controls ---
+        // Create UI controls for the swipe widget functionality.
+        // This adds buttons and dropdowns to let users create and control swipe comparisons.
+        setupSwipeControls(swipeManager, webmap);
 
         // --- Check if the Layer Was Found and Proceed ---
         if (roadNetworkLayer) {
