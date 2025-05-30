@@ -86,7 +86,7 @@ html, body, calcite-shell {
 /* Swipe styles */
 .swipe-controls {
     background: white;
-    padding: 15px;
+    padding: 5px;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     margin: 10px 0;
@@ -99,6 +99,7 @@ html, body, calcite-shell {
 
 .control-group {
     margin-bottom: 15px;
+    margin-left: 10px;
 }
 
 .control-group label {
