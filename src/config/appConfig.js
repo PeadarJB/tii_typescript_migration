@@ -7,6 +7,7 @@ export const CONFIG = {
     // Field names from your road network feature layer
     // (It's good to define these early, even if you refine them later)
     fields: {
+        object_id: "OBJECTID",
         county: "COUNTY",
         criticality: "Criticality_Rating_Num1",
         subnet: "Subnet",

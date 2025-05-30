@@ -143,7 +143,7 @@ export class StatisticsManager {
                     // Otherwise, a field like the one used for 'Route' or 'County' from your CONFIG is okay,
                     // as long as it's guaranteed to be there for the features you're counting.
                     // Let's use CONFIG.fields.route as an example from your config.
-                    onStatisticField: CONFIG.fields.route, // Or "OBJECTID" or CONFIG.fields.county
+                    onStatisticField: CONFIG.fields.object_id, // Or "OBJECTID" or CONFIG.fields.county
                     outStatisticFieldName: outCountFieldName // e.g., "count_general_flood"
                 }
             ]
@@ -193,8 +193,15 @@ export class StatisticsManager {
         // Start with an empty string and build up the HTML for all statistic sets.
         let htmlContent = '';
 
+        const totalRoadNetworkSegments = 53382; // The total value you provided
+
         statsObjects.forEach(stats => {
             if (stats) { // Check if the stats object is valid
+                // Calculate the percentage of total network segments
+                const percentageOfTotalSegments = totalRoadNetworkSegments > 0 
+                                                  ? ((stats.count / totalRoadNetworkSegments) * 100).toFixed(1) 
+                                                  : 0;
+
                 htmlContent += `
                     <div class="indicator-set" style="margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #eee;">
                         <h4>${stats.label}</h4>
@@ -203,8 +210,7 @@ export class StatisticsManager {
                             <div class="label">Affected Network Length</div>
                         </div>
                         <div class="indicator-box">
-                            <div class="value">${stats.count}</div>
-                            <div class="label">Affected Road Segments</div>
+                            <div class="value">${percentageOfTotalSegments}% of Total Network</div>
                         </div>
                     </div>
                 `;
