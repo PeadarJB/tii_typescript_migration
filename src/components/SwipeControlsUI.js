@@ -8,6 +8,7 @@ export class SwipeControlsUI {
         this.webmap = webmap;
         this.container = null;
         this.elements = {}; // Store references to DOM elements
+        this.isSwipeContentVisible = false; // Track visibility state
     }
 
     // Initialize the UI - creates HTML and sets up event listeners
@@ -48,52 +49,52 @@ export class SwipeControlsUI {
     createHTML() {
         this.container.innerHTML = `
             <div class="swipe-control-panel">
-                <h3>Layer Comparison Tool</h3>
-                
-                <!-- Left Layer Selection -->
-                <div class="control-group">
-                    <label for="left-layer-select">Left/Top Layer:</label>
-                    <select id="left-layer-select">
-                        <option value="">Select a layer...</option>
-                    </select>
+                <button id="swipe-panel-toggle-btn" class="swipe-panel-toggle">
+                    Layer Comparison Tool <span id="swipe-toggle-icon" class="swipe-toggle-icon">&#9660;</span> </button>
+                <div id="swipe-panel-collapsible-content" class="swipe-panel-collapsible-content" style="display: none;">
+                    <div class="control-group">
+                        <label for="left-layer-select">Left/Top Layer:</label>
+                        <select id="left-layer-select">
+                            <option value="">Select a layer...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="right-layer-select">Right/Bottom Layer:</label>
+                        <select id="right-layer-select">
+                            <option value="">Select a layer...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="direction-select">Swipe Direction:</label>
+                        <select id="direction-select">
+                            <option value="horizontal">Horizontal (Left/Right)</option>
+                            <option value="vertical">Vertical (Up/Down)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="position-slider">Swipe Position: <span id="position-value">50</span>%</label>
+                        <input type="range" id="position-slider" min="0" max="100" value="50">
+                    </div>
+                    
+                    <div class="control-group">
+                        <button id="create-swipe-btn" class="btn btn-primary">Create Swipe</button>
+                        <button id="remove-swipe-btn" class.btn btn-secondary" disabled>Remove Swipe</button>
+                    </div>
+                    
+                    <div id="swipe-status" class="status-message"></div>
                 </div>
-                
-                <!-- Right Layer Selection -->
-                <div class="control-group">
-                    <label for="right-layer-select">Right/Bottom Layer:</label>
-                    <select id="right-layer-select">
-                        <option value="">Select a layer...</option>
-                    </select>
-                </div>
-                
-                <!-- Direction Selection -->
-                <div class="control-group">
-                    <label for="direction-select">Swipe Direction:</label>
-                    <select id="direction-select">
-                        <option value="horizontal">Horizontal (Left/Right)</option>
-                        <option value="vertical">Vertical (Up/Down)</option>
-                    </select>
-                </div>
-                
-                <!-- Position Control -->
-                <div class="control-group">
-                    <label for="position-slider">Swipe Position: <span id="position-value">50</span>%</label>
-                    <input type="range" id="position-slider" min="0" max="100" value="50">
-                </div>
-                
-                <!-- Action Buttons -->
-                <div class="control-group">
-                    <button id="create-swipe-btn" class="btn btn-primary">Create Swipe</button>
-                    <button id="remove-swipe-btn" class="btn btn-secondary" disabled>Remove Swipe</button>
-                </div>
-                
-                <!-- Status Display -->
-                <div id="swipe-status" class="status-message"></div>
             </div>
         `;
 
+
         // Store references to elements for easy access
         this.elements = {
+            swipePanelToggleBtn: document.getElementById('swipe-panel-toggle-btn'),
+            swipeToggleIcon: document.getElementById('swipe-toggle-icon'),
+            swipePanelCollapsibleContent: document.getElementById('swipe-panel-collapsible-content'),
             leftLayerSelect: document.getElementById('left-layer-select'),
             rightLayerSelect: document.getElementById('right-layer-select'),
             directionSelect: document.getElementById('direction-select'),
@@ -127,13 +128,17 @@ export class SwipeControlsUI {
     // Setup all event listeners
     setupEventListeners() {
         const {
+            swipePanelToggleBtn,
             directionSelect,
             positionSlider,
             positionValue,
             createSwipeBtn,
             removeSwipeBtn,
-            swipeStatus
         } = this.elements;
+
+        // Toggle button for collapsible content
+        swipePanelToggleBtn.addEventListener('click', () => this.toggleSwipePanel());
+
 
         // Position slider updates
         positionSlider.addEventListener('input', (e) => {
@@ -159,6 +164,20 @@ export class SwipeControlsUI {
 
         // Remove swipe button
         removeSwipeBtn.addEventListener('click', () => this.handleRemoveSwipe());
+    }
+
+    // Method to toggle the visibility of the swipe panel content
+    toggleSwipePanel() {
+        this.isSwipeContentVisible = !this.isSwipeContentVisible;
+        const { swipePanelCollapsibleContent, swipeToggleIcon } = this.elements;
+
+        if (this.isSwipeContentVisible) {
+            swipePanelCollapsibleContent.style.display = 'block';
+            swipeToggleIcon.innerHTML = '&#9650;'; // Up arrow
+        } else {
+            swipePanelCollapsibleContent.style.display = 'none';
+            swipeToggleIcon.innerHTML = '&#9660;'; // Down arrow
+        }
     }
 
     // Handle create swipe button click
@@ -231,8 +250,8 @@ export class SwipeControlsUI {
 
         createSwipeBtn.disabled = isActive;
         removeSwipeBtn.disabled = !isActive;
-        leftLayerSelect.disabled = isActive;
-        rightLayerSelect.disabled = isActive;
+        // leftLayerSelect.disabled = isActive;
+        // rightLayerSelect.disabled = isActive;
     }
 
     // Show status messages with different styles
