@@ -4,7 +4,7 @@ html, body, calcite-shell {
     margin: 0;
     height: 100%;
     width: 100%;
-    overflow: hidden; /* Prevent scrollbars on the shell itself */
+    /* overflow: hidden; */
 }
 
 #app-header h1 {
@@ -32,4 +32,53 @@ html, body, calcite-shell {
     margin: 0;
     height: 100%; /* Ensure it fills the main content area of calcite-shell */
     width: 100%;
+}
+
+#main-content-wrapper {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Allows this wrapper to fill space within calcite-shell */
+    height: 100%; /* Fallback or if parent isn't flex, adjust as needed */
+    overflow: hidden; /* Prevent this wrapper from showing scrollbars */
+}
+
+#bottom-stats-bar {
+    flex-shrink: 0; /* Prevent this bar from shrinking */
+    height: 20%; /* Adjust as needed for your indicator boxes */
+    background-color: #ffffff; /* Or a light grey like the image */
+    padding: 10px;
+    box-sizing: border-box;
+    display: flex; /* To center or manage #indicator-boxes-container */
+    align-items: center;
+    justify-content: center;
+    border-top: 1px solid #ccc;
+}
+
+#indicator-boxes-container {
+    display: flex;
+    flex-direction: row; /* Arrange indicator boxes in a row */
+    gap: 15px;          /* Space between indicator boxes */
+    width: 100%;
+    justify-content: space-around; /* Distribute boxes, or use space-evenly */
+    align-items: stretch; /* Make boxes of same height if they vary */
+}
+
+.indicator-set {
+    /* If each "set" is one of your main blocks */
+    background-color: #e9e9e9; /* Light grey like in the image */
+    padding: 15px;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    text-align: center;
+    flex: 1; /* Allow sets to grow and share space */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /* max-width: 200px; /* Optional: if you want to constrain width */
+}
+
+.indicator-set h4 { /* Label for the set */
+    margin: 0 0 10px 0;
+    font-size: 0.9em;
+    color: #555;
 }
