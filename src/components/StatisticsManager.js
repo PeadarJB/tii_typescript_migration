@@ -120,9 +120,14 @@ export class StatisticsManager {
      * Returns 0 for count/length if no features match or on error.
      */
     async querySegmentCountAndDerivedLength(baseDefinitionExpression, specificCondition, statLabel, outCountFieldName) {
-        // Combine the base filters (e.g., County, Criticality from user) 
-        // with the specific condition for this particular statistic (e.g., future_flood_intersection = 1).
-        const combinedWhereClause = `(${baseDefinitionExpression}) AND (${specificCondition})`;
+
+        // Sanitize baseDefinitionExpression: if it's empty or just whitespace, use "1=1"
+        const effectiveBaseExpression = (baseDefinitionExpression && baseDefinitionExpression.trim() !== "") 
+                                        ? baseDefinitionExpression 
+                                        : "1=1";
+
+        // Combine the effective base filters with the specific condition for this particular statistic.
+        const combinedWhereClause = `(${effectiveBaseExpression}) AND (${specificCondition})`;
         
         // Log what we're about to query for easier debugging.
         console.log(`StatisticsManager: Querying for "${statLabel}" with WHERE clause: ${combinedWhereClause}`);

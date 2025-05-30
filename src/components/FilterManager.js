@@ -1,319 +1,265 @@
-// --- Importing Necessary Modules ---
+// src/components/FilterManager.js
 
-// Import the CONFIG object from our application's configuration file.
-// This CONFIG object holds important settings like layer IDs, field names, etc.
-// The path "../config/appConfig.js" means "go up one directory from the current file,
-// then into the 'config' directory, and find 'appConfig.js'".
+// These imports bring in external tools we need:
+// - CONFIG contains our app's settings and field names
+// - Query helps us ask the database for specific data
 import { CONFIG } from "../config/appConfig.js";
-
-// The ArcGIS Maps SDK for JavaScript is modular. We import specific parts we need.
-// Import the 'query' module from the ArcGIS REST API. This is a utility function
-// that can be used to execute queries directly against a feature service URL.
-// While we use layer.queryFeatures() in this example, understanding 'query' is good background.
-// Note: This specific 'query' import is not strictly used in the current version of the code below,
-// as we use 'this.layer.queryFeatures()'. It's kept here as an example of how you might import
-// specific REST modules if needed for more direct service calls.
-import * as query from "@arcgis/core/rest/query.js";
-
-// Import the 'Query' class from the ArcGIS REST support module.
-// This class is used to define the parameters for a query that we'll run against a feature layer.
-// For example, what fields to get, any filters (where clause), if we want distinct values, etc.
 import Query from "@arcgis/core/rest/support/Query.js";
 
-// --- Class Definition ---
-
-// In JavaScript, a 'class' is a blueprint for creating objects.
-// This 'FilterManager' class will be responsible for creating, managing,
-// and applying filters to our road network map layer.
 export class FilterManager {
-    // The 'constructor' is a special method that gets called automatically
-    // when we create a new 'FilterManager' object (e.g., new FilterManager(...)).
-    // It's used to set up the initial properties of the object.
-
-    /**
-     * JSDoc comment: This describes the constructor and its parameters for documentation.
-     * @param {HTMLElement|string} container - The HTML element itself, or the ID (string) of the HTML element
-     * where the filter dropdowns will be placed.
-     * @param {__esri.MapView} view - The MapView instance from the ArcGIS SDK. This gives us context of the map.
-     * (Currently not heavily used in this specific filter logic but good to have for future extensions).
-     * @param {__esri.FeatureLayer} roadNetworkLayer - The specific ArcGIS FeatureLayer object that we want to filter.
-     * This layer displays the road network on the map.
-     */
     constructor(container, view, roadNetworkLayer) {
-        // 'this' refers to the current instance of the FilterManager object being created.
-
-        // Store the container element.
-        // If 'container' is a string (an ID), find the HTML element with that ID.
-        // Otherwise, assume 'container' is already the HTML element itself.
+        // SETUP: Get the HTML container where filters will be displayed
         this.container = typeof container === 'string' ? document.getElementById(container) : container;
+        
+        // SETUP: Store references to the map view and data layer
+        this.view = view; // The map display
+        this.layer = roadNetworkLayer; // The data we're filtering
+        
+        // SETUP: Initialize tracking variables
+        this.currentFilters = {}; // Keeps track of what filters are currently active
+        this.onFilterChangeCallback = null; // Function to call when filters change
+        this.initialExtent = null; // Remember the original map zoom/position
 
-        // Store the MapView instance.
-        this.view = view;
-
-        // Store the FeatureLayer instance (our road network layer).
-        this.layer = roadNetworkLayer;
-
-        // 'this.currentFilters' will be an object to keep track of the currently selected
-        // filter values. For example: { "COUNTY": "Dublin", "Criticality_Rating_Num1": "High" }
-        this.currentFilters = {};
-
-        // 'this.onFilterChangeCallback' will hold a function that should be called whenever
-        // the filters are updated. This allows other parts of our application (like the
-        // StatisticsManager) to react to filter changes. It's initially null.
-        this.onFilterChangeCallback = null;
-
-        // Basic check: if the container element wasn't found, log an error and stop.
-        // This prevents errors later if we try to add filters to a non-existent container.
+        // ERROR CHECKING: Make sure we have a valid container
         if (!this.container) {
             console.error("FilterManager: Container not found. Filters cannot be created.");
-            return; // Exit the constructor early
+            return;
         }
-        // Log a message to the browser's developer console to confirm initialization.
+        
+        // ERROR CHECKING: Warn if view or layer is missing (but continue anyway)
+        if (!this.view || !this.layer) {
+            console.error("FilterManager: View or Layer is not provided. Zoom functionality may be affected.");
+            // Note: We don't return here because basic filtering might still work
+        }
+
+        // SAVE INITIAL MAP POSITION: Store where the map starts so we can return to it later
+        if (this.view && this.view.extent) {
+            // If the map extent is immediately available, save it now
+            this.initialExtent = this.view.extent.clone();
+            console.log("FilterManager: Initial map extent stored directly.", this.initialExtent);
+        } else if (this.view) {
+            // If the map isn't ready yet, wait for it and then save the extent
+            this.view.when(() => {
+                if (this.view.extent) {
+                    this.initialExtent = this.view.extent.clone();
+                    console.log("FilterManager: Initial map extent stored via view.when().", this.initialExtent);
+                } else {
+                    console.warn("FilterManager: View became ready, but extent is still not available.");
+                }
+            }).catch(error => {
+                console.error("FilterManager: Error storing initial extent via view.when():", error);
+            });
+        }
+
         console.log("FilterManager initialized successfully.");
     }
 
-    // --- Methods of the FilterManager Class ---
-
-    /**
-     * This method allows other parts of the application to provide a function (callback)
-     * that will be executed whenever the filters are changed by the user.
-     * For example, the StatisticsManager can use this to know when to update its stats.
-     * @param {Function} callback - The function to be called. It will receive the new
-     * definitionExpression (the filter query string) as an argument.
-     */
+    // CALLBACK SETUP: Allow other parts of the app to know when filters change
     onFilterChange(callback) {
-        // Store the provided callback function in our object's property.
         this.onFilterChangeCallback = callback;
     }
 
-    /**
-     * This is an 'async' function, meaning it can use the 'await' keyword
-     * to pause execution until a Promise resolves (e.g., waiting for data from a server).
-     * It sets up all the filter dropdowns in the UI.
-     */
+    // MAIN INITIALIZATION: Create all the filter dropdown menus
     async initializeFilters() {
-        // Clear out any existing content in the filter container (e.g., placeholders like "Loading Filters...").
+        // Clear any existing filter UI elements
         this.container.innerHTML = '';
 
-        // --- Create individual filters ---
-        // We use 'await' because 'createDropdownFilter' might involve asynchronous operations
-        // like 'getUniqueValues' which fetches data. This ensures filters are created sequentially.
+        // DEFINE WHAT FILTERS TO CREATE: Set up configuration for each filter type
+        const filterConfigs = [
+            { 
+                label: "County",  // What users see
+                fieldName: CONFIG.fields.county,  // Database field name
+                options: await this.getUniqueValues(CONFIG.fields.county), // Get all possible values
+                dataType: 'string'  // Text data
+            },
+            { 
+                label: "Criticality", 
+                fieldName: CONFIG.fields.criticality, 
+                options: CONFIG.filterOptions.criticality, // Pre-defined options from config
+                dataType: 'number'  // Numeric data
+            }
+            // More filters can be added here following the same pattern
+        ];
+        
+        // ORGANIZE FILTERS: Sort so County appears first, then Criticality, then others
+        filterConfigs.sort((a, b) => {
+            if (a.label === 'County') return -1; // County goes first
+            if (b.label === 'County') return 1;
+            if (a.label === 'Criticality') return -1; // Criticality goes second
+            if (b.label === 'Criticality') return 1;
+            return 0; // Others stay in original order
+        });
 
-        // Create a dropdown filter for the "Criticality" field.
-        // - "Criticality" is the user-friendly label for the dropdown.
-        // - CONFIG.fields.criticality is the actual field name from our config (e.g., "Criticality_Rating_Num1").
-        // - CONFIG.filterOptions.criticality provides a predefined list of options for this filter (e.g., ["High", "Medium", "Low"]).
-        await this.createDropdownFilter(
-            "Criticality", // Label text
-            CONFIG.fields.criticality, // Field name in the data
-            CONFIG.filterOptions.criticality // Options for the dropdown (static list)
-        );
-
-        // Create a dropdown filter for the "County" field.
-        // For this one, the options are fetched dynamically from the layer's data
-        // by calling 'await this.getUniqueValues(CONFIG.fields.county)'.
-        await this.createDropdownFilter(
-            "County", // Label text
-            CONFIG.fields.county, // Field name in the data
-            await this.getUniqueValues(CONFIG.fields.county) // Options (dynamic list)
-        );
-
-        // TODO: Placeholder for creating more filters as per your application needs.
-        // You would follow the same pattern as above for fields like "Subnet", "Lifeline", "Route".
-        // For boolean fields like "Flood Affected", you might use a dropdown with "Yes"/"No",
-        // or if it's based on multiple fields (like cfram_m_f_0010), the logic will be more complex.
-        // For example:
-        // await this.createDropdownFilter("Subnet", CONFIG.fields.subnet, await this.getUniqueValues(CONFIG.fields.subnet));
-        // await this.createDropdownFilter("Lifeline", CONFIG.fields.lifeline, await this.getUniqueValues(CONFIG.fields.lifeline));
+        // CREATE EACH FILTER: Loop through and build the dropdown menus
+        for (const config of filterConfigs) {
+            await this.createDropdownFilter(config.label, config.fieldName, config.options);
+        }
 
         console.log("FilterManager: All filter UI elements have been initialized.");
     }
 
-    /**
-     * Asynchronously fetches a list of unique (distinct) values for a specified field
-     * from the roadNetworkLayer. This is used to populate dropdown lists dynamically,
-     * so users only see relevant filter options.
-     * @param {string} fieldName - The name of the field in the feature layer (e.g., "COUNTY").
-     * @returns {Promise<string[]>} A promise that, when resolved, gives an array of unique string values.
-     * Returns an empty array if there's an error or no layer.
-     */
+    // DATA RETRIEVAL: Get all unique values from a database field for dropdown options
     async getUniqueValues(fieldName) {
-        // If the layer isn't available, we can't query it, so return an empty array.
+        // Safety check: Make sure we have a data layer to query
         if (!this.layer) {
             console.warn("FilterManager: Layer not available for getUniqueValues.");
             return [];
         }
 
-        // Create a new Query object to define what we want from the layer.
+        // BUILD DATABASE QUERY: Ask for all unique values in this field
         const uniqueValuesQuery = new Query({
-            // 'where: "1=1"' is a common SQL trick meaning "get all records" (no filter on the query itself).
-            // We might refine this if we only want unique values based on *already applied static filters*.
-            where: "1=1",
-            // 'outFields: [fieldName]' specifies that we are only interested in the values from this one field.
-            outFields: [fieldName],
-            // 'returnDistinctValues: true' is the key part that tells the server to only send back unique values.
-            returnDistinctValues: true,
-            // 'orderByFields: [fieldName]' is optional but nice: it sorts the unique values alphabetically
-            // before returning them, making the dropdown list look cleaner.
-            orderByFields: [fieldName]
+            where: "1=1", // Get all records (1=1 is always true)
+            outFields: [fieldName], // Only return this specific field
+            returnDistinctValues: true, // Remove duplicates
+            orderByFields: [fieldName] // Sort the results alphabetically
         });
 
         try {
-            // 'await this.layer.queryFeatures(uniqueValuesQuery)' sends the query to the ArcGIS server
-            // and waits for the results (a "FeatureSet").
+            // EXECUTE QUERY: Ask the database for the data
             const results = await this.layer.queryFeatures(uniqueValuesQuery);
-
-            // 'results.features' is an array of "Graphic" objects. Each graphic has 'attributes'.
-            // We .map() over this array to extract just the value of our fieldName from each feature's attributes.
-            // .filter(value => value != null) removes any null or undefined values from the list.
-            return results.features.map(feature => feature.attributes[fieldName])
-                                 .filter(value => value != null);
+            
+            // PROCESS RESULTS: Extract the values and clean them up
+            return results.features
+                .map(feature => feature.attributes[fieldName]) // Get the field value from each record
+                .filter(value => value !== null && value !== undefined && String(value).trim() !== ""); // Remove empty values
         } catch (error) {
-            // If anything goes wrong during the query (network issue, server error, misconfigured layer),
-            // log the error and return an empty array so the application doesn't completely break.
             console.error(`FilterManager: Error fetching unique values for field "${fieldName}":`, error);
-            return [];
+            return []; // Return empty array if something goes wrong
         }
     }
 
-    /**
-     * Dynamically creates a single dropdown filter (using Calcite Components)
-     * and adds it to the filter container.
-     * @param {string} labelText - The human-readable text for the filter's label (e.g., "Select County").
-     * @param {string} fieldName - The actual name of the field in the data that this filter will control.
-     * @param {string[]} options - An array of strings that will become the options in the dropdown.
-     */
+    // UI CREATION: Build a single dropdown filter with all its options
     async createDropdownFilter(labelText, fieldName, options) {
-        // Create a unique ID for the HTML select element for potential future use (e.g., direct manipulation).
-        const filterId = `filter-${fieldName.toLowerCase().replace(/[^a-z0-9-_]/g, '')}`; // Sanitize fieldName for ID
-
-        // --- Create Calcite Label ---
-        // 'document.createElement("calcite-label")' creates a new Calcite Label HTML element.
-        // Calcite Components are custom HTML elements provided by Esri for consistent UI.
+        // CREATE UNIQUE ID: Make a clean ID for this filter element
+        const filterId = `filter-${fieldName.toLowerCase().replace(/[^a-z0-9-_]/g, '')}`;
+        
+        // CREATE LABEL: The text that appears next to the dropdown
         const label = document.createElement("calcite-label");
-        // 'setAttribute' sets HTML attributes. 'layout: "inline"' helps with alignment.
         label.setAttribute("layout", "inline");
-        // 'innerText' sets the visible text of the label.
-        label.innerText = `${labelText}: `; // e.g., "County: "
+        label.innerText = `${labelText}: `;
 
-        // --- Create Calcite Select (Dropdown) ---
+        // CREATE DROPDOWN: The actual selection menu
         const select = document.createElement("calcite-select");
         select.setAttribute("id", filterId);
-        // The 'label' attribute on calcite-select is important for accessibility (screen readers).
-        // It provides a description of the select element even if a visual label isn't directly associated.
         select.setAttribute("label", `${labelText} filter selection`);
 
-        // --- Create the "All" Option ---
-        // It's good practice to have an option to clear the filter for this specific field.
+        // ADD "ALL" OPTION: Default option that shows everything (no filter)
         const allOption = document.createElement("calcite-option");
-        // An empty 'value' (value="") will signify that no specific filter should be applied for this field.
-        allOption.setAttribute("value", "");
-        allOption.innerText = `All ${labelText}s`; // e.g., "All Countys"
-        // 'setAttribute("selected", "")' makes this the default selected option when the dropdown first appears.
-        allOption.setAttribute("selected", "");
-        // 'appendChild' adds the 'allOption' inside the 'select' element.
+        allOption.setAttribute("value", ""); // Empty value means "no filter"
+        allOption.innerText = `All ${labelText}s`;
+        allOption.setAttribute("selected", ""); // Make this the default selection
         select.appendChild(allOption);
 
-        // --- Populate with other options ---
-        // 'options.forEach(...)' loops through each string in the 'options' array.
+        // ADD SPECIFIC OPTIONS: Add each possible filter value to the dropdown
         options.forEach(optionInput => {
-        const optionElement = document.createElement("calcite-option");
-        if (typeof optionInput === 'object' && optionInput !== null && 'value' in optionInput && 'label' in optionInput) {
-            // If the option is an object with label and value properties
-            optionElement.setAttribute("value", optionInput.value);
-            optionElement.innerText = optionInput.label;
-        } else {
-            // If the option is a simple string (for dynamically populated lists like County)
-            optionElement.setAttribute("value", optionInput);
-            optionElement.innerText = optionInput;
-        }
-        select.appendChild(optionElement);
-    });
+            const optionElement = document.createElement("calcite-option");
+            
+            // HANDLE DIFFERENT OPTION FORMATS: Some options are simple values, others are objects
+            if (typeof optionInput === 'object' && optionInput !== null && 'value' in optionInput && 'label' in optionInput) {
+                // Object format: {value: "1", label: "High Priority"}
+                optionElement.setAttribute("value", optionInput.value);
+                optionElement.innerText = optionInput.label;
+            } else {
+                // Simple format: just the value itself
+                optionElement.setAttribute("value", optionInput);
+                optionElement.innerText = optionInput;
+            }
+            select.appendChild(optionElement);
+        });
 
-        // --- Event Listener for Dropdown Changes ---
-        // 'addEventListener' attaches an event handler function that will run
-        // whenever the 'calciteSelectChange' event occurs on this dropdown
-        // (i.e., when the user picks a new option).
+        // ADD EVENT LISTENER: React when user selects a different option
         select.addEventListener("calciteSelectChange", (event) => {
-            // 'event.target' is the 'calcite-select' element that triggered the event.
-            // 'event.target.selectedOption.value' gets the 'value' attribute of the chosen <calcite-option>.
             const selectedValue = event.target.value;
-
-            // Update our 'this.currentFilters' object.
+            
             if (selectedValue === "") {
-                // If "All" was selected (empty value), remove this field from our active filters.
+                // USER SELECTED "ALL": Remove this filter
                 delete this.currentFilters[fieldName];
             } else {
-                // Otherwise, store the selected value for this field.
-                this.currentFilters[fieldName] = selectedValue;
+                // USER SELECTED SPECIFIC VALUE: Store this filter
+                this.currentFilters[fieldName] = { value: selectedValue, fieldName: fieldName };
             }
-            // After updating the internal state of filters, call 'this.applyFilters()'
-            // to update the map layer.
+            
+            // APPLY THE CHANGES: Update the map display with new filters
             this.applyFilters();
         });
 
-        // --- Add to HTML Page ---
-        // Create a simple 'div' to wrap the label and select for better layout control if needed.
+        // ADD TO PAGE: Create a wrapper and add the filter to the container
         const wrapper = document.createElement('div');
-        // Basic styling for the wrapper to make filters appear side-by-side.
-        // It's often better to do this with CSS classes defined in your stylesheet.
-        wrapper.style.display = 'inline-block';
-        wrapper.style.marginRight = '15px'; // Some spacing between filters
+        wrapper.style.display = 'inline-block'; // Display filters side by side
+        wrapper.style.marginRight = '15px'; // Add spacing between filters
         wrapper.appendChild(label);
         wrapper.appendChild(select);
-
-        // Add the complete filter UI (wrapper div) to the main filter container on the page.
         this.container.appendChild(wrapper);
     }
 
-    /**
-     * Constructs a SQL-like WHERE clause (definition expression) based on the
-     * 'this.currentFilters' object and applies it to the feature layer.
-     * This is what actually filters the data shown on the map.
-     */
-    applyFilters() {
-        // 'definitionExpressions' will be an array of individual filter conditions,
-        // like ["COUNTY = 'Dublin'", "Criticality_Rating_Num1 = 'High'"].
-        let definitionExpressions = [];
+    // FILTER APPLICATION: Take all active filters and apply them to the map layer
+    async applyFilters() {
+        let definitionExpressionsArray = []; // Will hold SQL-like filter statements
+        let allFiltersEmpty = true; // Track if any filters are active
 
-        // 'for...in' loop iterates over the keys (field names) in the 'this.currentFilters' object.
-        for (const field in this.currentFilters) {
-            const value = this.currentFilters[field]; // Get the selected value for that field.
+        // BUILD FILTER EXPRESSIONS: Convert each active filter into a database query
+        for (const fieldKey in this.currentFilters) {
+            allFiltersEmpty = false; // We found at least one active filter
+            const filterItem = this.currentFilters[fieldKey];
+            const { value, fieldName } = filterItem;
+            
+            // DETERMINE DATA TYPE: Figure out if this field contains numbers or text
+            let isNumeric = false;
+            if (CONFIG.fields.criticality === fieldName) {
+                isNumeric = true; // Criticality field contains numbers
+            }
+            // Add more numeric field checks here if needed
 
-            // Construct the SQL-like condition for this field.
-            // It's important to handle data types correctly:
-            // - String values in SQL need to be enclosed in single quotes (e.g., field = 'value').
-            // - Numeric values do not need quotes (e.g., field = 123).
-            // This example assumes string values and also handles cases where the string value
-            // itself might contain a single quote by escaping it (replacing ' with '').
-            if (typeof value === 'string') {
-                // Example: if field is "COUNTY" and value is "St. John's", this becomes:
-                // "COUNTY = 'St. John''s'"
-                definitionExpressions.push(`${field} = '${value.replace(/'/g, "''")}'`);
+            // CREATE PROPER SQL SYNTAX: Format the filter expression correctly
+            if (isNumeric) {
+                // NUMERIC FIELDS: No quotes needed around numbers
+                definitionExpressionsArray.push(`${fieldName} = ${value}`);
             } else {
-                // For numbers or other non-string types (booleans might need special handling depending on backend)
-                definitionExpressions.push(`${field} = ${value}`);
+                // TEXT FIELDS: Wrap in single quotes and escape any quotes in the value
+                definitionExpressionsArray.push(`${fieldName} = '${String(value).replace(/'/g, "''")}'`);
             }
         }
 
-        // Combine all individual filter conditions with "AND".
-        // If there are any active filters, join them: "CONDITION_1 AND CONDITION_2 AND ..."
-        // If 'definitionExpressions' array is empty (no filters active),
-        // set 'newDefinitionExpression' to "1=1", which means "show all features".
-        const newDefinitionExpression = definitionExpressions.length > 0
-            ? definitionExpressions.join(" AND ")
-            : "1=1";
+        // COMBINE ALL FILTERS: Join multiple filters with "AND" (all must be true)
+        const newDefinitionExpression = definitionExpressionsArray.length > 0
+            ? definitionExpressionsArray.join(" AND ")
+            : ""; // Empty string means "show everything"
 
-        // 'this.layer.definitionExpression' is a property of the ArcGIS FeatureLayer.
-        // Setting it tells the layer to only display features that match this condition.
-        // The map will automatically update to reflect this new filter.
+        // APPLY TO LAYER: Tell the map layer to use this filter
         this.layer.definitionExpression = newDefinitionExpression;
         console.log("FilterManager: Applied definitionExpression to layer:", newDefinitionExpression);
 
-        // --- Notify External Components ---
-        // If a callback function was registered via 'onFilterChange()', call it now
-        // and pass the new definition expression. This lets other parts of the app
-        // (like the StatisticsManager) know that the filters have changed.
+        // ZOOM TO FILTERED RESULTS: Automatically zoom the map to show filtered data
+        if (!allFiltersEmpty && this.view && this.layer && this.layer.visible) {
+            try {
+                // QUERY FOR EXTENT: Find the geographic bounds of filtered features
+                const extentQuery = this.layer.createQuery();
+                const results = await this.layer.queryExtent(extentQuery);
+
+                if (results && results.count > 0 && results.extent) {
+                    // ZOOM TO RESULTS: Move map to show all filtered features
+                    await this.view.goTo(results.extent.expand(1.5)); // 1.5x padding around results
+                    console.log("FilterManager: Zoomed to filtered extent.");
+                } else if (results && results.count === 0) {
+                    // NO RESULTS FOUND: Optionally return to original view
+                    console.log("FilterManager: No features match the current filters. Not zooming.");
+                    if (this.initialExtent) {
+                        await this.view.goTo(this.initialExtent);
+                        console.log("FilterManager: No features found, zoomed to initial extent.");
+                    }
+                } else {
+                    console.log("FilterManager: Could not get extent for filtered features, or layer might be empty after filter.");
+                }
+            } catch (error) {
+                console.error("FilterManager: Error zooming to filtered extent:", error);
+            }
+        } else if (allFiltersEmpty && this.view && this.initialExtent) {
+            // ALL FILTERS CLEARED: Return to the original map view
+            await this.view.goTo(this.initialExtent);
+            console.log("FilterManager: All filters cleared. Zoomed to initial map extent.");
+        }
+
+        // NOTIFY OTHER COMPONENTS: Tell other parts of the app that filters changed
         if (this.onFilterChangeCallback) {
             this.onFilterChangeCallback(newDefinitionExpression);
         }
