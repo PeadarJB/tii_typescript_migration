@@ -50,19 +50,20 @@ export class SwipeControlsUI {
         this.container.innerHTML = `
             <div class="swipe-control-panel">
                 <button id="swipe-panel-toggle-btn" class="swipe-panel-toggle">
-                    Layer Comparison Tool <span id="swipe-toggle-icon" class="swipe-toggle-icon">&#9660;</span> </button>
+                    Layer Comparison Tool <span id="swipe-toggle-icon" class="swipe-toggle-icon">&#9660;</span>
+                </button>
                 <div id="swipe-panel-collapsible-content" class="swipe-panel-collapsible-content" style="display: none;">
                     <div class="control-group">
-                        <label for="left-layer-select">Left/Top Layer:</label>
-                        <select id="left-layer-select">
-                            <option value="">Select a layer...</option>
+                        <label for="left-layer-select">Left/Top Layer(s) (Ctrl+Click for multiple):</label>
+                        <select id="left-layer-select" multiple size="5"> 
+                            {/* Options will be populated here */}
                         </select>
                     </div>
                     
                     <div class="control-group">
-                        <label for="right-layer-select">Right/Bottom Layer:</label>
-                        <select id="right-layer-select">
-                            <option value="">Select a layer...</option>
+                        <label for="right-layer-select">Right/Bottom Layer(s) (Ctrl+Click for multiple):</label>
+                        <select id="right-layer-select" multiple size="5">
+                            {/* Options will be populated here */}
                         </select>
                     </div>
                     
@@ -81,7 +82,7 @@ export class SwipeControlsUI {
                     
                     <div class="control-group">
                         <button id="create-swipe-btn" class="btn btn-primary">Create Swipe</button>
-                        <button id="remove-swipe-btn" class.btn btn-secondary" disabled>Remove Swipe</button>
+                        <button id="remove-swipe-btn" class="btn btn-secondary" disabled>Remove Swipe</button>
                     </div>
                     
                     <div id="swipe-status" class="status-message"></div>
@@ -109,6 +110,10 @@ export class SwipeControlsUI {
     // Populate the layer dropdown options
     populateLayerOptions() {
         const { leftLayerSelect, rightLayerSelect } = this.elements;
+
+        // Clear existing options first
+        leftLayerSelect.innerHTML = '';
+        rightLayerSelect.innerHTML = '';
         
         this.webmap.layers.forEach(layer => {
             // Create option for left dropdown
@@ -188,32 +193,32 @@ export class SwipeControlsUI {
             directionSelect,
             positionSlider,
             createSwipeBtn,
-            removeSwipeBtn,
-            swipeStatus
         } = this.elements;
 
-        const leftLayer = leftLayerSelect.value;
-        const rightLayer = rightLayerSelect.value;
+        const leftLayerTitles = this.getSelectedValues(leftLayerSelect);
+        const rightLayerTitles = this.getSelectedValues(rightLayerSelect);
         const direction = directionSelect.value;
         const position = parseInt(positionSlider.value);
 
         // Validation
-        if (!leftLayer || !rightLayer) {
-            this.showStatus('Please select both layers for comparison.', 'error');
+        if (leftLayerTitles.length === 0 || rightLayerTitles.length === 0) {
+            this.showStatus('Please select at least one layer for each side.', 'error');
             return;
         }
 
-        if (leftLayer === rightLayer) {
-            this.showStatus('Please select different layers for comparison.', 'error');
+        // Check for overlap between selected layers
+        const commonLayers = leftLayerTitles.filter(title => rightLayerTitles.includes(title));
+        if (commonLayers.length > 0) {
+            this.showStatus(`Layer(s) "${commonLayers.join(', ')}" cannot be selected on both sides.`, 'error');
             return;
         }
 
-        // Show loading
         this.showStatus('Creating swipe widget...', 'loading');
         createSwipeBtn.disabled = true;
 
         try {
-            const success = await this.swipeManager.initializeSwipe(leftLayer, rightLayer, position, direction);
+            // Pass arrays of titles to the swipeManager
+            const success = await this.swipeManager.initializeSwipe(leftLayerTitles, rightLayerTitles, position, direction);
             
             if (success) {
                 this.showStatus('✓ Swipe widget created successfully!', 'success');
@@ -224,7 +229,7 @@ export class SwipeControlsUI {
             }
         } catch (error) {
             console.error('SwipeControlsUI: Error creating swipe widget:', error);
-            this.showStatus('Error creating swipe widget. Check console for details.', 'error');
+            this.showStatus(`Error: ${error.message || 'Check console for details.'}`, 'error');
             createSwipeBtn.disabled = false;
         }
     }
