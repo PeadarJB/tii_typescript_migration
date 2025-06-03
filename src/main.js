@@ -22,29 +22,41 @@ class AppManager {
      */
     async initialize() {
         try {
-            this.showLoadingState();
-            
-            // Initialize core map components
-            await this.initializeMap();
-            
-            // Initialize UI components
-            await this.initializeUIComponents();
-            
-            // Setup component interactions
-            this.setupComponentInteractions();
-            
-            // Perform initial data load
-            await this.performInitialDataLoad();
-            
-            this.isInitialized = true;
-            this.hideLoadingState();
-            
-            console.log("AppManager: Application initialization complete.");
-            
-        } catch (error) {
-            console.error("AppManager: Failed to initialize application:", error);
+            // 1. Attempt to initialize the map first.
+            // The ArcGIS view itself will show its own loading indicator during this phase.
+            // The login prompt, if needed, should appear now without our custom loader obscuring it.
+            try {
+                await this.initializeMap();
+            } catch (mapError) {
+                console.error("AppManager: Map initialization failed critically:", mapError);
+                // handleCriticalError will call hideLoadingState, which is fine even if it wasn't shown yet.
+                this.handleCriticalError(mapError);
+                return; // Stop further execution
+            }
+
+            // 2. If map initialization is successful, now show our custom loader
+            // for subsequent application-specific operations.
+            this.showLoadingState(); // Show loader for UI components and initial data load.
+
+            try {
+                await this.initializeUIComponents();
+                this.setupComponentInteractions();
+                await this.performInitialDataLoad();
+
+                this.isInitialized = true;
+                this.hideLoadingState(); // Hide after all app components are ready.
+                console.log("AppManager: Application initialization complete.");
+
+            } catch (postMapInitError) {
+                console.error("AppManager: Error initializing UI components or loading data:", postMapInitError);
+                this.hideLoadingState(); // Ensure loader is hidden on error during these steps.
+                this.handleCriticalError(postMapInitError);
+            }
+
+        } catch (error) { // This catch is mostly a fallback.
+            console.error("AppManager: Unexpected error during overall initialization:", error);
+            this.hideLoadingState(); // Ensure hidden in any unexpected error scenario.
             this.handleCriticalError(error);
-            throw error;
         }
     }
 
