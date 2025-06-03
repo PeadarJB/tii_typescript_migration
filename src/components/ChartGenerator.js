@@ -225,11 +225,11 @@ export class ChartGenerator {
             this.elements.generateChartBtn.disabled = !isValid;
         };
 
-        this.elements.categoryFieldSelect.addEventListener('change', validateSelections);
-        this.elements.metricSelect.addEventListener('change', validateSelections);
+        this.elements.categoryFieldSelect.addEventListener('calciteSelectChange', validateSelections);
+        this.elements.metricSelect.addEventListener('calciteSelectChange', validateSelections);
 
         // Auto-generate on chart type change if chart exists
-        this.elements.chartTypeSelect.addEventListener('change', () => {
+        this.elements.chartTypeSelect.addEventListener('calciteSelectChange', () => {
             if (this.chartInstance && this.isChartConfigured()) {
                 this.generateChart();
             }
