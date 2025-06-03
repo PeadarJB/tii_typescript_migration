@@ -110,7 +110,7 @@ html, body, calcite-shell {
 
 .control-group select,
 .control-group input[type="range"] {
-    width: 100%;
+    width: 40%;
     padding: 5px;
 }
 
