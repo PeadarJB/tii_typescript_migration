@@ -185,6 +185,25 @@ export class SwipeControlsUI {
         }
     }
 
+    /**
+     * ADD THIS METHOD
+     * Helper function to get all selected values from a <select multiple> element.
+     * @param {HTMLSelectElement} selectElement - The multiple select HTML element.
+     * @returns {string[]} An array of selected values.
+     */
+    
+    getSelectedValues(selectElement) {
+        const selectedValues = [];
+        if (selectElement) {
+            for (const option of selectElement.options) {
+                if (option.selected) {
+                    selectedValues.push(option.value);
+                }
+            }
+        }
+        return selectedValues;
+    }
+
     // Handle create swipe button click
     async handleCreateSwipe() {
         const {
