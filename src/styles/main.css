@@ -148,14 +148,19 @@ html, body, calcite-shell {
 }
 
 .btn-secondary {
+    background-color: white;
+    border: 1px solid #dfdfdf;
+}
+
+.btn-secondary:hover {
     background-color: #6c757d;
     color: white;
-    border: 1px solid #dfdfdf;
 }
 
 .btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+    pointer-events: none;
 }
 
 .status-message {

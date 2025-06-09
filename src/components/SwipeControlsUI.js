@@ -203,9 +203,9 @@ export class SwipeControlsUI {
             {
             x: [200, 0], // Animate from 50px to the right to 0
             opacity: [0, 1],      // Fade them in
-            delay: stagger(100), // Create the "one by one" effect
-            duration: 500,
-            ease: 'inOutCirc',
+            delay: stagger(70), // Create the "one by one" effect
+            duration: 700,
+            //ease: 'inOutCirc',
         });
 
         } else {
@@ -270,6 +270,11 @@ export class SwipeControlsUI {
             if (success) {
                 this.showStatus('✓ Swipe widget created successfully!', 'success');
                 this.setSwipeActiveState(true);
+
+                if (this.isSwipeContentVisible) {
+                    this.toggleSwipePanel();
+                }
+
             } else {
                 this.showStatus('Failed to create swipe widget. Check console for details.', 'error');
                 createSwipeBtn.disabled = false;
@@ -288,6 +293,11 @@ export class SwipeControlsUI {
         if (success) {
             this.showStatus('Swipe widget removed.', 'info');
             this.setSwipeActiveState(false);
+
+            if (this.isSwipeContentVisible) {
+                    this.toggleSwipePanel();
+                }
+                
         }
     }
 
