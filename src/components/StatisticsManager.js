@@ -179,6 +179,10 @@ export class StatisticsManager {
             return;
         }
 
+        const numSlides = activeScenarios.length;
+        // Calculate the percentage width for each slide
+        const slideWidthPercentage = 100 / numSlides;
+
         // Build the HTML for each slide in the carousel
         const slidesHtml = activeScenarios.map(scenario => {
             const indicatorsHtml = scenario.stats
@@ -199,7 +203,7 @@ export class StatisticsManager {
                 }).join('');
 
             return `
-                <div class="carousel-slide">
+                <div class="carousel-slide" style="width: ${slideWidthPercentage}%;">
                     <div class="flood-scenario"><h2>${scenario.title}</h2></div>
                     ${indicatorsHtml}
                 </div>
@@ -211,7 +215,7 @@ export class StatisticsManager {
             <div class="stats-carousel">
                 <button class="carousel-nav prev" aria-label="Previous scenario">&lt;</button>
                 <div class="carousel-viewport">
-                    <div class="carousel-track" style="width: ${activeScenarios.length * 100}%">
+                    <div class="carousel-track" style="width: ${numSlides * 100}%">
                         ${slidesHtml}
                     </div>
                 </div>
