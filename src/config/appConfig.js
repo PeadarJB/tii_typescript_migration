@@ -49,5 +49,48 @@ export const CONFIG = {
             { label: "Not Affected", value: "0" },
         ], 
         // other static options...
-    }
+    },
+
+    chartingFeatures: [
+        {
+            label: "Any Future Flood Intersection",
+            field: "future_flood_intersection",
+            description: "Any segment affected by a future flood model."
+        },
+        {
+            label: "CFRAM Fluvial Model (4.5%)",
+            field: "cfram_m_f_0010",
+            description: "Segments affected by the CFRAM Fluvial model under RCP 4.5."
+        },
+        {
+            label: "CFRAM Coastal Model (4.5%)",
+            field: "cfram_c_m_0010",
+            description: "Segments affected by the CFRAM Coastal model under RCP 4.5."
+        },
+        {
+            label: "NIFM Fluvial Model (4.5%)",
+            field: "nifm_m_f_0020",
+            description: "Segments affected by the NIFM Fluvial model under RCP 4.5."
+        },
+        {
+            label: "NCFHM Coastal Model",
+            field: "ncfhm_c_m_0010",
+            description: "Segments affected by the NCFHM Coastal model under RCP 4.5."
+        },
+        {
+            label: "CFRAM Fluvial Model (8.5%)",
+            field: "cfram_f_h_0010",
+            description: "Segments affected by the CFRAM Fluvial model under RCP 8.5."
+        },
+        {
+            label: "CFRAM Coastal Model (8.5%)",
+            field: "cfram_c_h_0010",
+            description: "Segments affected by the CFRAM Coastal model under RCP 8.5."
+        },
+        {
+            label: "NIFM Fluvial Model (8.5%)",
+            field: "nifm_f_h_0020",
+            description: "Segments affected by the NIFM Fluvial model under RCP 8.5."
+        },
+    ]
 };
