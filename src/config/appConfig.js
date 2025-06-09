@@ -18,6 +18,9 @@ export const CONFIG = {
         cfram_c_m_0010: "cfram_c_m_0010",
         nifm_m_f_0020: "nifm_f_m_0020",
         ncfhm_c_m_0010: "ncfhm_c_m_0010",
+        cfram_f_h_0010: "cfram_f_h_0010",
+        cfram_c_h_0010: "cfram_c_h_0010",
+        nifm_f_h_0020: "nifm_f_h_0020"
         // Add other fields needed for filters or statistics
     },
 
@@ -59,7 +62,7 @@ export const CONFIG = {
         },
         {
             label: "CFRAM Fluvial Model (4.5%)",
-            field: "cfram_m_f_0010",
+            field: "cfram_f_m_0010",
             description: "Segments affected by the CFRAM Fluvial model under RCP 4.5."
         },
         {
@@ -69,7 +72,7 @@ export const CONFIG = {
         },
         {
             label: "NIFM Fluvial Model (4.5%)",
-            field: "nifm_m_f_0020",
+            field: "nifm_f_m_0020",
             description: "Segments affected by the NIFM Fluvial model under RCP 4.5."
         },
         {
@@ -91,6 +94,6 @@ export const CONFIG = {
             label: "NIFM Fluvial Model (8.5%)",
             field: "nifm_f_h_0020",
             description: "Segments affected by the NIFM Fluvial model under RCP 8.5."
-        },
+        }, 
     ]
 };

@@ -150,23 +150,44 @@ export class ChartGenerator {
         const groupByField = this.elements.group_by_select.value;
 
         try {
+            // --- Start of Debugging ---
+            console.log("--- Chart Generator: Debugging Query ---");
+            console.log("1. Base Filter from FilterManager:", this.currentDefinitionExpression);
+            console.log("2. Selected Features for Charting:", selectedFeatures.map(f => f.label).join(', '));
+            console.log("3. Field to Group by:", groupByField);
+            // --- End of Debugging ---
+
             const queries = selectedFeatures.map(feature => {
                 const whereClause = `${this.currentDefinitionExpression} AND ${feature.value} = 1`;
-                return this.layer.queryFeatures(new Query({
+                const queryParams = {
                     where: whereClause,
                     groupByFieldsForStatistics: [groupByField],
-                    outStatistics: [{ statisticType: "count", onStatisticField: this.layer.objectIdField, outStatisticFieldName: "segment_count" }]
-                }));
+                    outStatistics: [{
+                        statisticType: "count",
+                        onStatisticField: this.layer.objectIdField,
+                        outStatisticFieldName: "segment_count"
+                    }]
+                };
+
+                // This logs the exact parameters for EACH query being sent
+                console.log(`Building query for feature: "${feature.label}"`, queryParams);
+
+                return this.layer.queryFeatures(new Query(queryParams));
             });
 
             const results = await Promise.all(queries);
+            
+            console.log("--- Query Succeeded ---");
             const chartData = this.processChartData(results, selectedFeatures);
             
             this.renderChart(chartData);
             this.showStatus("Chart generated successfully.", "success");
+
         } catch (error) {
-            this.showStatus("Failed to generate chart. See console for details.", "error");
+            console.error("--- QUERY FAILED ---");
+            // This will log the server error object you've been seeing
             console.error(error);
+            this.showStatus("Failed to generate chart. See console for details.", "error");
         } finally {
             this.isLoading = false;
         }
