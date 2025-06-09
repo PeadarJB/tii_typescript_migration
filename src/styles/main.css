@@ -89,7 +89,22 @@ html, body, calcite-shell {
     padding: 5px;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    margin: 10px 0;
+    margin: 10px 15px; /* Positioned with a margin from the edge */
+    max-width: 650px;  /* Constrains the width to fit content better */
+}
+
+.swipe-panel-toggle {
+    background: white;
+    border-radius: 0;
+    border-width: 0.5px;
+    border: 1px solid #dfdfdf;
+    font-family: 'Avenir Next';
+    margin: 5px;
+} 
+
+.swipe-panel-toggle:hover {
+    background: #f0f0f0; /* Slightly darker on hover */
+    cursor: pointer;
 }
 
 .swipe-control-panel h3 {
@@ -118,18 +133,24 @@ html, body, calcite-shell {
     padding: 8px 16px;
     margin-right: 10px;
     border: none;
-    border-radius: 4px;
     cursor: pointer;
+    font-family: 'Avenir Next', sans-serif;
 }
 
 .btn-primary {
-    background-color: #007ac2;
+    background-color: white;
+    border: 1px solid #dfdfdf;
+}
+
+.btn-primary:hover {
+    background-color: #4447f8;
     color: white;
 }
 
 .btn-secondary {
     background-color: #6c757d;
     color: white;
+    border: 1px solid #dfdfdf;
 }
 
 .btn:disabled {
@@ -167,3 +188,18 @@ html, body, calcite-shell {
 .checkbox-group calcite-checkbox {
     margin-right: 8px;
 }
+
+#direction-select {
+    font-family: 'Avenir Next', sans-serif;
+    border: 1px solid #dfdfdf;
+    background-color: #f9f9f9;
+    cursor: pointer;
+}
+
+#position-value {
+    background-color: #f9f9f9;
+}
+
+input[type="range"] {
+      accent-color: #4447f8; /* Change to your desired color */
+    }
