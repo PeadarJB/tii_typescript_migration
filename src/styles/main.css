@@ -115,17 +115,29 @@ html, body, calcite-shell {
 }
 
 /* Swipe styles */
-.swipe-controls {
-    position: absolute;   /* This is the key change to make it overlay */
-    top: 10px;            /* Position 10px from the top of the map */
-    left: 10px;           /* Position 10px from the left */
-    max-width: 650px;     /* Keep the constrained width */
-    z-index: 40;          /* Ensure it's layered on top of map UI elements */
-    background: white;
-    padding: 5px;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); 
+#swipe-controls-container {
+    position: absolute; /* Position relative to the map container */
+    margin: 10px 50px;
+    /* This container now just defines the position and size limits */
+    max-width: 650px; 
+    width: 90%; /* Take up 90% of map width, up to a max of 650px */
+    z-index: 40; /* Ensure it's on top of map UI */
 }
+
+/* The visual panel containing the dropdown content */
+.swipe-control-panel {
+    background: transparent;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    /* The panel itself doesn't need positioning, as its parent handles it */
+}
+
+/* The collapsible content area */
+.swipe-panel-collapsible-content {
+    background: white;
+    padding: 15px;
+    border-top: 1px solid #eee;
+}
+
 
 .swipe-panel-toggle {
     background: white;

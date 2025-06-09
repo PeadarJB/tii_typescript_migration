@@ -204,7 +204,7 @@ export class SwipeControlsUI {
             x: [200, 0], // Animate from 50px to the right to 0
             opacity: [1],      // Fade them in
             delay: stagger(70), // Create the "one by one" effect
-            duration: 700,
+            duration: 300,
             //ease: 'inOutCirc',
         });
 
