@@ -1,4 +1,6 @@
 // SwipeControlsUI.js
+
+import anime from 'animejs/lib/anime.es.js'; 
 // This component handles all the UI elements and user interactions for the swipe widget
 
 export class SwipeControlsUI {

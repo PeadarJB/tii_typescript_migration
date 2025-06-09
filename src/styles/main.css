@@ -202,4 +202,5 @@ html, body, calcite-shell {
 
 input[type="range"] {
       accent-color: #4447f8; /* Change to your desired color */
+      cursor: grab;
     }
