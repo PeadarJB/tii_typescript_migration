@@ -1,6 +1,6 @@
 // SwipeControlsUI.js
 
-import anime from 'animejs/lib/anime.es.js'; 
+import {animate, stagger} from 'animejs'; 
 // This component handles all the UI elements and user interactions for the swipe widget
 
 export class SwipeControlsUI {
@@ -188,6 +188,26 @@ export class SwipeControlsUI {
         if (this.isSwipeContentVisible) {
             swipePanelCollapsibleContent.style.display = 'block';
             swipeToggleIcon.innerHTML = '&#9650;'; // Up arrow
+
+            // Find all direct child elements to animate (the control groups)
+        const elementsToAnimate = swipePanelCollapsibleContent.children;
+
+        // Set initial state before animating
+        for (const el of elementsToAnimate) {
+            el.style.opacity = 0;
+        }
+
+        // Use Anime.js to animate them
+        animate(
+            elementsToAnimate,
+            {
+            x: [200, 0], // Animate from 50px to the right to 0
+            opacity: [0, 1],      // Fade them in
+            delay: stagger(100), // Create the "one by one" effect
+            duration: 500,
+            ease: 'inOutCirc',
+        });
+
         } else {
             swipePanelCollapsibleContent.style.display = 'none';
             swipeToggleIcon.innerHTML = '&#9660;'; // Down arrow
