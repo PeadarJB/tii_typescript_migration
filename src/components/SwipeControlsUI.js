@@ -54,17 +54,17 @@ export class SwipeControlsUI {
                 </button>
                 <div id="swipe-panel-collapsible-content" class="swipe-panel-collapsible-content" style="display: none;">
                     <div class="control-group">
-                        <label for="left-layer-select">Left/Top Layer(s) (Ctrl+Click for multiple):</label>
-                        <select id="left-layer-select" multiple size="5"> 
-                            {/* Options will be populated here */}
-                        </select>
+                        <label>Left/Top Layer(s):</label>
+                        <div id="left-layer-checkboxes" class="checkbox-group">
+                            {/* Checkboxes will be populated here */}
+                        </div>
                     </div>
                     
                     <div class="control-group">
-                        <label for="right-layer-select">Right/Bottom Layer(s) (Ctrl+Click for multiple):</label>
-                        <select id="right-layer-select" multiple size="5">
-                            {/* Options will be populated here */}
-                        </select>
+                        <label>Right/Bottom Layer(s):</label>
+                        <div id="right-layer-checkboxes" class="checkbox-group">
+                            {/* Checkboxes will be populated here */}
+                        </div>
                     </div>
                     
                     <div class="control-group">
@@ -96,8 +96,8 @@ export class SwipeControlsUI {
             swipePanelToggleBtn: document.getElementById('swipe-panel-toggle-btn'),
             swipeToggleIcon: document.getElementById('swipe-toggle-icon'),
             swipePanelCollapsibleContent: document.getElementById('swipe-panel-collapsible-content'),
-            leftLayerSelect: document.getElementById('left-layer-select'),
-            rightLayerSelect: document.getElementById('right-layer-select'),
+            leftLayerCheckboxes: document.getElementById('left-layer-checkboxes'), // Updated
+            rightLayerCheckboxes: document.getElementById('right-layer-checkboxes'), // Updated
             directionSelect: document.getElementById('direction-select'),
             positionSlider: document.getElementById('position-slider'),
             positionValue: document.getElementById('position-value'),
@@ -109,24 +109,31 @@ export class SwipeControlsUI {
 
     // Populate the layer dropdown options
     populateLayerOptions() {
-        const { leftLayerSelect, rightLayerSelect } = this.elements;
+        const { leftLayerCheckboxes, rightLayerCheckboxes } = this.elements;
 
         // Clear existing options first
-        leftLayerSelect.innerHTML = '';
-        rightLayerSelect.innerHTML = '';
+        leftLayerCheckboxes.innerHTML = '';
+        rightLayerCheckboxes.innerHTML = '';
         
         this.webmap.layers.forEach(layer => {
-            // Create option for left dropdown
-            const leftOption = document.createElement('option');
-            leftOption.value = layer.title;
-            leftOption.textContent = layer.title;
-            leftLayerSelect.appendChild(leftOption);
-            
-            // Create option for right dropdown
-            const rightOption = document.createElement('option');
-            rightOption.value = layer.title;
-            rightOption.textContent = layer.title;
-            rightLayerSelect.appendChild(rightOption);
+            // Function to create a checkbox item
+            const createCheckboxItem = (layerTitle) => {
+                const label = document.createElement('calcite-label');
+                label.className = 'checkbox-label';
+                label.layout = 'inline-flex';
+
+                const checkbox = document.createElement('calcite-checkbox');
+                checkbox.value = layerTitle;
+                
+                label.appendChild(checkbox);
+                label.append(layerTitle); // Add text next to checkbox
+
+                return label;
+            };
+
+            // Add checkbox to both left and right containers
+            leftLayerCheckboxes.appendChild(createCheckboxItem(layer.title));
+            rightLayerCheckboxes.appendChild(createCheckboxItem(layer.title));
         });
     }
 
@@ -192,30 +199,29 @@ export class SwipeControlsUI {
      * @returns {string[]} An array of selected values.
      */
     
-    getSelectedValues(selectElement) {
-        const selectedValues = [];
-        if (selectElement) {
-            for (const option of selectElement.options) {
-                if (option.selected) {
-                    selectedValues.push(option.value);
-                }
+    getCheckedValues(container) {
+        const checkedValues = [];
+        const checkboxes = container.querySelectorAll('calcite-checkbox');
+        checkboxes.forEach(checkbox => {
+            if (checkbox.checked) {
+                checkedValues.push(checkbox.value);
             }
-        }
-        return selectedValues;
+        });
+        return checkedValues;
     }
 
     // Handle create swipe button click
     async handleCreateSwipe() {
         const {
-            leftLayerSelect,
-            rightLayerSelect,
+            leftLayerCheckboxes, 
+            rightLayerCheckboxes, 
             directionSelect,
             positionSlider,
             createSwipeBtn,
         } = this.elements;
 
-        const leftLayerTitles = this.getSelectedValues(leftLayerSelect);
-        const rightLayerTitles = this.getSelectedValues(rightLayerSelect);
+        const leftLayerTitles = this.getCheckedValues(leftLayerCheckboxes);
+        const rightLayerTitles = this.getCheckedValues(rightLayerCheckboxes);
         const direction = directionSelect.value;
         const position = parseInt(positionSlider.value);
 
