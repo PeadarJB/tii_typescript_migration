@@ -68,41 +68,44 @@ export class StatisticsManager {
         this.indicatorContainer.innerHTML = '<p><em>Loading all statistics...</em></p>';
 
         try {
-            // --- Calculate Statistics for "future_flood_intersection" ---
-            // We pass:
-            // 1. baseDefinitionExpression: Current user filters (e.g., County, Criticality).
-            // 2. Specific condition: Only count segments where 'future_flood_intersection' is 1.
-            // 3. Label for this statistic set.
-            // 4. Alias for the output count field from the query.
-            const generalFloodStats = await this.querySegmentCountAndDerivedLength(
-                baseDefinitionExpression,
-                `${CONFIG.fields.floodAffected} = 1`, 
-                "Any Future Flood Intersection", 
-                "count_general_flood" 
-            );
-
-            // --- Calculate Statistics for "cfram_f_m_0010" ---
-            const cframFluvialStats = await this.querySegmentCountAndDerivedLength(
-                baseDefinitionExpression,
-                `${CONFIG.fields.cfram_m_f_0010} = 1`,
-                "CFRAM Fluvial Model (0.1% AEP)",
-                "count_cfram_fluvial"
-            );
+            // --- Define and Fetch All Stats for the RCP 4.5 Scenario ---
+            const rcp45_stats = [
+                // Moved "Any Future Flood Intersection" into the RCP 4.5% group as requested
+                await this.querySegmentCountAndDerivedLength(
+                    baseDefinitionExpression,
+                    `${CONFIG.fields.floodAffected} = 1`,
+                    "Any Future Flood Intersection",
+                    "count_general_flood"
+                ),
+                await this.querySegmentCountAndDerivedLength(
+                    baseDefinitionExpression, `${CONFIG.fields.cfram_m_f_0010} = 1`, "CFRAM Fluvial Model", "count_cfram_fluvial"
+                ),
+                await this.querySegmentCountAndDerivedLength(
+                    baseDefinitionExpression, `${CONFIG.fields.cfram_c_m_0010} = 1`, "CFRAM Coastal Model", "count_cfram_coastal"
+                ),
+                await this.querySegmentCountAndDerivedLength(
+                    baseDefinitionExpression, `${CONFIG.fields.nifm_m_f_0020} = 1`, "NIFM Fluvial Model", "count_nifm_fluvial"
+                ),
+                await this.querySegmentCountAndDerivedLength(
+                    baseDefinitionExpression, `${CONFIG.fields.ncfhm_c_m_0010} = 1`, "NCFHM Coastal Model", "count_ncfhm_coastal"
+                )
+            ];
             
-            // TODO: Add more calls to querySegmentCountAndDerivedLength for other binary fields
-            // if needed, for example:
-            // const anotherFloodStat = await this.querySegmentCountAndDerivedLength(
-            //     baseDefinitionExpression,
-            //     `${CONFIG.fields.another_binary_field} = 1`,
-            //     "Label for Another Flood Stat",
-            //     "count_another_flood"
-            // );
+            // --- Placeholder for RCP 8.5 stats to be added later ---
+            const rcp85_stats = [
+                // When you create the field for "any 8.5% flood affected area",
+                // the query for it will go here.
+            ];
 
-            // Once all stats are fetched, update the UI.
-            this.displayAllStatsUI(generalFloodStats, cframFluvialStats /*, pass other stats here */);
+            // Create the structured list of scenarios with the corrected grouping
+            const scenarios = [
+                { title: "RCP 4.5% Flood Scenario", stats: rcp45_stats },
+                { title: "RCP 8.5% Flood Scenario", stats: rcp85_stats }
+            ];
+
+            this.displayAllStatsUI(scenarios);
 
         } catch (error) {
-            // Catch any errors that occurred during the process.
             console.error("StatisticsManager: Error in updateAllStatistics pipeline:", error);
             this.indicatorContainer.innerHTML = `<p style="color: red;">Error loading statistics. (Check console)</p>`;
         }
@@ -120,66 +123,27 @@ export class StatisticsManager {
      * Returns 0 for count/length if no features match or on error.
      */
     async querySegmentCountAndDerivedLength(baseDefinitionExpression, specificCondition, statLabel, outCountFieldName) {
-
-        // Sanitize baseDefinitionExpression: if it's empty or just whitespace, use "1=1"
-        const effectiveBaseExpression = (baseDefinitionExpression && baseDefinitionExpression.trim() !== "") 
-                                        ? baseDefinitionExpression 
-                                        : "1=1";
-
-        // Combine the effective base filters with the specific condition for this particular statistic.
+        const effectiveBaseExpression = (baseDefinitionExpression && baseDefinitionExpression.trim() !== "") ? baseDefinitionExpression : "1=1";
         const combinedWhereClause = `(${effectiveBaseExpression}) AND (${specificCondition})`;
         
-        // Log what we're about to query for easier debugging.
         console.log(`StatisticsManager: Querying for "${statLabel}" with WHERE clause: ${combinedWhereClause}`);
 
-        // Define the statistical query. We only need to count the segments.
         const statsQuery = new Query({
             where: combinedWhereClause,
-            outStatistics: [
-                {
-                    statisticType: "count",
-                    // For 'count', 'onStatisticField' can be any field that is reliably present in your records.
-                    // 'OBJECTID' is often the best choice if you know it.
-                    // Otherwise, a field like the one used for 'Route' or 'County' from your CONFIG is okay,
-                    // as long as it's guaranteed to be there for the features you're counting.
-                    // Let's use CONFIG.fields.route as an example from your config.
-                    onStatisticField: CONFIG.fields.object_id, // Or "OBJECTID" or CONFIG.fields.county
-                    outStatisticFieldName: outCountFieldName // e.g., "count_general_flood"
-                }
-            ]
+            outStatistics: [{
+                statisticType: "count",
+                onStatisticField: CONFIG.fields.object_id,
+                outStatisticFieldName: outCountFieldName
+            }]
         });
-        
-        // Log the JSON representation of the query for detailed debugging if needed.
-        console.log(`StatisticsManager: Query object for "${statLabel}":`, statsQuery.toJSON());
 
         try {
-            // Execute the query against the layer.
             const results = await this.layer.queryFeatures(statsQuery);
-
-            let count = 0;
-            // If the query returns features (it should return one feature with the statistics).
-            if (results.features.length > 0) {
-                // The statistics are in the 'attributes' of the first feature.
-                const attributes = results.features[0].attributes;
-                // Get the count using the alias we defined. Default to 0 if not found.
-                count = attributes[outCountFieldName] || 0;
-            } else {
-                console.log(`StatisticsManager: No features matched for "${statLabel}". Count will be 0.`);
-            }
-
-            // Calculate derived length: each segment is 100m, so 0.1 km.
+            const count = results.features.length > 0 ? results.features[0].attributes[outCountFieldName] || 0 : 0;
             const derivedLengthKm = count * 0.1;
-
-            // Return an object containing the count, calculated length, and the label.
-            return {
-                count: count,
-                derivedLengthKm: derivedLengthKm,
-                label: statLabel
-            };
+            return { count, derivedLengthKm, label: statLabel };
         } catch (error) {
-            // If an error happens specifically for this query.
             console.error(`StatisticsManager: Error querying stats for "${statLabel}":`, error);
-            // Return a default object so the UI can still try to render something.
             return { count: 0, derivedLengthKm: 0, label: `${statLabel} (Error)` };
         }
     }
@@ -189,31 +153,37 @@ export class StatisticsManager {
      * This function will now receive objects that include the label, count, and derivedLengthKm.
      * @param {...object} statsObjects - One or more statistics objects, each from querySegmentCountAndDerivedLength.
      */
-    displayAllStatsUI(...statsObjects) { // Using rest parameter to accept multiple stat objects
+    displayAllStatsUI(scenarios) { // Using rest parameter to accept multiple stat objects
         // Start with an empty string and build up the HTML for all statistic sets.
         let htmlContent = '';
 
         const totalRoadNetworkSegments = 53382; // The total value you provided
 
-        statsObjects.forEach(stats => {
-            if (stats) { // Check if the stats object is valid
-                // Calculate the percentage of total network segments
-                const percentageOfTotalSegments = totalRoadNetworkSegments > 0 
-                                                  ? ((stats.count / totalRoadNetworkSegments) * 100).toFixed(1) 
-                                                  : 0;
+        scenarios.forEach(scenario => {
+            // Filter out stats that have a count of 0 to avoid showing empty indicators
+            const validStats = scenario.stats.filter(s => s && s.count > 0);
 
-                htmlContent += `
-                    <div class="indicator-set" style="margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #eee;">
-                        <h4>${stats.label}</h4>
-                        <div class="indicator-box">
-                            <div class="value">${stats.derivedLengthKm.toFixed(1)} km</div> 
-                            <div class="label">Affected Network Length</div>
+            // Only render the scenario section if there are valid stats to display
+            if (validStats.length > 0) {
+                // Add the title for the scenario group ONCE
+                htmlContent += `<div class="flood-scenario"><h2>${scenario.title}</h2></div>`;
+
+                // Loop through the valid stats for that specific scenario
+                validStats.forEach(stats => {
+                    const percentageOfTotalSegments = ((stats.count / totalRoadNetworkSegments) * 100).toFixed(1);
+
+                    htmlContent += `
+                        <div class="indicator-set">
+                            <h4>${stats.label}</h4>
+                            <div class="indicator-box">
+                                <div class="value-1">${stats.derivedLengthKm.toFixed(1)} km</div>
+                            </div>
+                            <div class="indicator-box">
+                                <div class="value-2">${percentageOfTotalSegments}% of Total Network</div>
+                            </div>
                         </div>
-                        <div class="indicator-box">
-                            <div class="value">${percentageOfTotalSegments}% of Total Network</div>
-                        </div>
-                    </div>
-                `;
+                    `;
+                });
             }
         });
         
