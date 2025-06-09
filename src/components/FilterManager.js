@@ -67,6 +67,12 @@ export class FilterManager {
         // DEFINE WHAT FILTERS TO CREATE: Set up configuration for each filter type
         const filterConfigs = [
             { 
+                label: "Affected by Flooding",  // What users see
+                fieldName: CONFIG.fields.floodAffected,  // Database field name
+                options: CONFIG.filterOptions.floodAffected, 
+                dataType: 'string'  // Text data
+            },
+            { 
                 label: "County",  // What users see
                 fieldName: CONFIG.fields.county,  // Database field name
                 options: await this.getUniqueValues(CONFIG.fields.county), // Get all possible values
@@ -77,18 +83,27 @@ export class FilterManager {
                 fieldName: CONFIG.fields.criticality, 
                 options: CONFIG.filterOptions.criticality, // Pre-defined options from config
                 dataType: 'number'  // Numeric data
-            }
+            },
+            { 
+                label: "Subnet", 
+                fieldName: CONFIG.fields.subnet, 
+                options: CONFIG.filterOptions.subnet, // Pre-defined options from config
+                dataType: 'number'  // Numeric data
+            },
+            { 
+                label: "Lifeline Route", 
+                fieldName: CONFIG.fields.lifeline, 
+                options: CONFIG.filterOptions.lifeline, // Pre-defined options from config
+                dataType: 'number'  // Numeric data
+            },
+            { 
+                label: "Route",  // What users see
+                fieldName: CONFIG.fields.route,  // Database field name
+                options: await this.getUniqueValues(CONFIG.fields.route), // Get all possible values
+                dataType: 'string'  // Text data
+            },
             // More filters can be added here following the same pattern
         ];
-        
-        // ORGANIZE FILTERS: Sort so County appears first, then Criticality, then others
-        filterConfigs.sort((a, b) => {
-            if (a.label === 'County') return -1; // County goes first
-            if (b.label === 'County') return 1;
-            if (a.label === 'Criticality') return -1; // Criticality goes second
-            if (b.label === 'Criticality') return 1;
-            return 0; // Others stay in original order
-        });
 
         // CREATE EACH FILTER: Loop through and build the dropdown menus
         for (const config of filterConfigs) {
@@ -146,7 +161,7 @@ export class FilterManager {
         // ADD "ALL" OPTION: Default option that shows everything (no filter)
         const allOption = document.createElement("calcite-option");
         allOption.setAttribute("value", ""); // Empty value means "no filter"
-        allOption.innerText = `All ${labelText}s`;
+        allOption.innerText = `None selected`;
         allOption.setAttribute("selected", ""); // Make this the default selection
         select.appendChild(allOption);
 

@@ -32,10 +32,22 @@ export const CONFIG = {
             { label: "Very Low", value: "1" },
         ],
         county: [], // Will be populated dynamically from the layer
-        subnet: [], // Will be populated dynamically from the layer
-        lifeline: [], // Will be populated dynamically from the layer
+        subnet: [
+            { label: "0 - Motorway/Dual Carriageway", value: "0" },
+            { label: "1 - Engineered Pavements", value: "1" },
+            { label: "2 - Legacy Pavements (High Traffic)", value: "2" },
+            { label: "3 - Legacy Pavements (Moderate Traffic)", value: "3" },
+            { label: "4 - Legacy Pavements (Low Traffic)", value: "4" },
+        ], // Will be populated dynamically from the layer
+        lifeline: [
+            { label: "Lifeline Route", value: "1" },
+            { label: "Non-lifeline Route", value: "0" },
+        ], // Will be populated dynamically from the layer
         route: [], // Will be populated dynamically from the layer
-        floodAffected: [], 
+        floodAffected: [
+            { label: "Affected by Flooding", value: "1" },
+            { label: "Not Affected", value: "0" },
+        ], 
         // other static options...
     }
 };

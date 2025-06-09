@@ -36,31 +36,47 @@ html, body, calcite-shell {
 
 #main-content-wrapper {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     flex-grow: 1; /* Allows this wrapper to fill space within calcite-shell */
     height: 100%; /* Fallback or if parent isn't flex, adjust as needed */
     overflow: hidden; /* Prevent this wrapper from showing scrollbars */
 }
 
-#bottom-stats-bar {
-    flex-shrink: 0; /* Prevent this bar from shrinking */
-    height: 20%; /* Adjust as needed for your indicator boxes */
-    background-color: #ffffff; /* Or a light grey like the image */
-    padding: 10px;
+#map-container {
+    display: flex;
+    flex-direction: column; /* Stack children (swipe-controls, viewDiv) vertically */
+    flex-grow: 1; /* Allow this container to fill available width */
+    height: 100%;
+}
+
+#swipe-controls-container {
+    flex-shrink: 0;
+    z-index: 10; /* Keep it layered on top of the map */
+}
+
+#viewDiv {
+    padding: 0;
+    margin: 0;
+    flex-grow: 1; /* CRITICAL: This makes the map fill the remaining vertical space */
+    height: auto;   /* Overrides the previous height: 100% */
+    width: 100%;
+}
+
+#statistics-panel {
+    width: 350px; /* Or a percentage like 25% */
+    flex-shrink: 0; /* Prevent the panel from shrinking */
+    padding: 15px;
     box-sizing: border-box;
-    display: flex; /* To center or manage #indicator-boxes-container */
-    align-items: center;
-    justify-content: center;
-    border-top: 1px solid #ccc;
+    height: 100%;
+    overflow-y: auto; /* Allow scrolling if content is tall */
+    background-color: #f8f8f8;
+    border-left: 1px solid #ccc;
 }
 
 #indicator-boxes-container {
     display: flex;
-    flex-direction: row; /* Arrange indicator boxes in a row */
-    gap: 15px;          /* Space between indicator boxes */
-    width: 100%;
-    justify-content: space-around; /* Distribute boxes, or use space-evenly */
-    align-items: stretch; /* Make boxes of same height if they vary */
+    flex-direction: column; /* Stack indicator sets vertically in the side panel */
+    gap: 15px;
 }
 
 .indicator-set {
@@ -177,6 +193,7 @@ html, body, calcite-shell {
     height: 140px; 
     overflow-y: auto;
     background-color: #f9f9f9;
+    width: fit-content;
 }
 
 .checkbox-group .checkbox-label {

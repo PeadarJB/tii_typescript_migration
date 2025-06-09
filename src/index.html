@@ -28,6 +28,7 @@
 </head>
 <body>
     <calcite-shell>
+        <!-- Header panel with Filters -->
         <header id="app-header" slot="header">
             <h1>TII Flood Risk Dashboard</h1>
             <div id="filter-controls-container">
@@ -35,8 +36,7 @@
             </div>
         </header>
 
-        <div id="swipe-controls-container"></div>
-        
+        <!-- Chart generator shell panel -->
         <calcite-shell-panel slot="panel-start" display-mode="float" id="chart-generator-shell-panel">
         <calcite-panel heading="Chart Generator">
              <div id="chart-generator-container" style="padding: 15px;">
@@ -45,13 +45,17 @@
         </calcite-shell-panel>
 
         <div id="main-content-wrapper">
-            <div id="viewDiv"></div>
 
-            <div id="bottom-stats-bar">
+            <div id="map-container">
+                <div id="swipe-controls-container"></div>
+                <div id="viewDiv"></div>
+            </div>
+
+            <div id="statistics-panel">
                 <div id="indicator-boxes-container">
-                    <p style="text-align:center; color: #555;">(Indicator Boxes Placeholder)</p>
-                </div>
-                </div>
+                    </div>
+            </div>
+
         </div> 
 
         
