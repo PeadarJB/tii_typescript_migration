@@ -127,7 +127,6 @@ html, body, calcite-shell {
 /* The visual panel containing the dropdown content */
 .swipe-control-panel {
     background: transparent;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     /* The panel itself doesn't need positioning, as its parent handles it */
 }
 
@@ -322,4 +321,6 @@ input[type="range"] {
 /* Remove the padding that was making space for buttons outside */
 .flood-scenario {
     position: relative;
+    font-family: 'Avenir Next', sans-serif;
+    text-align: center;
 }
