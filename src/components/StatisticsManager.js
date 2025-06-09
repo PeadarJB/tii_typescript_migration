@@ -93,8 +93,24 @@ export class StatisticsManager {
             
             // --- Placeholder for RCP 8.5 stats to be added later ---
             const rcp85_stats = [
-                // When you create the field for "any 8.5% flood affected area",
-                // the query for it will go here.
+                await this.querySegmentCountAndDerivedLength(
+                    baseDefinitionExpression,
+                    `${CONFIG.fields.floodAffected} = 1`,
+                    "Any Future Flood Intersection",
+                    "count_general_flood"
+                ),
+                await this.querySegmentCountAndDerivedLength(
+                    baseDefinitionExpression, `${CONFIG.fields.cfram_m_f_0010} = 1`, "CFRAM Fluvial Model", "count_cfram_fluvial"
+                ),
+                await this.querySegmentCountAndDerivedLength(
+                    baseDefinitionExpression, `${CONFIG.fields.cfram_c_m_0010} = 1`, "CFRAM Coastal Model", "count_cfram_coastal"
+                ),
+                await this.querySegmentCountAndDerivedLength(
+                    baseDefinitionExpression, `${CONFIG.fields.nifm_m_f_0020} = 1`, "NIFM Fluvial Model", "count_nifm_fluvial"
+                ),
+                await this.querySegmentCountAndDerivedLength(
+                    baseDefinitionExpression, `${CONFIG.fields.ncfhm_c_m_0010} = 1`, "NCFHM Coastal Model", "count_ncfhm_coastal"
+                )
             ];
 
             // Create the structured list of scenarios with the corrected grouping
@@ -151,53 +167,104 @@ export class StatisticsManager {
     /**
      * Displays all the gathered statistics in the UI.
      * This function will now receive objects that include the label, count, and derivedLengthKm.
-     * @param {...object} statsObjects - One or more statistics objects, each from querySegmentCountAndDerivedLength.
+     * @param {Array<object>} scenarios - An array of scenario objects, each containing a title and an array of stats.
      */
-    displayAllStatsUI(scenarios) { // Using rest parameter to accept multiple stat objects
-        // Start with an empty string and build up the HTML for all statistic sets.
-        let htmlContent = '';
+    displayAllStatsUI(scenarios) {
+        const totalRoadNetworkSegments = 53382;
+        // Filter out scenarios that have no valid stats to show
+        const activeScenarios = scenarios.filter(s => s.stats.filter(stat => stat && stat.count > 0).length > 0);
 
-        const totalRoadNetworkSegments = 53382; // The total value you provided
+        if (activeScenarios.length === 0) {
+            this.indicatorContainer.innerHTML = "<p>No statistics to display for the current filters.</p>";
+            return;
+        }
 
-        scenarios.forEach(scenario => {
-            // Filter out stats that have a count of 0 to avoid showing empty indicators
-            const validStats = scenario.stats.filter(s => s && s.count > 0);
-
-            // Only render the scenario section if there are valid stats to display
-            if (validStats.length > 0) {
-                // Add the title for the scenario group ONCE
-                htmlContent += `<div class="flood-scenario"><h2>${scenario.title}</h2></div>`;
-
-                // Loop through the valid stats for that specific scenario
-                validStats.forEach(stats => {
+        // Build the HTML for each slide in the carousel
+        const slidesHtml = activeScenarios.map(scenario => {
+            const indicatorsHtml = scenario.stats
+                .filter(stats => stats && stats.count > 0)
+                .map(stats => {
                     const percentageOfTotalSegments = ((stats.count / totalRoadNetworkSegments) * 100).toFixed(1);
-
-                    htmlContent += `
+                    return `
                         <div class="indicator-set">
                             <h4>${stats.label}</h4>
                             <div class="indicator-box">
                                 <div class="value-1">${stats.derivedLengthKm.toFixed(1)} km</div>
                             </div>
                             <div class="indicator-box">
-                                <div class="value-2">${percentageOfTotalSegments}% of Total Network</div>
+                                <div class="value-2"><b>${percentageOfTotalSegments}%</b> of Total Network</div>
                             </div>
                         </div>
                     `;
-                });
-            }
-        });
-        
-        if (htmlContent === '') {
-            htmlContent = "<p>No statistics to display or an error occurred.</p>";
+                }).join('');
+
+            return `
+                <div class="carousel-slide">
+                    <div class="flood-scenario"><h2>${scenario.title}</h2></div>
+                    ${indicatorsHtml}
+                </div>
+            `;
+        }).join('');
+
+        // Create the main carousel structure with navigation buttons
+        const carouselHtml = `
+            <div class="stats-carousel">
+                <button class="carousel-nav prev" aria-label="Previous scenario">&lt;</button>
+                <div class="carousel-viewport">
+                    <div class="carousel-track" style="width: ${activeScenarios.length * 100}%">
+                        ${slidesHtml}
+                    </div>
+                </div>
+                <button class="carousel-nav next" aria-label="Next scenario">&gt;</button>
+            </div>
+        `;
+
+        this.indicatorContainer.innerHTML = carouselHtml;
+        this.setupCarousel(); // Call the new method to make the carousel interactive
+    }
+
+    /**
+     * Adds event listeners and logic to control the statistics carousel.
+     */
+    setupCarousel() {
+        const carousel = this.indicatorContainer.querySelector('.stats-carousel');
+        if (!carousel) return;
+
+        const track = carousel.querySelector('.carousel-track');
+        const slides = Array.from(carousel.querySelectorAll('.carousel-slide'));
+        const nextButton = carousel.querySelector('.carousel-nav.next');
+        const prevButton = carousel.querySelector('.carousel-nav.prev');
+
+        if (slides.length <= 1) {
+            nextButton.style.display = 'none';
+            prevButton.style.display = 'none';
+            return;
         }
 
-        // Update the indicator container with the generated HTML.
-        this.indicatorContainer.innerHTML = htmlContent;
+        let currentIndex = 0;
+        const slideWidth = 100 / slides.length;
 
-        // Reminder: Add CSS for '.indicator-set', '.indicator-box', '.value', '.label'
-        // in your main.css file for proper styling.
-        // Example for .indicator-set if needed:
-        // .indicator-set h4 { margin-top: 0; margin-bottom: 10px; color: #333; }
+        const updateCarousel = () => {
+            track.style.transform = `translateX(-${currentIndex * slideWidth}%)`;
+            prevButton.disabled = currentIndex === 0;
+            nextButton.disabled = currentIndex === slides.length - 1;
+        };
+
+        nextButton.addEventListener('click', () => {
+            if (currentIndex < slides.length - 1) {
+                currentIndex++;
+                updateCarousel();
+            }
+        });
+
+        prevButton.addEventListener('click', () => {
+            if (currentIndex > 0) {
+                currentIndex--;
+                updateCarousel();
+            }
+        });
+
+        updateCarousel(); // Set initial state
     }
 
     // TODO: Add methods for pie chart (e.g., using Chart.js)

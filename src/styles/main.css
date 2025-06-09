@@ -73,6 +73,9 @@ html, body, calcite-shell {
     border-left: 1px solid #ccc;
 }
 
+/* Indicator styles */
+
+
 #indicator-boxes-container {
     display: flex;
     flex-direction: column; /* Stack indicator sets vertically in the side panel */
@@ -89,6 +92,7 @@ html, body, calcite-shell {
     display: flex;
     flex-direction: column;
     justify-content: center;
+    margin-bottom: 10px;
     /* max-width: 200px; /* Optional: if you want to constrain width */
 }
 
@@ -107,7 +111,6 @@ html, body, calcite-shell {
 
 .indicator-box .value-2 {
     font-size: 1em; /* Larger font for the value */
-    color: #0465f7; /* Darker color for better visibility */
     margin-bottom: 5px;
 }
 
@@ -238,3 +241,70 @@ input[type="range"] {
       accent-color: #4447f8; /* Change to your desired color */
       cursor: grab;
     }
+
+/* Carousel */
+
+.stats-carousel {
+    position: relative;
+    width: 100%;
+}
+
+.carousel-viewport {
+    overflow: hidden;
+    width: 100%;
+}
+
+.carousel-track {
+    display: flex;
+    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* Smoother transition */
+}
+
+.carousel-slide {
+    width: 100%;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    padding: 0 10px; /* Adds a little space around the slide content */
+}
+
+.carousel-nav {
+    position: absolute;
+    top: -30px; /* Position buttons above the content, next to the title */
+    background: #007ac2;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 20;
+    font-size: 16px;
+    font-weight: bold;
+    height: 28px;
+    width: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.carousel-nav:hover {
+    background: #005987;
+}
+
+.carousel-nav.prev {
+    right: 40px; /* Position on the right side */
+}
+
+.carousel-nav.next {
+    right: 5px; /* Position on the right side */
+}
+
+.carousel-nav:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Ensure the flood scenario title has space for the buttons */
+.flood-scenario {
+    position: relative;
+    padding-right: 80px; /* Make space for nav buttons */
+}
