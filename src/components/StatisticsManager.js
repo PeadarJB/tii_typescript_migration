@@ -188,7 +188,7 @@ export class StatisticsManager {
             const indicatorsHtml = scenario.stats
                 .filter(stats => stats && stats.count > 0)
                 .map(stats => {
-                    const percentageOfTotalSegments = ((stats.count / totalRoadNetworkSegments) * 100).toFixed(1);
+                    const percentageOfTotalSegments = ((stats.count / totalRoadNetworkSegments) * 100).toFixed(2);
                     return `
                         <div class="indicator-set">
                             <h4>${stats.label}</h4>

@@ -6,12 +6,17 @@ import Chart from 'chart.js/auto';
 
 export class ChartGenerator {
     constructor(containerId, view, webmap, layer, filterManager) {
+        // ... (constructor properties are the same)
         this.container = document.getElementById(containerId);
         this.view = view;
         this.webmap = webmap;
         this.layer = layer;
         this.filterManager = filterManager;
         this.chartInstance = null;
+        this.modalChartInstance = null; // For the modal chart
+        this.lastChartData = null; // To store data for re-rendering
+        this.lastChartOptions = null; // To store options for re-rendering
+        this.lastChartType = 'bar'; // To store type for re-rendering
         this.currentDefinitionExpression = "1=1";
         this.elements = {};
         this.isLoading = false;
@@ -33,6 +38,7 @@ export class ChartGenerator {
     }
 
     createHTML() {
+        // Main component HTML
         this.container.innerHTML = `
             <div class="chart-controls-panel">
                 <h3>Create Your Chart</h3>
@@ -71,6 +77,9 @@ export class ChartGenerator {
                 <div class="control-group chart-generator-buttons">
                     <calcite-button id="generate-chart-btn" width="full" disabled>Generate</calcite-button>
                     <calcite-button id="clear-chart-btn" width="full" appearance="outline">Clear</calcite-button>
+                    <calcite-button id="expand-chart-btn" width="full" appearance="outline" disabled>Expand</calcite-button>
+                </div>
+                <div class="control-group chart-generator-buttons">
                     <calcite-button id="download-chart-btn" width="full" appearance="outline" icon-start="download" disabled>Download</calcite-button>
                 </div>
                 <div id="chart-status" class="status-message" style="margin-top: 10px;"></div>
@@ -79,10 +88,104 @@ export class ChartGenerator {
                 <canvas id="dynamic-chart-canvas"></canvas>
             </div>
         `;
+        
+        // Modal HTML (appended to body to avoid z-index issues)
+        const modalHtml = `
+            <div id="chart-modal-overlay" class="chart-modal-overlay">
+                <div class="chart-modal-content">
+                    <button id="chart-modal-close-btn" class="chart-modal-close-btn" aria-label="Close modal">&times;</button>
+                    <div class="chart-modal-body">
+                        <canvas id="modal-chart-canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+        `;
+        if (!document.getElementById('chart-modal-overlay')) {
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+
+        // Cache all element references
         this.elements = Object.fromEntries(
-            [...this.container.querySelectorAll('[id]')].map(el => [el.id.replace(/-/g, '_'), el])
+            [...this.container.querySelectorAll('[id]'), ...document.querySelectorAll('[id^="chart-modal"], [id^="modal-chart"]')]
+            .map(el => [el.id.replace(/-/g, '_'), el])
         );
     }
+
+    setupEventListeners() {
+        this.elements.feature_checkbox_list.addEventListener('calciteCheckboxChange', () => this.validateSelections());
+        this.elements.group_by_select.addEventListener('calciteSelectChange', () => this.validateSelections());
+        this.elements.chart_type_select.addEventListener('calciteSelectChange', () => this.validateSelections());
+
+        this.elements.generate_chart_btn.addEventListener('click', () => this.generateChart());
+        this.elements.clear_chart_btn.addEventListener('click', () => this.clearChart());
+        this.elements.download_chart_btn.addEventListener('click', () => this.downloadChart());
+        
+        // New listeners for the modal
+        this.elements.expand_chart_btn.addEventListener('click', () => this.openChartModal());
+        this.elements.chart_modal_close_btn.addEventListener('click', () => this.closeChartModal());
+        this.elements.chart_modal_overlay.addEventListener('click', (e) => {
+            if (e.target === this.elements.chart_modal_overlay) {
+                this.closeChartModal();
+            }
+        });
+    }
+
+    renderChart(chartData, chartOptions) {
+        if (this.chartInstance) this.chartInstance.destroy();
+        
+        this.lastChartType = this.elements.chart_type_select.value;
+        this.lastChartData = chartData;
+        this.lastChartOptions = chartOptions; // Store for modal
+        
+        const chartConfig = { type: this.lastChartType, data: chartData, options: chartOptions };
+        this.chartInstance = new Chart(this.elements.dynamic_chart_canvas, chartConfig);
+        
+        this.elements.download_chart_btn.disabled = false;
+        this.elements.expand_chart_btn.disabled = false;
+    }
+    
+    clearChart() {
+        if (this.chartInstance) this.chartInstance.destroy();
+        this.chartInstance = null;
+        this.lastChartData = null;
+        this.lastChartOptions = null;
+        this.elements.download_chart_btn.disabled = true;
+        this.elements.expand_chart_btn.disabled = true;
+        this.showStatus("", "info");
+    }
+
+    openChartModal() {
+        if (!this.lastChartData || !this.lastChartOptions) return;
+
+        this.elements.chart_modal_overlay.classList.add('visible');
+        document.body.style.overflow = 'hidden';
+
+        if (this.modalChartInstance) this.modalChartInstance.destroy();
+
+        const modalCtx = this.elements.modal_chart_canvas.getContext('2d');
+        const modalOptions = JSON.parse(JSON.stringify(this.lastChartOptions));
+        modalOptions.plugins.title.font = { size: 20 };
+
+        this.modalChartInstance = new Chart(modalCtx, {
+            type: this.lastChartType,
+            data: this.lastChartData,
+            options: modalOptions
+        });
+    }
+
+    closeChartModal() {
+        this.elements.chart_modal_overlay.classList.remove('visible');
+        document.body.style.overflow = 'auto';
+
+        if (this.modalChartInstance) {
+            this.modalChartInstance.destroy();
+            this.modalChartInstance = null;
+        }
+    }
+
+    // --- Other methods like populateControls, generateChart, etc. ---
+    // (These methods from the previous response remain the same. 
+    // I am including them here for a complete, copy-pasteable file.)
 
     async populateControls() {
         if (!this.layer.loaded) await this.layer.load();
@@ -109,35 +212,40 @@ export class ChartGenerator {
             });
     }
 
-    setupEventListeners() {
-        this.elements.feature_checkbox_list.addEventListener('calciteCheckboxChange', () => this.validateSelections());
-        this.elements.group_by_select.addEventListener('calciteSelectChange', () => this.validateSelections());
-        this.elements.chart_type_select.addEventListener('calciteSelectChange', () => this.validateSelections());
-
-        this.elements.generate_chart_btn.addEventListener('click', () => this.generateChart());
-        this.elements.clear_chart_btn.addEventListener('click', () => this.clearChart());
-        this.elements.download_chart_btn.addEventListener('click', () => this.downloadChart());
-    }
-
     validateSelections() {
         const selectedFeatures = this.getSelectedFeatures();
         const groupBy = this.elements.group_by_select.value;
         const chartType = this.elements.chart_type_select;
 
         if (selectedFeatures.length > 1) {
-            chartType.value = 'bar';
+            if (chartType.value === 'pie') {
+                chartType.value = 'bar';
+            }
             chartType.disabled = true;
-            this.showStatus("Pie charts only support a single feature.", "info");
         } else {
             chartType.disabled = false;
         }
 
         if (selectedFeatures.length > this.maxFeatures) {
             this.showStatus(`Please select a maximum of ${this.maxFeatures} features.`, "warning");
-            // Optionally, disable the last checked box
+        } else if (this.elements.chart_type_select.disabled) {
+            this.showStatus("Pie charts only support a single feature.", "info");
+        } else {
+            this.showStatus("", "info");
         }
 
         this.elements.generate_chart_btn.disabled = selectedFeatures.length === 0 || !groupBy || selectedFeatures.length > this.maxFeatures;
+    }
+    
+    setupFilterListener() {
+        if (this.filterManager) {
+            this.filterManager.onFilterChange((newDefinitionExpression) => {
+                this.currentDefinitionExpression = newDefinitionExpression || "1=1";
+                if (this.chartInstance) {
+                    this.generateChart();
+                }
+            });
+        }
     }
 
     async generateChart() {
@@ -150,72 +258,51 @@ export class ChartGenerator {
         const groupByField = this.elements.group_by_select.value;
 
         try {
-            // --- Start of Debugging ---
-            console.log("--- Chart Generator: Debugging Query ---");
-            console.log("1. Base Filter from FilterManager:", this.currentDefinitionExpression);
-            console.log("2. Selected Features for Charting:", selectedFeatures.map(f => f.label).join(', '));
-            console.log("3. Field to Group by:", groupByField);
-            // --- End of Debugging ---
-
             const queries = selectedFeatures.map(feature => {
                 const whereClause = `${this.currentDefinitionExpression} AND ${feature.value} = 1`;
-                const queryParams = {
+                return this.layer.queryFeatures(new Query({
                     where: whereClause,
                     groupByFieldsForStatistics: [groupByField],
-                    outStatistics: [{
-                        statisticType: "count",
-                        onStatisticField: this.layer.objectIdField,
-                        outStatisticFieldName: "segment_count"
-                    }]
-                };
-
-                // This logs the exact parameters for EACH query being sent
-                console.log(`Building query for feature: "${feature.label}"`, queryParams);
-
-                return this.layer.queryFeatures(new Query(queryParams));
+                    outStatistics: [{ statisticType: "count", onStatisticField: this.layer.objectIdField, outStatisticFieldName: "segment_count" }]
+                }));
             });
 
             const results = await Promise.all(queries);
-            
-            console.log("--- Query Succeeded ---");
             const chartData = this.processChartData(results, selectedFeatures);
+            const chartOptions = this.buildChartOptions(chartData);
             
-            this.renderChart(chartData);
+            this.renderChart(chartData, chartOptions);
             this.showStatus("Chart generated successfully.", "success");
-
         } catch (error) {
-            console.error("--- QUERY FAILED ---");
-            // This will log the server error object you've been seeing
-            console.error(error);
             this.showStatus("Failed to generate chart. See console for details.", "error");
+            console.error(error);
         } finally {
             this.isLoading = false;
         }
     }
-    
+
     processChartData(results, selectedFeatures) {
         const metric = this.elements.metric_select.value;
         const maxCategories = parseInt(this.elements.max_categories_select.value, 10);
         const groupByField = this.elements.group_by_select.value;
 
         let allGroupLabels = new Set();
-        const resultsByFeature = results.map((featureResult, index) => {
+        const resultsByFeature = results.map((featureResult) => {
             const data = new Map();
             featureResult.features.forEach(f => {
                 const groupLabel = f.attributes[groupByField];
-                if (groupLabel) {
+                if (groupLabel !== null && groupLabel !== undefined && groupLabel !== '') {
                     allGroupLabels.add(groupLabel);
                     const count = f.attributes.segment_count;
                     const value = metric === 'totalLength' ? (count * 0.1) : count;
                     data.set(groupLabel, value);
                 }
             });
-            return { label: selectedFeatures[index].label, data };
+            return { data };
         });
 
         let sortedLabels = Array.from(allGroupLabels).sort();
         if (sortedLabels.length > maxCategories) {
-            // Logic to group smallest values into "Other"
             const totals = new Map();
             sortedLabels.forEach(label => {
                 let total = 0;
@@ -237,7 +324,7 @@ export class ChartGenerator {
         }
 
         const datasets = resultsByFeature.map((feature, index) => ({
-            label: feature.label,
+            label: selectedFeatures[index].label,
             data: sortedLabels.map(label => feature.data.get(label) || 0),
             backgroundColor: this.colorPalette[index % this.colorPalette.length]
         }));
@@ -245,30 +332,24 @@ export class ChartGenerator {
         return { labels: sortedLabels, datasets };
     }
 
-    renderChart(chartData) {
-        if (this.chartInstance) this.chartInstance.destroy();
+    buildChartOptions(chartData) {
         const chartType = this.elements.chart_type_select.value;
-        
-        this.chartInstance = new Chart(this.elements.dynamic_chart_canvas, {
-            type: chartType,
-            data: chartData,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: { display: true, text: this.buildChartTitle() },
-                    legend: { display: chartData.datasets.length > 1 }
-                },
-                scales: (chartType === 'bar' && chartData.datasets.length > 1) ? { x: { stacked: false }, y: { stacked: false } } : {}
-            }
-        });
-        this.elements.download_chart_btn.disabled = !this.chartInstance;
+        return {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: { display: true, text: this.buildChartTitle(), font: { size: 16 } },
+                legend: { display: chartData.datasets.length > 1 }
+            },
+            scales: (chartType === 'bar') ? { x: { stacked: false }, y: { stacked: false, beginAtZero: true } } : {}
+        };
     }
 
     buildChartTitle() {
-        const features = this.getSelectedFeatures().map(f => f.label).join(' vs ');
+        const features = this.getSelectedFeatures().map(f => f.label).join(' & ');
         const groupBy = this.elements.group_by_select.selectedOption.textContent;
-        return `${features} by ${groupBy}`;
+        const metric = this.elements.metric_select.selectedOption.textContent;
+        return `${metric} of ${features} by ${groupBy}`;
     }
 
     getSelectedFeatures() {
@@ -276,22 +357,28 @@ export class ChartGenerator {
             .filter(cb => cb.checked)
             .map(cb => ({ value: cb.value, label: cb.dataset.label }));
     }
-    
-    clearChart() {
-        if (this.chartInstance) this.chartInstance.destroy();
-        this.chartInstance = null;
-        this.elements.download_chart_btn.disabled = true;
-        this.showStatus("Chart cleared.", "info");
-    }
 
     downloadChart() {
-        if (!this.chartInstance) return;
+        const chartToDownload = this.modalChartInstance || this.chartInstance;
+        if (!chartToDownload) return;
         const link = document.createElement('a');
-        link.href = this.chartInstance.toBase64Image();
+        link.href = chartToDownload.toBase64Image();
         link.download = `${this.buildChartTitle().replace(/ /g, '_')}.png`;
         link.click();
     }
 
-    showStatus(message, type) { /* ... same as before ... */ }
-    setupFilterListener() { /* ... same as before ... */ }
+    showStatus(message, type) {
+        if (!this.elements.chart_status) return;
+        this.elements.chart_status.textContent = message;
+        this.elements.chart_status.style.color = type === 'error' ? 'red' : type === 'warning' ? '#b5830d' : 'black';
+        
+        // Auto-clear non-error messages
+        if (type !== 'error') {
+            setTimeout(() => {
+                if (this.elements.chart_status.textContent === message) {
+                    this.elements.chart_status.textContent = '';
+                }
+            }, 4000);
+        }
+    }
 }
