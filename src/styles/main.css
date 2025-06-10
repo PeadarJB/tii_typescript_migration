@@ -97,7 +97,7 @@ html, body, calcite-shell {
 }
 
 .indicator-set h4 { /* Label for the set */
-    margin: 0 0 10px 0;
+    margin: 0 0 5px 0;
     font-size: 0.9em;
     color: #555;
 }

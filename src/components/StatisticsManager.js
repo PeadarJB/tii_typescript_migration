@@ -74,17 +74,17 @@ export class StatisticsManager {
                 await this.querySegmentCountAndDerivedLength(
                     baseDefinitionExpression,
                     `${CONFIG.fields.floodAffected} = 1`,
-                    "Any Future Flood Intersection",
+                    "Any Midrange Future Flood Intersection",
                     "count_general_flood"
                 ),
                 await this.querySegmentCountAndDerivedLength(
-                    baseDefinitionExpression, `${CONFIG.fields.cfram_m_f_0010} = 1`, "CFRAM Fluvial Model", "count_cfram_fluvial"
+                    baseDefinitionExpression, `${CONFIG.fields.cfram_f_m_0010} = 1`, "CFRAM Fluvial Model", "count_cfram_fluvial"
                 ),
                 await this.querySegmentCountAndDerivedLength(
                     baseDefinitionExpression, `${CONFIG.fields.cfram_c_m_0010} = 1`, "CFRAM Coastal Model", "count_cfram_coastal"
                 ),
                 await this.querySegmentCountAndDerivedLength(
-                    baseDefinitionExpression, `${CONFIG.fields.nifm_m_f_0020} = 1`, "NIFM Fluvial Model", "count_nifm_fluvial"
+                    baseDefinitionExpression, `${CONFIG.fields.nifm_f_m_0020} = 1`, "NIFM Fluvial Model", "count_nifm_fluvial"
                 ),
                 await this.querySegmentCountAndDerivedLength(
                     baseDefinitionExpression, `${CONFIG.fields.ncfhm_c_m_0010} = 1`, "NCFHM Coastal Model", "count_ncfhm_coastal"
@@ -95,28 +95,28 @@ export class StatisticsManager {
             const rcp85_stats = [
                 await this.querySegmentCountAndDerivedLength(
                     baseDefinitionExpression,
-                    `${CONFIG.fields.floodAffected} = 1`,
-                    "Any Future Flood Intersection",
+                    `${CONFIG.fields.floodAffected_h} = 1`,
+                    "Any Highrange Future Flood Intersection",
                     "count_general_flood"
                 ),
                 await this.querySegmentCountAndDerivedLength(
-                    baseDefinitionExpression, `${CONFIG.fields.cfram_m_f_0010} = 1`, "CFRAM Fluvial Model", "count_cfram_fluvial"
+                    baseDefinitionExpression, `${CONFIG.fields.cfram_f_h_0100} = 1`, "CFRAM Fluvial Model", "count_cfram_fluvial"
                 ),
                 await this.querySegmentCountAndDerivedLength(
-                    baseDefinitionExpression, `${CONFIG.fields.cfram_c_m_0010} = 1`, "CFRAM Coastal Model", "count_cfram_coastal"
+                    baseDefinitionExpression, `${CONFIG.fields.cfram_c_h_0200} = 1`, "CFRAM Coastal Model", "count_cfram_coastal"
                 ),
                 await this.querySegmentCountAndDerivedLength(
-                    baseDefinitionExpression, `${CONFIG.fields.nifm_m_f_0020} = 1`, "NIFM Fluvial Model", "count_nifm_fluvial"
+                    baseDefinitionExpression, `${CONFIG.fields.nifm_f_h_0100} = 1`, "NIFM Fluvial Model", "count_nifm_fluvial"
                 ),
                 await this.querySegmentCountAndDerivedLength(
-                    baseDefinitionExpression, `${CONFIG.fields.ncfhm_c_m_0010} = 1`, "NCFHM Coastal Model", "count_ncfhm_coastal"
+                    baseDefinitionExpression, `${CONFIG.fields.ncfhm_c_c_0200} = 1`, "NCFHM Coastal Model", "count_ncfhm_coastal"
                 )
             ];
 
             // Create the structured list of scenarios with the corrected grouping
             const scenarios = [
-                { title: "RCP 4.5% Flood Scenario", stats: rcp45_stats },
-                { title: "RCP 8.5% Flood Scenario", stats: rcp85_stats }
+                { title: "RCP 4.5% Flood Scenario (10 - 20 year return period)", stats: rcp45_stats },
+                { title: "RCP 8.5% Flood Scenario (100 - 200 year return period)", stats: rcp85_stats }
             ];
 
             this.displayAllStatsUI(scenarios);

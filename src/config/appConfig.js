@@ -1,7 +1,7 @@
 export const CONFIG = {
      portalUrl: "https://pms-ie.maps.arcgis.com/home/index.html",
-    webMapId: "13a98c8641b84ac4aeb17255e6901e9b", // Replace this!
-    roadNetworkLayerTitle: "TII CAIP NM Updated", // e.g., "Ireland Road Network" - Used to find it in the WebMap
+    webMapId: "78a86c5888c84e0793b3345a62d7282e", // Replace this!
+    roadNetworkLayerTitle: "TII CAIP NM", // e.g., "Ireland Road Network" - Used to find it in the WebMap
     //apiKey: "YOUR_ARCGIS_API_KEY_IF_NEEDED", // Only if accessing secured services or premium content not covered by user login
 
     // Field names from your road network feature layer
@@ -13,14 +13,18 @@ export const CONFIG = {
         subnet: "Subnet",
         lifeline: "Lifeline",
         route: "Route", // Field used for length calculations
-        floodAffected: "future_flood_intersection",
-        cfram_m_f_0010: "cfram_f_m_0010",
+        floodAffected: "future_flood_intersection_m",
+        floodAffected_h: "future_flood_intersection_h",
+        cfram_f_m_0010: "cfram_f_m_0010",
         cfram_c_m_0010: "cfram_c_m_0010",
-        nifm_m_f_0020: "nifm_f_m_0020",
+        nifm_f_m_0020: "nifm_f_m_0020",
         ncfhm_c_m_0010: "ncfhm_c_m_0010",
-        cfram_f_h_0010: "cfram_f_h_0010",
-        cfram_c_h_0010: "cfram_c_h_0010",
-        nifm_f_h_0020: "nifm_f_h_0020"
+        cfram_f_h_0100: "cfram_f_h_0100",
+        cfram_c_h_0200: "cfram_c_h_0200",
+        nifm_f_h_0100: "nifm_f_h_0100",
+        ncfhm_c_c_0200: "ncfhm_c_c_0200",
+        historic_intersection_m: "historic_intersection_m",
+        historic_intersection_h: "historic_intersection_h",
         // Add other fields needed for filters or statistics
     },
 
@@ -51,14 +55,37 @@ export const CONFIG = {
             { label: "Affected by Flooding", value: "1" },
             { label: "Not Affected", value: "0" },
         ], 
+        future_historic_intersection_m: [
+            { label: "Midrange (RCP 4.5%) intersect with historic flooding.", value: "1" },
+            { label: "No intersection", value: "0" },
+        ],
+        future_historic_intersection_h: [
+            { label: "High-range (RCP 8.5%) intersect with historic flooding.", value: "1" },
+            { label: "No intersection", value: "0" },
+        ],
         // other static options...
     },
 
     chartingFeatures: [
         {
-            label: "Any Future Flood Intersection",
-            field: "future_flood_intersection",
-            description: "Any segment affected by a future flood model."
+            label: "Any Future Flood Intersection (4.5%)",
+            field: "future_flood_intersection_m",
+            description: "Any segment affected by a mid-range future flood model."
+        },
+        {
+            label: "Any Future Flood Intersection (8.5%)",
+            field: "future_flood_intersection_h",
+            description: "Any segment affected by a high-range future flood model."
+        },
+        {
+            label: "Future and Historic Flood Intersection (4.5%)",
+            field: "historic_intersection_m",
+            description: "Segments affected by both future and historic flood models under RCP 4.5."
+        },
+        {
+            label: "Future and Historic Flood Intersection (8.5%)",
+            field: "historic_intersection_h",
+            description: "Segments affected by both future and historic flood models under RCP 8.5."
         },
         {
             label: "CFRAM Fluvial Model (4.5%)",

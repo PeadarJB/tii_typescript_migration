@@ -102,6 +102,18 @@ export class FilterManager {
                 options: await this.getUniqueValues(CONFIG.fields.route), // Get all possible values
                 dataType: 'string'  // Text data
             },
+            { 
+                label: "Historic Flooding Intersection (4.5%)", 
+                fieldName: CONFIG.fields.future_historic_intersection_m, 
+                options: CONFIG.filterOptions.future_historic_intersection_m, // Pre-defined options from config
+                dataType: 'number'  // Numeric data
+            },
+            { 
+                label: "Historic Flooding Intersection (8.5%)", 
+                fieldName: CONFIG.fields.historic_intersection_h, 
+                options: CONFIG.filterOptions.historic_intersection_h, // Pre-defined options from config
+                dataType: 'number'  // Numeric data
+            },
             // More filters can be added here following the same pattern
         ];
 
