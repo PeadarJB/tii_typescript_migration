@@ -39,6 +39,7 @@ export class StatisticsManager {
         this.indicatorContainer = typeof indicatorContainer === 'string' ? document.getElementById(indicatorContainer) : indicatorContainer;
         this.chartContainer = typeof chartContainer === 'string' ? document.getElementById(chartContainer) : chartContainer;
         this.layer = roadNetworkLayer;
+        this.lastScenariosData = null;
         // this.pieChartInstance = null; // To hold a Chart.js instance later
 
         if (!this.indicatorContainer) { // chartContainer can be optional if not used yet
@@ -121,7 +122,14 @@ export class StatisticsManager {
 
             this.displayAllStatsUI(scenarios);
 
-        } catch (error) {
+        },
+        const scenarios = [ /* ... */ ];
+
+            this.lastScenariosData = scenarios; // Add this line to cache the data
+            
+            this.displayAllStatsUI(scenarios);
+
+        } catch (error) (error) {
             console.error("StatisticsManager: Error in updateAllStatistics pipeline:", error);
             this.indicatorContainer.innerHTML = `<p style="color: red;">Error loading statistics. (Check console)</p>`;
         }

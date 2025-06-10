@@ -41,10 +41,12 @@ class AppManager {
             try {
                 await this.initializeUIComponents();
                 this.setupComponentInteractions();
+                 this.components.reportGenerator = new ReportGenerator(this);
+
                 await this.performInitialDataLoad();
 
                 this.isInitialized = true;
-                this.hideLoadingState(); // Hide after all app components are ready.
+                this.hideLoadingState();
                 console.log("AppManager: Application initialization complete.");
 
             } catch (postMapInitError) {
@@ -222,6 +224,12 @@ class AppManager {
                     this.showErrorMessage("Failed to update data after filter change.");
                 }
             });
+            const reportBtn = document.getElementById('generate-report-btn');
+            if (reportBtn) {
+                reportBtn.addEventListener('click', () => {
+                    this.components.reportGenerator?.generateReport();
+                });
+            }
 
             console.log("AppManager: Component interactions configured.");
 
