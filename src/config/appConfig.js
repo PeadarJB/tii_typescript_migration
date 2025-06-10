@@ -55,11 +55,11 @@ export const CONFIG = {
             { label: "Affected by Flooding", value: "1" },
             { label: "Not Affected", value: "0" },
         ], 
-        future_historic_intersection_m: [
+        historic_intersection_m: [
             { label: "Midrange (RCP 4.5%) intersect with historic flooding.", value: "1" },
             { label: "No intersection", value: "0" },
         ],
-        future_historic_intersection_h: [
+        historic_intersection_h: [
             { label: "High-range (RCP 8.5%) intersect with historic flooding.", value: "1" },
             { label: "No intersection", value: "0" },
         ],
