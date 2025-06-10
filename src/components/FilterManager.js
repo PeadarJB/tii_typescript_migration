@@ -291,4 +291,17 @@ export class FilterManager {
             this.onFilterChangeCallback(newDefinitionExpression);
         }
     }
+    getActiveFiltersText() {
+        const activeFilters = [];
+        for (const fieldKey in this.currentFilters) {
+            const filterItem = this.currentFilters[fieldKey];
+            const selectElement = this.container.querySelector(`#filter-${fieldKey.toLowerCase().replace(/[^a-z0-9-_]/g, '')}`);
+            if (selectElement) {
+                const label = selectElement.selectedOption?.textContent || filterItem.value;
+                const labelText = selectElement.previousElementSibling?.innerText || fieldKey;
+                activeFilters.push(`${labelText.replace(':', '')}: ${label}`);
+            }
+        }
+        return activeFilters;
+    }
 }
