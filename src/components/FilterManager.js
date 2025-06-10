@@ -103,13 +103,13 @@ export class FilterManager {
                 dataType: 'string'  // Text data
             },
             { 
-                label: "Historic Flooding Intersection (4.5%)", 
+                label: "Historic Flooding (4.5%)", 
                 fieldName: CONFIG.fields.historic_intersection_m, 
                 options: CONFIG.filterOptions.historic_intersection_m, // Pre-defined options from config
                 dataType: 'number'  // Numeric data
             },
             { 
-                label: "Historic Flooding Intersection (8.5%)", 
+                label: "Historic Flooding (8.5%)", 
                 fieldName: CONFIG.fields.historic_intersection_h, 
                 options: CONFIG.filterOptions.historic_intersection_h, // Pre-defined options from config
                 dataType: 'number'  // Numeric data
@@ -173,7 +173,7 @@ export class FilterManager {
         // ADD "ALL" OPTION: Default option that shows everything (no filter)
         const allOption = document.createElement("calcite-option");
         allOption.setAttribute("value", ""); // Empty value means "no filter"
-        allOption.innerText = `None selected`;
+        allOption.innerText = `-`;
         allOption.setAttribute("selected", ""); // Make this the default selection
         select.appendChild(allOption);
 

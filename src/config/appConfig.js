@@ -42,8 +42,8 @@ export const CONFIG = {
         subnet: [
             { label: "0 - Motorway/Dual Carriageway", value: "0" },
             { label: "1 - Engineered Pavements", value: "1" },
-            { label: "2 - Legacy Pavements (High Traffic)", value: "2" },
-            { label: "3 - Legacy Pavements (Moderate Traffic)", value: "3" },
+            { label: "2 - Urban", value: "2" },
+            { label: "3 - Legacy Pavements (High Traffic)", value: "3" },
             { label: "4 - Legacy Pavements (Low Traffic)", value: "4" },
         ], // Will be populated dynamically from the layer
         lifeline: [
@@ -56,11 +56,11 @@ export const CONFIG = {
             { label: "Not Affected", value: "0" },
         ], 
         historic_intersection_m: [
-            { label: "Midrange (RCP 4.5%) intersect with historic flooding.", value: "1" },
+            { label: "Midrange (RCP 4.5%).", value: "1" },
             { label: "No intersection", value: "0" },
         ],
         historic_intersection_h: [
-            { label: "High-range (RCP 8.5%) intersect with historic flooding.", value: "1" },
+            { label: "High-range (RCP 8.5%).", value: "1" },
             { label: "No intersection", value: "0" },
         ],
         // other static options...
