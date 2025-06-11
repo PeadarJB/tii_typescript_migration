@@ -1,8 +1,5 @@
 // src/components/FilterManager.js
 
-// These imports bring in external tools we need:
-// - CONFIG contains our app's settings and field names
-// - Query helps us ask the database for specific data
 import { CONFIG } from "../config/appConfig.js";
 import Query from "@arcgis/core/rest/support/Query.js";
 
@@ -12,13 +9,13 @@ export class FilterManager {
         this.container = typeof container === 'string' ? document.getElementById(container) : container;
         
         // SETUP: Store references to the map view and data layer
-        this.view = view; // The map display
-        this.layer = roadNetworkLayer; // The data we're filtering
+        this.view = view;
+        this.layer = roadNetworkLayer;
         
-        // SETUP: Initialize tracking variables
-        this.currentFilters = {}; // Keeps track of what filters are currently active
-        this.onFilterChangeCallback = null; // Function to call when filters change
-        this.initialExtent = null; // Remember the original map zoom/position
+        // SETUP: Initialize tracking variables for multi-select filters
+        this.currentFilters = {}; // Stores active filter values per filter ID
+        this.onFilterChangeCallback = null;
+        this.initialExtent = null;
 
         // ERROR CHECKING: Make sure we have a valid container
         if (!this.container) {
@@ -26,19 +23,15 @@ export class FilterManager {
             return;
         }
         
-        // ERROR CHECKING: Warn if view or layer is missing (but continue anyway)
         if (!this.view || !this.layer) {
             console.error("FilterManager: View or Layer is not provided. Zoom functionality may be affected.");
-            // Note: We don't return here because basic filtering might still work
         }
 
-        // SAVE INITIAL MAP POSITION: Store where the map starts so we can return to it later
+        // SAVE INITIAL MAP POSITION
         if (this.view && this.view.extent) {
-            // If the map extent is immediately available, save it now
             this.initialExtent = this.view.extent.clone();
             console.log("FilterManager: Initial map extent stored directly.", this.initialExtent);
         } else if (this.view) {
-            // If the map isn't ready yet, wait for it and then save the extent
             this.view.when(() => {
                 if (this.view.extent) {
                     this.initialExtent = this.view.extent.clone();
@@ -59,236 +52,363 @@ export class FilterManager {
         this.onFilterChangeCallback = callback;
     }
 
-    // MAIN INITIALIZATION: Create all the filter dropdown menus
+    // MAIN INITIALIZATION: Create all filter UI elements based on configuration
     async initializeFilters() {
         // Clear any existing filter UI elements
         this.container.innerHTML = '';
+        
+        // Create reset button first
+        this.createResetButton();
 
-        // DEFINE WHAT FILTERS TO CREATE: Set up configuration for each filter type
-        const filterConfigs = [
-            { 
-                label: "Affected by Flooding",  // What users see
-                fieldName: CONFIG.fields.floodAffected,  // Database field name
-                options: CONFIG.filterOptions.floodAffected, 
-                dataType: 'string'  // Text data
+        // Get filter configuration (you'll need to add this to your CONFIG)
+        const filterConfigs = CONFIG.filterConfig || [
+            {
+                id: 'flood-scenario',
+                label: 'Flood Scenario',
+                type: 'grouped-checkbox',
+                items: [
+                    { label: 'Future Flooding (Mid-Range, RCP 4.5%)', field: 'future_flood_intersection_m', value: 1 },
+                    { label: 'Future Flooding (High-Range, RCP 8.5%)', field: 'future_flood_intersection_h', value: 1 },
+                    { label: 'Historic & Future (Mid-Range, RCP 4.5%)', field: 'historic_intersection_m', value: 1 },
+                    { label: 'Historic & Future (High-Range, RCP 8.5%)', field: 'historic_intersection_h', value: 1 },
+                    { label: 'Historic Only (Mid-Range, RCP 4.5%)', field: 'hist_no_future_m', value: 1 },
+                    { label: 'Historic Only (High-Range, RCP 8.5%)', field: 'hist_no_future_h', value: 1 }
+                ]
             },
-            { 
-                label: "County",  // What users see
-                fieldName: CONFIG.fields.county,  // Database field name
-                options: await this.getUniqueValues(CONFIG.fields.county), // Get all possible values
-                dataType: 'string'  // Text data
+            {
+                id: 'county',
+                label: 'County',
+                type: 'multi-select',
+                field: 'COUNTY',
+                dataType: 'string',
+                options: await this.getUniqueValues('COUNTY')
             },
-            { 
-                label: "Criticality", 
-                fieldName: CONFIG.fields.criticality, 
-                options: CONFIG.filterOptions.criticality, // Pre-defined options from config
-                dataType: 'number'  // Numeric data
+            {
+                id: 'criticality',
+                label: 'Criticality',
+                type: 'multi-select',
+                field: 'Criticality_Rating_Num1',
+                dataType: 'number',
+                options: [
+                    { label: "Very High", value: "5" },
+                    { label: "High", value: "4" },
+                    { label: "Medium", value: "3" },
+                    { label: "Low", value: "2" },
+                    { label: "Very Low", value: "1" },
+                ]
             },
-            { 
-                label: "Subnet", 
-                fieldName: CONFIG.fields.subnet, 
-                options: CONFIG.filterOptions.subnet, // Pre-defined options from config
-                dataType: 'number'  // Numeric data
+            {
+                id: 'subnet',
+                label: 'Subnet',
+                type: 'multi-select',
+                field: 'Subnet',
+                dataType: 'number',
+                options: [
+                    { label: "0 - Motorway/Dual Carriageway", value: "0" },
+                    { label: "1 - Engineered Pavements", value: "1" },
+                    { label: "2 - Urban", value: "2" },
+                    { label: "3 - Legacy Pavements (High Traffic)", value: "3" },
+                    { label: "4 - Legacy Pavements (Low Traffic)", value: "4" },
+                ]
             },
-            { 
-                label: "Lifeline Route", 
-                fieldName: CONFIG.fields.lifeline, 
-                options: CONFIG.filterOptions.lifeline, // Pre-defined options from config
-                dataType: 'number'  // Numeric data
-            },
-            { 
-                label: "Route",  // What users see
-                fieldName: CONFIG.fields.route,  // Database field name
-                options: await this.getUniqueValues(CONFIG.fields.route), // Get all possible values
-                dataType: 'string'  // Text data
-            },
-            { 
-                label: "Historic Flooding (4.5%)", 
-                fieldName: CONFIG.fields.historic_intersection_m, 
-                options: CONFIG.filterOptions.historic_intersection_m, // Pre-defined options from config
-                dataType: 'number'  // Numeric data
-            },
-            { 
-                label: "Historic Flooding (8.5%)", 
-                fieldName: CONFIG.fields.historic_intersection_h, 
-                options: CONFIG.filterOptions.historic_intersection_h, // Pre-defined options from config
-                dataType: 'number'  // Numeric data
-            },
-            // More filters can be added here following the same pattern
+            {
+                id: 'lifeline',
+                label: 'Lifeline Route',
+                type: 'multi-select',
+                field: 'Lifeline',
+                dataType: 'number',
+                options: [
+                    { label: "Lifeline Route", value: "1" },
+                    { label: "Non-lifeline Route", value: "0" },
+                ]
+            }
         ];
 
-        // CREATE EACH FILTER: Loop through and build the dropdown menus
+        // Initialize current filters object
+        filterConfigs.forEach(config => {
+            if (config.type === 'grouped-checkbox') {
+                this.currentFilters[config.id] = {};
+            } else {
+                this.currentFilters[config.id] = [];
+            }
+        });
+
+        // CREATE EACH FILTER: Build UI elements based on type
         for (const config of filterConfigs) {
-            await this.createDropdownFilter(config.label, config.fieldName, config.options);
+            if (config.type === 'grouped-checkbox') {
+                this.createGroupedCheckboxFilter(config);
+            } else if (config.type === 'multi-select') {
+                await this.createMultiSelectFilter(config);
+            }
         }
 
         console.log("FilterManager: All filter UI elements have been initialized.");
     }
 
-    // DATA RETRIEVAL: Get all unique values from a database field for dropdown options
+    // DATA RETRIEVAL: Get all unique values from a database field
     async getUniqueValues(fieldName) {
-        // Safety check: Make sure we have a data layer to query
         if (!this.layer) {
             console.warn("FilterManager: Layer not available for getUniqueValues.");
             return [];
         }
 
-        // BUILD DATABASE QUERY: Ask for all unique values in this field
         const uniqueValuesQuery = new Query({
-            where: "1=1", // Get all records (1=1 is always true)
-            outFields: [fieldName], // Only return this specific field
-            returnDistinctValues: true, // Remove duplicates
-            orderByFields: [fieldName] // Sort the results alphabetically
+            where: "1=1",
+            outFields: [fieldName],
+            returnDistinctValues: true,
+            orderByFields: [fieldName]
         });
 
         try {
-            // EXECUTE QUERY: Ask the database for the data
             const results = await this.layer.queryFeatures(uniqueValuesQuery);
-            
-            // PROCESS RESULTS: Extract the values and clean them up
             return results.features
-                .map(feature => feature.attributes[fieldName]) // Get the field value from each record
-                .filter(value => value !== null && value !== undefined && String(value).trim() !== ""); // Remove empty values
+                .map(feature => feature.attributes[fieldName])
+                .filter(value => value !== null && value !== undefined && String(value).trim() !== "")
+                .map(value => ({ label: String(value), value: String(value) }));
         } catch (error) {
             console.error(`FilterManager: Error fetching unique values for field "${fieldName}":`, error);
-            return []; // Return empty array if something goes wrong
+            return [];
         }
     }
 
-    // UI CREATION: Build a single dropdown filter with all its options
-    async createDropdownFilter(labelText, fieldName, options) {
-        // CREATE UNIQUE ID: Make a clean ID for this filter element
-        const filterId = `filter-${fieldName.toLowerCase().replace(/[^a-z0-9-_]/g, '')}`;
+    // CREATE RESET BUTTON: Add a button to clear all filters
+    createResetButton() {
+        const resetContainer = document.createElement('div');
+        resetContainer.className = 'filter-reset-container';
+        resetContainer.style.marginBottom = '15px';
+
+        const resetButton = document.createElement('calcite-button');
+        resetButton.setAttribute('kind', 'neutral');
+        resetButton.setAttribute('scale', 's');
+        resetButton.innerText = 'Reset All Filters';
         
-        // CREATE LABEL: The text that appears next to the dropdown
-        const label = document.createElement("calcite-label");
-        label.setAttribute("layout", "inline");
-        label.innerText = `${labelText}: `;
-
-        // CREATE DROPDOWN: The actual selection menu
-        const select = document.createElement("calcite-select");
-        select.setAttribute("id", filterId);
-        select.setAttribute("label", `${labelText} filter selection`);
-
-        // ADD "ALL" OPTION: Default option that shows everything (no filter)
-        const allOption = document.createElement("calcite-option");
-        allOption.setAttribute("value", ""); // Empty value means "no filter"
-        allOption.innerText = `-`;
-        allOption.setAttribute("selected", ""); // Make this the default selection
-        select.appendChild(allOption);
-
-        // ADD SPECIFIC OPTIONS: Add each possible filter value to the dropdown
-        options.forEach(optionInput => {
-            const optionElement = document.createElement("calcite-option");
-            
-            // HANDLE DIFFERENT OPTION FORMATS: Some options are simple values, others are objects
-            if (typeof optionInput === 'object' && optionInput !== null && 'value' in optionInput && 'label' in optionInput) {
-                // Object format: {value: "1", label: "High Priority"}
-                optionElement.setAttribute("value", optionInput.value);
-                optionElement.innerText = optionInput.label;
-            } else {
-                // Simple format: just the value itself
-                optionElement.setAttribute("value", optionInput);
-                optionElement.innerText = optionInput;
-            }
-            select.appendChild(optionElement);
+        resetButton.addEventListener('click', () => {
+            this.resetAllFilters();
         });
 
-        // ADD EVENT LISTENER: React when user selects a different option
-        select.addEventListener("calciteSelectChange", (event) => {
-            const selectedValue = event.target.value;
-            
-            if (selectedValue === "") {
-                // USER SELECTED "ALL": Remove this filter
-                delete this.currentFilters[fieldName];
-            } else {
-                // USER SELECTED SPECIFIC VALUE: Store this filter
-                this.currentFilters[fieldName] = { value: selectedValue, fieldName: fieldName };
-            }
-            
-            // APPLY THE CHANGES: Update the map display with new filters
-            this.applyFilters();
-        });
+        resetContainer.appendChild(resetButton);
+        this.container.appendChild(resetContainer);
+    }
 
-        // ADD TO PAGE: Create a wrapper and add the filter to the container
+    // CREATE GROUPED CHECKBOX FILTER: For flood scenario selections
+    createGroupedCheckboxFilter(config) {
         const wrapper = document.createElement('div');
-        wrapper.style.display = 'inline-block'; // Display filters side by side
-        wrapper.style.marginRight = '15px'; // Add spacing between filters
+        wrapper.className = 'filter-group';
+        wrapper.style.marginBottom = '20px';
+
+        // Create label
+        const label = document.createElement('calcite-label');
+        label.innerText = config.label;
+        label.style.fontWeight = 'bold';
+        label.style.marginBottom = '8px';
+        label.style.display = 'block';
         wrapper.appendChild(label);
-        wrapper.appendChild(select);
+
+        // Create checkbox container
+        const checkboxContainer = document.createElement('div');
+        checkboxContainer.className = 'checkbox-group';
+        checkboxContainer.style.display = 'grid';
+        checkboxContainer.style.gridTemplateColumns = 'repeat(auto-fit, minmax(300px, 1fr))';
+        checkboxContainer.style.gap = '8px';
+
+        // Create checkboxes for each item
+        config.items.forEach((item, index) => {
+            const checkboxWrapper = document.createElement('calcite-label');
+            checkboxWrapper.setAttribute('layout', 'inline');
+
+            const checkbox = document.createElement('calcite-checkbox');
+            checkbox.setAttribute('id', `${config.id}-${index}`);
+            
+            checkbox.addEventListener('calciteCheckboxChange', (event) => {
+                if (event.target.checked) {
+                    this.currentFilters[config.id][item.field] = {
+                        field: item.field,
+                        value: item.value,
+                        dataType: 'number'
+                    };
+                } else {
+                    delete this.currentFilters[config.id][item.field];
+                }
+                this.applyFilters();
+            });
+
+            checkboxWrapper.appendChild(checkbox);
+            checkboxWrapper.appendChild(document.createTextNode(item.label));
+            checkboxContainer.appendChild(checkboxWrapper);
+        });
+
+        wrapper.appendChild(checkboxContainer);
         this.container.appendChild(wrapper);
     }
 
-    // FILTER APPLICATION: Take all active filters and apply them to the map layer
-    async applyFilters() {
-        let definitionExpressionsArray = []; // Will hold SQL-like filter statements
-        let allFiltersEmpty = true; // Track if any filters are active
+    // CREATE MULTI-SELECT FILTER: For dropdowns with multiple selections
+    async createMultiSelectFilter(config) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'filter-group';
+        wrapper.style.marginBottom = '20px';
 
-        // BUILD FILTER EXPRESSIONS: Convert each active filter into a database query
-        for (const fieldKey in this.currentFilters) {
-            allFiltersEmpty = false; // We found at least one active filter
-            const filterItem = this.currentFilters[fieldKey];
-            const { value, fieldName } = filterItem;
-            
-            // DETERMINE DATA TYPE: Figure out if this field contains numbers or text
-            let isNumeric = false;
-            if (CONFIG.fields.criticality === fieldName) {
-                isNumeric = true; // Criticality field contains numbers
-            }
-            // Add more numeric field checks here if needed
+        // Create label
+        const label = document.createElement('calcite-label');
+        label.innerText = config.label;
+        label.style.fontWeight = 'bold';
+        label.style.marginBottom = '8px';
+        label.style.display = 'block';
+        wrapper.appendChild(label);
 
-            // CREATE PROPER SQL SYNTAX: Format the filter expression correctly
-            if (isNumeric) {
-                // NUMERIC FIELDS: No quotes needed around numbers
-                definitionExpressionsArray.push(`${fieldName} = ${value}`);
+        // Create combobox for multi-select
+        const combobox = document.createElement('calcite-combobox');
+        combobox.setAttribute('selection-mode', 'multiple');
+        combobox.setAttribute('placeholder', `Select ${config.label.toLowerCase()}...`);
+        combobox.setAttribute('max-items', '10');
+
+        // Add options
+        config.options.forEach(option => {
+            const comboboxItem = document.createElement('calcite-combobox-item');
+            comboboxItem.setAttribute('value', option.value);
+            comboboxItem.setAttribute('text-label', option.label);
+            combobox.appendChild(comboboxItem);
+        });
+
+        // Add event listener
+        combobox.addEventListener('calciteComboboxChange', (event) => {
+            const selectedValues = event.target.selectedItems.map(item => item.value);
+            this.currentFilters[config.id] = selectedValues.map(value => ({
+                field: config.field,
+                value: value,
+                dataType: config.dataType
+            }));
+            this.applyFilters();
+        });
+
+        wrapper.appendChild(combobox);
+        this.container.appendChild(wrapper);
+    }
+
+    // RESET ALL FILTERS: Clear all active filters and return to initial view
+    resetAllFilters() {
+        // Clear all current filters
+        Object.keys(this.currentFilters).forEach(filterId => {
+            if (Array.isArray(this.currentFilters[filterId])) {
+                this.currentFilters[filterId] = [];
             } else {
-                // TEXT FIELDS: Wrap in single quotes and escape any quotes in the value
-                definitionExpressionsArray.push(`${fieldName} = '${String(value).replace(/'/g, "''")}'`);
+                this.currentFilters[filterId] = {};
             }
-        }
+        });
 
-        // COMBINE ALL FILTERS: Join multiple filters with "AND" (all must be true)
-        const newDefinitionExpression = definitionExpressionsArray.length > 0
-            ? definitionExpressionsArray.join(" AND ")
-            : ""; // Empty string means "show everything"
+        // Reset all UI elements
+        this.container.querySelectorAll('calcite-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+        });
 
-        // APPLY TO LAYER: Tell the map layer to use this filter
-        this.layer.definitionExpression = newDefinitionExpression;
-        console.log("FilterManager: Applied definitionExpression to layer:", newDefinitionExpression);
+        this.container.querySelectorAll('calcite-combobox').forEach(combobox => {
+            combobox.selectedItems = [];
+        });
 
-        // ZOOM TO FILTERED RESULTS: Automatically zoom the map to show filtered data
-        if (!allFiltersEmpty && this.view && this.layer && this.layer.visible) {
+        // Apply empty filters (shows all data)
+        this.applyFilters();
+    }
+
+    // FILTER APPLICATION: Convert all active filters into SQL and apply to layer
+    async applyFilters() {
+        let whereClauseArray = [];
+        let hasActiveFilters = false;
+
+        // Process each filter group
+        Object.keys(this.currentFilters).forEach(filterId => {
+            const filterData = this.currentFilters[filterId];
+            
+            if (Array.isArray(filterData) && filterData.length > 0) {
+                // Multi-select filter
+                hasActiveFilters = true;
+                const field = filterData[0].field;
+                const dataType = filterData[0].dataType;
+                const values = filterData.map(item => item.value);
+                
+                if (dataType === 'string') {
+                    const valueList = values.map(v => `'${String(v).replace(/'/g, "''")}'`).join(', ');
+                    whereClauseArray.push(`${field} IN (${valueList})`);
+                } else {
+                    const valueList = values.join(', ');
+                    whereClauseArray.push(`${field} IN (${valueList})`);
+                }
+            } else if (typeof filterData === 'object' && Object.keys(filterData).length > 0) {
+                // Grouped checkbox filter (flood scenarios)
+                hasActiveFilters = true;
+                const fieldConditions = Object.values(filterData).map(item => {
+                    return `${item.field} = ${item.value}`;
+                });
+                
+                if (fieldConditions.length > 0) {
+                    whereClauseArray.push(`(${fieldConditions.join(' OR ')})`);
+                }
+            }
+        });
+
+        // Build final WHERE clause
+        const whereClause = whereClauseArray.length > 0 ? whereClauseArray.join(' AND ') : '';
+        
+        // Apply to layer
+        this.layer.definitionExpression = whereClause;
+        console.log("FilterManager: Applied definition expression:", whereClause);
+
+        // Handle zooming
+        if (hasActiveFilters && this.view && this.layer && this.layer.visible) {
             try {
-                // QUERY FOR EXTENT: Find the geographic bounds of filtered features
                 const extentQuery = this.layer.createQuery();
                 const results = await this.layer.queryExtent(extentQuery);
 
                 if (results && results.count > 0 && results.extent) {
-                    // ZOOM TO RESULTS: Move map to show all filtered features
-                    await this.view.goTo(results.extent.expand(1.5)); // 1.5x padding around results
+                    await this.view.goTo(results.extent.expand(1.5));
                     console.log("FilterManager: Zoomed to filtered extent.");
                 } else if (results && results.count === 0) {
-                    // NO RESULTS FOUND: Optionally return to original view
-                    console.log("FilterManager: No features match the current filters. Not zooming.");
+                    console.log("FilterManager: No features match the current filters.");
                     if (this.initialExtent) {
                         await this.view.goTo(this.initialExtent);
                         console.log("FilterManager: No features found, zoomed to initial extent.");
                     }
-                } else {
-                    console.log("FilterManager: Could not get extent for filtered features, or layer might be empty after filter.");
                 }
             } catch (error) {
                 console.error("FilterManager: Error zooming to filtered extent:", error);
             }
-        } else if (allFiltersEmpty && this.view && this.initialExtent) {
-            // ALL FILTERS CLEARED: Return to the original map view
+        } else if (!hasActiveFilters && this.view && this.initialExtent) {
             await this.view.goTo(this.initialExtent);
             console.log("FilterManager: All filters cleared. Zoomed to initial map extent.");
         }
 
-        // NOTIFY OTHER COMPONENTS: Tell other parts of the app that filters changed
+        // Notify callback
         if (this.onFilterChangeCallback) {
-            this.onFilterChangeCallback(newDefinitionExpression);
+            this.onFilterChangeCallback(whereClause);
+        }
+    }
+
+    // UTILITY: Get current filter summary for reporting
+    getCurrentFilterSummary() {
+        const summary = {};
+        
+        Object.keys(this.currentFilters).forEach(filterId => {
+            const filterData = this.currentFilters[filterId];
+            
+            if (Array.isArray(filterData) && filterData.length > 0) {
+                summary[filterId] = filterData.map(item => item.value);
+            } else if (typeof filterData === 'object' && Object.keys(filterData).length > 0) {
+                summary[filterId] = Object.keys(filterData);
+            }
+        });
+        
+        return summary;
+    }
+
+    // UTILITY: Get count of filtered features
+    async getFilteredFeatureCount() {
+        if (!this.layer) return 0;
+        
+        try {
+            const query = this.layer.createQuery();
+            const result = await this.layer.queryFeatureCount(query);
+            return result;
+        } catch (error) {
+            console.error("FilterManager: Error getting feature count:", error);
+            return 0;
         }
     }
 }
