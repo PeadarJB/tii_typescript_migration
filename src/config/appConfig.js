@@ -84,6 +84,8 @@ export const CONFIG = {
         object_id: "OBJECTID",
         route: "Route",
         // Fields for statistics
+        floodAffected: "future_flood_intersection_m",
+        floodAffected_h: "future_flood_intersection_h",
         cfram_f_m_0010: "cfram_f_m_0010",
         cfram_c_m_0010: "cfram_c_m_0010",
         nifm_f_m_0020: "nifm_f_m_0020",
@@ -91,6 +93,65 @@ export const CONFIG = {
         cfram_f_h_0100: "cfram_f_h_0100",
         cfram_c_h_0200: "cfram_c_h_0200",
         nifm_f_h_0100: "nifm_f_h_0100",
-        ncfhm_c_c_0200: "ncfhm_c_c_0200"
-    }
+        ncfhm_c_c_0200: "ncfhm_c_c_0200",
+        historic_intersection_m: "historic_intersection_m",
+        historic_intersection_h: "historic_intersection_h",
+    },
+    chartingFeatures: [
+        {
+            label: "Any Future Flood Intersection (4.5%)",
+            field: "future_flood_intersection_m",
+            description: "Any segment affected by a mid-range future flood model."
+        },
+        {
+            label: "Any Future Flood Intersection (8.5%)",
+            field: "future_flood_intersection_h",
+            description: "Any segment affected by a high-range future flood model."
+        },
+        {
+            label: "Future and Historic Flood Intersection (4.5%)",
+            field: "historic_intersection_m",
+            description: "Segments affected by both future and historic flood models under RCP 4.5."
+        },
+        {
+            label: "Future and Historic Flood Intersection (8.5%)",
+            field: "historic_intersection_h",
+            description: "Segments affected by both future and historic flood models under RCP 8.5."
+        },
+        {
+            label: "CFRAM Fluvial Model (4.5%)",
+            field: "cfram_f_m_0010",
+            description: "Segments affected by the CFRAM Fluvial model under RCP 4.5."
+        },
+        {
+            label: "CFRAM Coastal Model (4.5%)",
+            field: "cfram_c_m_0010",
+            description: "Segments affected by the CFRAM Coastal model under RCP 4.5."
+        },
+        {
+            label: "NIFM Fluvial Model (4.5%)",
+            field: "nifm_f_m_0020",
+            description: "Segments affected by the NIFM Fluvial model under RCP 4.5."
+        },
+        {
+            label: "NCFHM Coastal Model",
+            field: "ncfhm_c_m_0010",
+            description: "Segments affected by the NCFHM Coastal model under RCP 4.5."
+        },
+        {
+            label: "CFRAM Fluvial Model (8.5%)",
+            field: "cfram_f_h_0010",
+            description: "Segments affected by the CFRAM Fluvial model under RCP 8.5."
+        },
+        {
+            label: "CFRAM Coastal Model (8.5%)",
+            field: "cfram_c_h_0010",
+            description: "Segments affected by the CFRAM Coastal model under RCP 8.5."
+        },
+        {
+            label: "NIFM Fluvial Model (8.5%)",
+            field: "nifm_f_h_0020",
+            description: "Segments affected by the NIFM Fluvial model under RCP 8.5."
+        }
+    ]
 };
