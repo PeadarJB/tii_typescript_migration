@@ -7,6 +7,7 @@ import { SwipeWidgetManager } from './components/SwipeWidgetManager.js';
 import { SwipeControlsUI } from './components/SwipeControlsUI.js';
 import { ChartGenerator } from './components/ChartGenerator.js'; // Missing import
 import { CONFIG } from './config/appConfig.js';
+import { ReportGenerator } from './components/ReportGenerator.js';
 import './styles/main.css';
 
 // --- Application State Management ---
