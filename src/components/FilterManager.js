@@ -102,6 +102,7 @@ export class FilterManager {
         const pickList = document.createElement('calcite-pick-list');
         pickList.filterEnabled = true; // Enable search within the list
         pickList.filterPlaceholder = `Filter ${config.label}...`;
+        pickList.multiple = true;
 
         // Populate items
         config.items?.forEach(item => {
@@ -112,21 +113,27 @@ export class FilterManager {
              pickList.appendChild(pickListItem);
         });
         
-        config.options?.forEach(option => {
-            const pickListItem = document.createElement('calcite-pick-list-item');
-            if(typeof option === 'object'){
-                pickListItem.label = option.label;
-                pickListItem.value = option.value;
-            } else {
-                pickListItem.label = option;
-                pickListItem.value = option;
-            }
-            pickList.appendChild(pickListItem);
-        });
+        const populateList = (items, isGrouped = false) => {
+            items?.forEach(item => {
+                const pickListItem = document.createElement('calcite-pick-list-item');
+                if (typeof item === 'object') {
+                    pickListItem.label = item.label;
+                    // Use a composite value for grouped-checkbox type
+                    pickListItem.value = isGrouped ? `${item.field}||${item.value}` : item.value;
+                } else {
+                    pickListItem.label = item;
+                    pickListItem.value = item;
+                }
+                pickList.appendChild(pickListItem);
+            });
+        };
+
+        populateList(config.items, true);
+        populateList(config.options, false);
 
 
         // Event Listener for selection changes
-        pickList.addEventListener('calciteListItemChange', (event) => {
+        pickList.addEventListener('calcitePickListChange', (event) => {
             const selectedItems = event.target.selectedItems.map(item => item.value);
             this.activeFilters.set(config.id, selectedItems);
             this.updateFilterButton(button, config.label, selectedItems.length);
