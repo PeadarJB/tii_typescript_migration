@@ -7,24 +7,66 @@ html, body, calcite-shell {
     /* overflow: hidden; */
 }
 
-#app-header h1 {
+#app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 15px;
+    gap: 20px;
+}
+
+.header-title {
     margin: 0;
-    padding: 10px 15px;
     font-size: 1.5em;
+    white-space: nowrap;
 }
 
 #filter-controls-container {
-    padding: 10px 15px;
-    background-color: #f0f0f0;
-    border-bottom: 1px solid #ccc;
+    flex-grow: 1; /* Allows it to take up available space */
+    display: flex;
+    justify-content: flex-start; /* Align filters to the start */
+    align-items: center;
 }
 
+.filter-controls-wrapper {
+    display: flex;
+    flex-wrap: wrap; /* Allow filters to wrap on smaller screens */
+    gap: 10px; /* Space between filter buttons */
+    padding: 10px 0;
+}
+
+.filter-dropdown-wrapper calcite-button {
+    --calcite-button-border-radius: 4px;
+}
+
+/* Style for active filter buttons */
+.filter-dropdown-wrapper calcite-button[kind="brand"] {
+    --calcite-color-brand: #005987; /* TII-like blue */
+    --calcite-color-brand-hover: #004a6e;
+    --calcite-color-brand-press: #003a55;
+    font-weight: bold;
+}
+
+/* Styling for the dropdown panel itself */
+calcite-dropdown-group {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+#action-buttons-container {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+/* --- Main Content and Panels --- */
 #statistics-panel {
     padding: 15px;
-    box-sizing: border-box; /* Important if you add borders/padding */
-    height: 100%; /* Make it fill the shell-panel */
+    box-sizing: border-box;
+    height: 100%; 
     overflow-y: auto; /* Allow scrolling if content exceeds height */
-    background-color: #f8f8f8; /* Light background to distinguish it */
+    background-color: #f8f8f8; 
 }
 
 #viewDiv {

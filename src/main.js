@@ -224,6 +224,18 @@ class AppManager {
                     this.showErrorMessage("Failed to update data after filter change.");
                 }
             });
+            // Connect the reset button to the filter manager's public method.
+            const resetButton = document.getElementById('reset-filters-btn');
+            if (resetButton && this.components.filterManager) {
+                resetButton.addEventListener('click', () => {
+                    this.components.filterManager.resetAllFilters();
+                });
+                console.log("AppManager: Reset button interaction configured.");
+            } else {
+                console.warn("AppManager: Reset button or FilterManager not found, cannot configure interaction.");
+            }
+
+        console.log("AppManager: Component interactions configured.");
             const reportBtn = document.getElementById('generate-report-btn');
             if (reportBtn) {
                 reportBtn.addEventListener('click', () => {
