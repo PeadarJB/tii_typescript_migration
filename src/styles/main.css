@@ -17,6 +17,8 @@ html, body, calcite-shell {
     padding: 10px 15px;
     background-color: #f0f0f0;
     border-bottom: 1px solid #ccc;
+    display: flex;
+    gap: 10px;
 }
 /* src/styles/main.css - Enhanced Filter Styles */
 
