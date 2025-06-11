@@ -116,6 +116,20 @@ class AppManager {
             console.error("AppManager: UI component initialization failed:", error);
             throw new Error(`Component initialization failed: ${error.message}`);
         }
+
+        this.components.reportGenerator = new ReportGenerator(
+            'report-generator-container', // Or whatever container it needs
+            this.components.view,
+            this.components.filterManager,
+            this.components.statsManager,
+            this.components.chartGenerator
+        );
+        
+        // ...and hook up the button...
+        const generateReportBtn = document.getElementById('generate-report-btn');
+        generateReportBtn.addEventListener('click', () => {
+            this.components.reportGenerator.generateReport();
+        });
     }
 
     /**

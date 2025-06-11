@@ -120,19 +120,18 @@ export class StatisticsManager {
                 { title: "RCP 8.5% Flood Scenario (100 - 200 year return period)", stats: rcp85_stats }
             ];
 
-            this.displayAllStatsUI(scenarios);
-
-        },
-        const scenarios = [ /* ... */ ];
-
             this.lastScenariosData = scenarios; // Add this line to cache the data
             
             this.displayAllStatsUI(scenarios);
 
-        } catch (error) (error) {
+        } catch (error) {
             console.error("StatisticsManager: Error in updateAllStatistics pipeline:", error);
             this.indicatorContainer.innerHTML = `<p style="color: red;">Error loading statistics. (Check console)</p>`;
         }
+    }
+
+    getLatestStats() {
+        return this.lastScenariosData;
     }
 
     /**
