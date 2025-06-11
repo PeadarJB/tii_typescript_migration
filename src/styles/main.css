@@ -18,6 +18,167 @@ html, body, calcite-shell {
     background-color: #f0f0f0;
     border-bottom: 1px solid #ccc;
 }
+/* src/styles/main.css - Enhanced Filter Styles */
+
+/* Main container styling */
+#filter-container {
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Filter group styling */
+.filter-group {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #f0f0f0;
+    border-radius: 6px;
+    background: #fafafa;
+}
+
+.filter-group:last-child {
+    margin-bottom: 0;
+}
+
+/* Filter labels */
+.filter-group calcite-label {
+    font-weight: 600;
+    color: #2e2e2e;
+    margin-bottom: 8px;
+}
+
+/* Checkbox group styling for flood scenarios */
+.checkbox-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.checkbox-group calcite-label {
+    font-weight: normal;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 4px 0;
+}
+
+.checkbox-group calcite-label:hover {
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    padding: 4px 8px;
+}
+
+/* Multi-select combobox styling */
+calcite-combobox {
+    width: 100%;
+    margin-top: 8px;
+}
+
+/* Reset button styling */
+.filter-reset-container {
+    text-align: center;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.filter-reset-container calcite-button {
+    min-width: 120px;
+}
+
+/* Filter summary styling */
+.filter-summary {
+    background: #e3f2fd;
+    border: 1px solid #2196f3;
+    border-radius: 4px;
+    padding: 10px;
+    margin-bottom: 15px;
+    font-size: 14px;
+}
+
+.filter-summary-title {
+    font-weight: 600;
+    color: #1976d2;
+    margin-bottom: 5px;
+}
+
+.filter-summary-content {
+    color: #424242;
+}
+
+/* Active filter indicators */
+.filter-active {
+    border-left: 4px solid #2196f3;
+    background: #f3f9ff;
+}
+
+.filter-active calcite-label {
+    color: #1976d2;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    #filter-container {
+        margin: 5px;
+        padding: 15px;
+        max-height: 300px;
+    }
+    
+    .checkbox-group {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+    
+    .filter-group {
+        padding: 10px;
+        margin-bottom: 15px;
+    }
+}
+
+/* Scrollbar styling for webkit browsers */
+#filter-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+#filter-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+#filter-container::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+#filter-container::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Map container adjustments */
+#viewDiv {
+    height: 100vh;
+    width: 100%;
+}
+
+/* Filter container positioning */
+.esri-ui-top-left {
+    max-width: 350px;
+}
+
+/* Loading state styling */
+.filter-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.filter-loading::after {
+    content: "";
+}
 
 #statistics-panel {
     padding: 15px;
