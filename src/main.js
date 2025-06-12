@@ -12,11 +12,13 @@ import './styles/main.css';
 
 // --- Application State Management ---
 // --- Application State Management ---
+// --- Application State Management ---
 class AppManager {
     constructor() {
         this.components = {};
         this.isInitialized = false;
         this.errorContainer = null;
+        this.currentMode = 'dashboard'; // 1. NEW: Add mode state property
     }
 
     /**
@@ -62,6 +64,48 @@ class AppManager {
             this.handleCriticalError(error);
         }
     }
+    
+    /**
+     * NEW: Method to control the application's view mode.
+     * @param {'dashboard' | 'swipe'} newMode - The mode to switch to.
+     */
+    setMode(newMode) {
+        if (this.currentMode === newMode) {
+            return; // No change needed
+        }
+
+        this.currentMode = newMode;
+        const isSwipeMode = newMode === 'swipe';
+
+        // Toggle the master CSS class on the main shell container
+        const shell = document.querySelector('calcite-shell');
+        if (shell) {
+            shell.classList.toggle('swipe-mode-active', isSwipeMode);
+        }
+
+        // Update the toggle button's text and icon to reflect the current mode
+        const toggleBtn = document.getElementById('toggle-swipe-mode-btn');
+        if (toggleBtn) {
+            if (isSwipeMode) {
+                toggleBtn.textContent = 'Back to Dashboard';
+                toggleBtn.iconStart = 'arrow-left';
+            } else {
+                toggleBtn.textContent = 'Layer Comparison';
+                toggleBtn.iconStart = 'swap';
+            }
+        }
+
+        // Manage the swipe widget's lifecycle and UI state
+        if (isSwipeMode) {
+            // When entering swipe mode, ensure the swipe controls panel is open for the user
+            this.components.swipeControlsUI?.toggleSwipePanel();
+        } else {
+            // When exiting swipe mode, destroy the widget and reset the UI
+            this.components.swipeManager?.destroy();
+            this.components.swipeControlsUI?.handleRemoveSwipe(); // This existing method resets the UI nicely
+        }
+    }
+
 
     /**
      * Initialize map and core components
@@ -80,6 +124,8 @@ class AppManager {
 
             await roadNetworkLayer.load();
             this.components.roadNetworkLayer = roadNetworkLayer;
+            // NOTE: Per your decision, we are no longer setting the layer to invisible by default.
+            // roadNetworkLayer.visible = false; 
             console.log(`AppManager: Road network layer "${roadNetworkLayer.title}" loaded successfully.`);
 
         } catch (error) {
@@ -208,6 +254,16 @@ class AppManager {
                     this.components.reportGenerator?.generateReport();
                 });
             }
+
+            // 2. NEW: Add listener for the swipe mode toggle button
+            const swipeModeBtn = document.getElementById('toggle-swipe-mode-btn');
+            if (swipeModeBtn) {
+                swipeModeBtn.addEventListener('click', () => {
+                    const newMode = this.currentMode === 'dashboard' ? 'swipe' : 'dashboard';
+                    this.setMode(newMode);
+                });
+            }
+
 
             console.log("AppManager: Component interactions configured.");
         } catch (error) {
