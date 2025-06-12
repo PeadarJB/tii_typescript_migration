@@ -11,6 +11,7 @@ import { ReportGenerator } from './components/ReportGenerator.js';
 import './styles/main.css';
 
 // --- Application State Management ---
+// --- Application State Management ---
 class AppManager {
     constructor() {
         this.components = {};
@@ -23,26 +24,25 @@ class AppManager {
      */
     async initialize() {
         try {
-            // 1. Attempt to initialize the map first.
-            // The ArcGIS view itself will show its own loading indicator during this phase.
-            // The login prompt, if needed, should appear now without our custom loader obscuring it.
+            // 1. Initialize the map first
             try {
                 await this.initializeMap();
             } catch (mapError) {
                 console.error("AppManager: Map initialization failed critically:", mapError);
-                // handleCriticalError will call hideLoadingState, which is fine even if it wasn't shown yet.
                 this.handleCriticalError(mapError);
-                return; // Stop further execution
+                return;
             }
 
-            // 2. If map initialization is successful, now show our custom loader
-            // for subsequent application-specific operations.
-            this.showLoadingState(); // Show loader for UI components and initial data load.
+            // 2. Show a loading indicator for the rest of the app
+            this.showLoadingState();
 
+            // 3. Initialize all other components
             try {
                 await this.initializeUIComponents();
                 this.setupComponentInteractions();
-                 this.components.reportGenerator = new ReportGenerator(this);
+
+                // Correctly create the ReportGenerator instance here
+                this.components.reportGenerator = new ReportGenerator(this);
 
                 await this.performInitialDataLoad();
 
@@ -52,13 +52,13 @@ class AppManager {
 
             } catch (postMapInitError) {
                 console.error("AppManager: Error initializing UI components or loading data:", postMapInitError);
-                this.hideLoadingState(); // Ensure loader is hidden on error during these steps.
+                this.hideLoadingState();
                 this.handleCriticalError(postMapInitError);
             }
 
-        } catch (error) { // This catch is mostly a fallback.
+        } catch (error) {
             console.error("AppManager: Unexpected error during overall initialization:", error);
-            this.hideLoadingState(); // Ensure hidden in any unexpected error scenario.
+            this.hideLoadingState();
             this.handleCriticalError(error);
         }
     }
@@ -68,13 +68,11 @@ class AppManager {
      */
     async initializeMap() {
         try {
-            // Initialize the Map
             const { view, webmap } = await initializeMapView("viewDiv");
             this.components.view = view;
             this.components.webmap = webmap;
             console.log("AppManager: Map initialized successfully.");
 
-            // Get and validate target layer
             const roadNetworkLayer = this.findRoadNetworkLayer(webmap);
             if (!roadNetworkLayer) {
                 throw new Error(`Road network layer "${CONFIG.roadNetworkLayerTitle}" not found in WebMap.`);
@@ -91,28 +89,18 @@ class AppManager {
     }
 
     /**
-     * Initialize all UI components
+     * Initialize all UI components.
+     * Note: ReportGenerator is handled separately in the main initialize method.
      */
     async initializeUIComponents() {
         const initTasks = [];
-
         try {
-            // Initialize Swipe Widget Manager
             initTasks.push(this.initializeSwipeComponents());
-            
-            // Initialize Filter Manager
             initTasks.push(this.initializeFilterManager());
-            
-            // Initialize Statistics Manager
             initTasks.push(this.initializeStatisticsManager());
-            
-            // Initialize Chart Generator
             initTasks.push(this.initializeChartGenerator());
-
-            // Wait for all components to initialize
             await Promise.all(initTasks);
             console.log("AppManager: All UI components initialized successfully.");
-
         } catch (error) {
             console.error("AppManager: UI component initialization failed:", error);
             throw new Error(`Component initialization failed: ${error.message}`);
@@ -124,22 +112,17 @@ class AppManager {
      */
     async initializeSwipeComponents() {
         try {
-            // Initialize Swipe Widget Manager
             this.components.swipeManager = new SwipeWidgetManager(
-                this.components.view, 
+                this.components.view,
                 this.components.webmap
             );
-            console.log("AppManager: SwipeWidgetManager initialized.");
-
-            // Initialize Swipe Controls UI
             this.components.swipeControlsUI = new SwipeControlsUI(
-                'swipe-controls-container', 
-                this.components.swipeManager, 
+                'swipe-controls-container',
+                this.components.swipeManager,
                 this.components.webmap
             );
             await this.components.swipeControlsUI.initialize();
-            console.log("AppManager: SwipeControlsUI initialized.");
-
+            console.log("AppManager: Swipe components initialized.");
         } catch (error) {
             console.error("AppManager: Swipe components initialization failed:", error);
             throw error;
@@ -158,7 +141,6 @@ class AppManager {
             );
             await this.components.filterManager.initializeFilters();
             console.log("AppManager: FilterManager initialized.");
-
         } catch (error) {
             console.error("AppManager: FilterManager initialization failed:", error);
             throw error;
@@ -176,7 +158,6 @@ class AppManager {
                 this.components.roadNetworkLayer
             );
             console.log("AppManager: StatisticsManager initialized.");
-
         } catch (error) {
             console.error("AppManager: StatisticsManager initialization failed:", error);
             throw error;
@@ -197,7 +178,6 @@ class AppManager {
             );
             await this.components.chartGenerator.initialize();
             console.log("AppManager: ChartGenerator initialized.");
-
         } catch (error) {
             console.error("AppManager: ChartGenerator initialization failed:", error);
             throw error;
@@ -209,24 +189,19 @@ class AppManager {
      */
     setupComponentInteractions() {
         try {
-            // Setup filter change handling
+            // Setup listener for filter changes
             this.components.filterManager.onFilterChange(async (newDefinitionExpression) => {
                 console.log("AppManager: Filter changed:", newDefinitionExpression);
-                
                 try {
-                    // Update statistics
                     await this.components.statsManager.updateAllStatistics(newDefinitionExpression);
-                    
-                    // ChartGenerator handles its own updates through its internal listener
                     console.log("AppManager: Components updated for filter change.");
-                    
                 } catch (error) {
                     console.error("AppManager: Error updating components after filter change:", error);
                     this.showErrorMessage("Failed to update data after filter change.");
                 }
             });
 
-        console.log("AppManager: Component interactions configured.");
+            // Setup listener for the report button
             const reportBtn = document.getElementById('generate-report-btn');
             if (reportBtn) {
                 reportBtn.addEventListener('click', () => {
@@ -235,7 +210,6 @@ class AppManager {
             }
 
             console.log("AppManager: Component interactions configured.");
-
         } catch (error) {
             console.error("AppManager: Failed to setup component interactions:", error);
             throw error;
@@ -247,14 +221,10 @@ class AppManager {
      */
     async performInitialDataLoad() {
         try {
-            const initialDefinitionExpression = 
+            const initialDefinitionExpression =
                 this.components.filterManager.layer.definitionExpression || "1=1";
-            
-            // Load initial statistics
             await this.components.statsManager.updateAllStatistics(initialDefinitionExpression);
-            
             console.log("AppManager: Initial data load completed.");
-
         } catch (error) {
             console.error("AppManager: Initial data load failed:", error);
             throw error;
@@ -275,32 +245,10 @@ class AppManager {
         const loadingDiv = document.createElement('div');
         loadingDiv.id = 'app-loading';
         loadingDiv.innerHTML = `
-            <div style="
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(255, 255, 255, 0.9);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                z-index: 9999;
-                font-family: Arial, sans-serif;
-            ">
+            <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.9); display: flex; justify-content: center; align-items: center; z-index: 9999; font-family: Arial, sans-serif;">
                 <div style="text-align: center;">
-                    <div style="
-                        border: 4px solid #f3f3f3;
-                        border-top: 4px solid #3498db;
-                        border-radius: 50%;
-                        width: 40px;
-                        height: 40px;
-                        animation: spin 1s linear infinite;
-                        margin: 0 auto 20px;
-                    "></div>
-                    <p style="margin: 0; font-size: 16px; color: #333;">
-                        Loading application...
-                    </p>
+                    <div style="border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+                    <p style="margin: 0; font-size: 16px; color: #333;">Loading application...</p>
                 </div>
             </div>
             <style>
@@ -308,8 +256,7 @@ class AppManager {
                     0% { transform: rotate(0deg); }
                     100% { transform: rotate(360deg); }
                 }
-            </style>
-        `;
+            </style>`;
         document.body.appendChild(loadingDiv);
     }
 
@@ -328,68 +275,20 @@ class AppManager {
      */
     handleCriticalError(error) {
         this.hideLoadingState();
-        
         const errorDiv = document.createElement('div');
         errorDiv.id = 'app-error';
         errorDiv.innerHTML = `
-            <div style="
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: #f8f9fa;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                z-index: 10000;
-                font-family: Arial, sans-serif;
-            ">
-                <div style="
-                    max-width: 600px;
-                    padding: 40px;
-                    text-align: center;
-                    background: white;
-                    border-radius: 8px;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-                ">
-                    <h2 style="color: #e74c3c; margin-bottom: 20px;">
-                        Application Error
-                    </h2>
-                    <p style="color: #666; margin-bottom: 20px; line-height: 1.5;">
-                        The application failed to start properly. Please try refreshing the page.
-                        If the problem persists, contact support.
-                    </p>
+            <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f8f9fa; display: flex; justify-content: center; align-items: center; z-index: 10000; font-family: Arial, sans-serif;">
+                <div style="max-width: 600px; padding: 40px; text-align: center; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    <h2 style="color: #e74c3c; margin-bottom: 20px;">Application Error</h2>
+                    <p style="color: #666; margin-bottom: 20px; line-height: 1.5;">The application failed to start properly. Please try refreshing the page. If the problem persists, contact support.</p>
                     <details style="text-align: left; margin-top: 20px;">
-                        <summary style="cursor: pointer; color: #007bff;">
-                            Show technical details
-                        </summary>
-                        <pre style="
-                            background: #f8f9fa;
-                            padding: 15px;
-                            border-radius: 4px;
-                            margin-top: 10px;
-                            white-space: pre-wrap;
-                            word-wrap: break-word;
-                            font-size: 12px;
-                            overflow-x: auto;
-                        ">${error.message || error}</pre>
+                        <summary style="cursor: pointer; color: #007bff;">Show technical details</summary>
+                        <pre style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-top: 10px; white-space: pre-wrap; word-wrap: break-word; font-size: 12px; overflow-x: auto;">${error.message || error}</pre>
                     </details>
-                    <button onclick="window.location.reload()" style="
-                        background: #007bff;
-                        color: white;
-                        border: none;
-                        padding: 12px 24px;
-                        border-radius: 4px;
-                        cursor: pointer;
-                        font-size: 14px;
-                        margin-top: 20px;
-                    ">
-                        Refresh Page
-                    </button>
+                    <button onclick="window.location.reload()" style="background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 14px; margin-top: 20px;">Refresh Page</button>
                 </div>
-            </div>
-        `;
+            </div>`;
         document.body.appendChild(errorDiv);
     }
 
@@ -398,23 +297,9 @@ class AppManager {
      */
     showErrorMessage(message, duration = 5000) {
         const errorDiv = document.createElement('div');
-        errorDiv.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #e74c3c;
-            color: white;
-            padding: 15px 20px;
-            border-radius: 4px;
-            z-index: 9998;
-            max-width: 300px;
-            font-family: Arial, sans-serif;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        `;
+        errorDiv.style.cssText = `position: fixed; top: 20px; right: 20px; background: #e74c3c; color: white; padding: 15px 20px; border-radius: 4px; z-index: 9998; max-width: 300px; font-family: Arial, sans-serif; box-shadow: 0 4px 12px rgba(0,0,0,0.2);`;
         errorDiv.textContent = message;
-        
         document.body.appendChild(errorDiv);
-        
         setTimeout(() => {
             if (errorDiv.parentNode) {
                 errorDiv.remove();
@@ -427,41 +312,22 @@ class AppManager {
      */
     async destroy() {
         try {
-            // Destroy components in reverse order
             const destroyTasks = [];
-            
-            if (this.components.chartGenerator?.destroy) {
-                destroyTasks.push(this.components.chartGenerator.destroy());
-            }
-            
-            if (this.components.statsManager?.destroy) {
-                destroyTasks.push(this.components.statsManager.destroy());
-            }
-            
-            if (this.components.filterManager?.destroy) {
-                destroyTasks.push(this.components.filterManager.destroy());
-            }
-            
-            if (this.components.swipeControlsUI?.destroy) {
-                destroyTasks.push(this.components.swipeControlsUI.destroy());
-            }
-            
-            if (this.components.swipeManager?.destroy) {
-                destroyTasks.push(this.components.swipeManager.destroy());
-            }
-
+            if (this.components.chartGenerator?.destroy) destroyTasks.push(this.components.chartGenerator.destroy());
+            if (this.components.statsManager?.destroy) destroyTasks.push(this.components.statsManager.destroy());
+            if (this.components.filterManager?.destroy) destroyTasks.push(this.components.filterManager.destroy());
+            if (this.components.swipeControlsUI?.destroy) destroyTasks.push(this.components.swipeControlsUI.destroy());
+            if (this.components.swipeManager?.destroy) destroyTasks.push(this.components.swipeManager.destroy());
             await Promise.allSettled(destroyTasks);
-            
             this.components = {};
             this.isInitialized = false;
-            
             console.log("AppManager: Application destroyed successfully.");
-            
         } catch (error) {
             console.error("AppManager: Error during cleanup:", error);
         }
     }
 }
+
 
 // --- Global Application Instance ---
 let appManager = null;
