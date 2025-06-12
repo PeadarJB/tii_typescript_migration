@@ -2,33 +2,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <!-- Set character encoding to UTF-8 for proper text display -->
     <meta charset="utf-8" />
-    
-    <!-- Viewport meta tag for responsive design on mobile devices -->
-    <!-- initial-scale=1: set initial zoom to 100% -->
-    <!-- maximum-scale=1: prevent zooming beyond 100% -->
-    <!-- user-scalable=no: disable user zooming -->
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
-    
-    <!-- Page title that appears in browser tab -->
     <title>TII Flood Risk Dashboard - Setup Test</title>
-    
-    <!-- Load ArcGIS Maps SDK CSS theme (light theme, version 4.29) -->
     <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css" />
-    
-    <!-- Load Calcite Design System CSS for UI components -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@esri/calcite-components/dist/calcite/calcite.css" />
-    
-    <!-- Load Calcite Components JavaScript as ES modules -->
     <script type="module" src="https://cdn.jsdelivr.net/npm/@esri/calcite-components/dist/calcite/calcite.esm.js"></script>
-    
-    <!-- Internal CSS styles -->
     
 </head>
 <body>
     <calcite-shell>
-        <!-- Header panel with Filters -->
         <header id="app-header" slot="header">
             <h1>TII Flood Risk Dashboard</h1> 
             <calcite-button id="generate-report-btn" icon-start="print" scale="s" style="position: absolute; top: 10px; right: 10px;">
@@ -39,7 +22,7 @@
             </div>          
         </header>
 
-        <!-- Chart generator shell panel -->
+       
         <calcite-shell-panel slot="panel-start" display-mode="float" id="chart-generator-shell-panel">
         <calcite-panel heading="Chart Generator">
              <div id="chart-generator-container" style="padding: 15px;">
