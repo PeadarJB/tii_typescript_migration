@@ -14,7 +14,7 @@ export class ReportGenerator {
             // 1. Gather all the necessary data in parallel
             const [mapImageUrl, activeFilters, statisticsData] = await Promise.all([
                 this.getMapImage(),
-                this.getActiveFilterText(),
+                this.getActiveFilterSummary(),
                 this.getStatisticsData()
             ]);
 
@@ -73,8 +73,8 @@ export class ReportGenerator {
         return screenshot.dataUrl;
     }
 
-    getActiveFilterText() {
-        return this.appManager.components.filterManager?.getActiveFiltersText() || [];
+    getActiveFilterSummary() {
+        return this.appManager.components.filterManager?.getCurrentFilterSummary() || {};
     }
 
     getStatisticsData() {
@@ -83,10 +83,13 @@ export class ReportGenerator {
 
     // --- HTML Building Method ---
 
-    buildReportHtml(mapImageUrl, activeFilters, statisticsData) {
-        const filterItems = activeFilters.length > 0
-            ? activeFilters.map(filter => `<li>${filter}</li>`).join('')
-            : '<li>None</li>';
+    buildReportHtml(mapImageUrl, activeFiltersSummary, statisticsData) {
+        const filterItems = Object.entries(activeFiltersSummary).length > 0
+        ? Object.entries(activeFiltersSummary).map(([key, values]) => {
+            const title = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+            return `<li><strong>${title}:</strong> ${Array.isArray(values) ? values.join(', ') : values}</li>`;
+          }).join('')
+        : '<li>None</li>';
 
         const statsTables = statisticsData.map(scenario => {
             if (!scenario.stats || scenario.stats.filter(s => s.count > 0).length === 0) return '';
