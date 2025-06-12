@@ -292,84 +292,111 @@ body {
   pointer-events: none;
 }
 
-/* ===== SWIPE CONTROLS ===== */
+/* ===== SWIPE CONTROLS (REVISED) ===== */
+
+/* Main container for the entire swipe tool UI */
 #swipe-controls-container {
   position: absolute;
-  margin: var(--spacing-md) 50px;
-  max-width: 650px;
-  width: 90%;
+  top: var(--spacing-lg);
+  left: var(--spacing-lg);
+  max-width: 380px; /* Constrain width to look like a panel */
+  width: 100%;
   z-index: 40;
-  flex-shrink: 0;
+  box-shadow: var(--shadow-medium);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  overflow: hidden; /* Prevents children from spilling out */
 }
 
+/* The main panel wrapper inside the container */
 .swipe-control-panel {
-  background: transparent;
+  display: flex;
+  flex-direction: column;
 }
 
-.swipe-panel-collapsible-content {
-  background: var(--bg-primary);
-  padding: var(--spacing-lg);
-  border-top: 1px solid var(--border-primary);
-}
-
+/* The button that shows/hides the controls */
 .swipe-panel-toggle {
-  background: var(--bg-primary);
-  border-radius: 0;
-  border: 1px solid var(--border-tertiary);
+  padding: var(--spacing-md) var(--spacing-lg);
   font-family: var(--font-family);
-  margin: 5px;
+  font-weight: 600;
+  font-size: 1.1em;
+  text-align: left;
+  border: none;
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-primary);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   transition: background-color var(--transition-fast);
+  color: var(--text-primary);
 }
 
 .swipe-panel-toggle:hover {
-  background: var(--bg-tertiary);
-  cursor: pointer;
+  background-color: var(--bg-tertiary);
 }
 
-.swipe-control-panel h3 {
-  margin-top: 0;
-  color: var(--text-primary);
+/* The icon inside the toggle button */
+.swipe-toggle-icon {
+  transition: transform var(--transition-medium);
 }
 
+/* The container for all the controls that gets hidden/shown */
+.swipe-panel-collapsible-content {
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl); /* Adds consistent space between control groups */
+  background-color: var(--bg-primary); /* Ensures a solid background */
+}
+
+/* A group of related controls (e.g., a label and its input) */
 .control-group {
-  margin-bottom: var(--spacing-lg);
-  margin-left: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
 }
 
-.control-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-  color: var(--text-primary);
+.control-group > label {
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0;
 }
 
-.control-group select,
-.control-group input[type="range"] {
-  width: 40%;
-  padding: 5px;
-  background-color: var(--bg-input);
+/* This is the key fix for the overflowing layer list */
+.checkbox-group {
+  max-height: 220px; /* Set a maximum height */
+  overflow-y: auto;  /* Make the list scroll vertically */
   border: 1px solid var(--border-tertiary);
-  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm);
+  background-color: var(--bg-quaternary);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
 }
 
+/* Style for each checkbox item for better spacing */
+.checkbox-group .checkbox-label {
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-sm);
+}
+.checkbox-group .checkbox-label:hover {
+  background-color: var(--bg-highlight);
+}
+
+
+/* General styling for form elements within the panel */
 #direction-select {
-  font-family: var(--font-family);
-  border: 1px solid var(--border-tertiary);
-  background-color: var(--bg-input);
-  cursor: pointer;
-  color: var(--text-primary);
+    width: 100%;
 }
 
-#position-value {
-  background-color: var(--bg-input);
-  color: var(--text-primary);
+.control-group input[type="range"] {
+  width: 100%;
 }
 
-input[type="range"] {
-  accent-color: var(--color-accent);
-  cursor: grab;
-}
-
+/* Status message styling */
 .status-message {
   margin-top: var(--spacing-md);
   padding: var(--spacing-sm);
@@ -377,6 +404,7 @@ input[type="range"] {
   font-size: 14px;
   background-color: var(--bg-secondary);
   color: var(--text-primary);
+  text-align: center;
 }
 
 /* ===== INDICATOR COMPONENTS ===== */
