@@ -148,48 +148,56 @@ body {
 
 /* ===== FILTER COMPONENTS (Final UI/UX Fix) ===== */
 
-/* Use Flexbox on the main container for alignment */
+/* 1. Use CSS Grid on the main container for a rigid, aligned layout */
 #filter-controls-container {
-    display: flex;
-    flex-wrap: wrap; 
+    display: grid;
+    /* Create 5 columns of equal, flexible width */
+    grid-template-columns: repeat(5, 1fr); 
     gap: var(--spacing-md);
     padding: var(--spacing-md) var(--spacing-lg);
     background-color: var(--bg-tertiary);
     border-bottom: 1px solid var(--border-secondary);
 }
 
-/* A single filter group (e.g., "County") */
+/* 2. Style a single filter group */
 .filter-group {
-    flex: 1; /* Each group will grow to take up equal space */
-    min-width: 220px; /* Prevent groups from becoming too narrow */
     display: flex;
     flex-direction: column;
+    /* Give it a position so we can control its stacking order */
+    position: relative; 
     background: var(--bg-quaternary);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
     padding: var(--spacing-lg);
 }
 
+/* 3. The z-index fix for the clipped dropdown */
+/* When the filter group is focused (i.e., clicked), bring it to the front */
+.filter-group:focus-within {
+    z-index: 10;
+}
+
 /* The label for each filter group */
 .filter-group > calcite-label {
     font-weight: 600;
     margin-bottom: var(--spacing-sm);
+    flex-shrink: 0; /* Prevent the label from shrinking */
 }
 
-/* This is the new container for the combobox and the '+N' indicator */
+/* 4. Container for the combobox and the '+N' indicator */
 .filter-input-area {
     display: flex;
-    align-items: center; /* Vertically align dropdown and indicator */
+    align-items: center;
     gap: var(--spacing-sm);
     margin-top: var(--spacing-sm);
 }
 
 .filter-input-area .filter-combobox {
     flex-grow: 1; /* Combobox takes up available space */
-    /* This forces the calcite-combobox to hide its internal wrapping chips */
-    --calcite-combobox-chip-area-display: block; 
-    --calcite-combobox-chip-area-wrap: nowrap;
-    overflow: hidden;
+    /* Set a fixed height to prevent vertical resizing */
+    height: 40px; 
+    /* Hide any chips that overflow this height */
+    overflow: hidden; 
 }
 
 /* Custom styling for the selected filter chips */
@@ -200,15 +208,15 @@ body {
   border: 1px solid var(--color-primary);
 }
 
-/* The '+N' indicator element */
+/* 5. The '+N' indicator element */
 .filter-overflow-indicator {
-    display: none; /* Hidden by default, JS will show it */
+    display: none; /* Hidden by default */
     background-color: var(--color-primary);
     color: white;
     font-size: 0.75rem;
     font-weight: 600;
     padding: 6px 10px;
-    border-radius: 999px; /* Pill shape */
+    border-radius: 999px;
     cursor: default;
     white-space: nowrap;
 }
@@ -218,13 +226,15 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding-right: var(--spacing-lg);
+    padding: var(--spacing-lg);
+    border-right: 1px solid var(--border-primary);
     margin-right: var(--spacing-lg);
 }
 
 .filter-reset-container calcite-button {
     min-width: 120px;
 }
+
 
 
 /* ===== BUTTON COMPONENTS ===== */
