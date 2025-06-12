@@ -137,6 +137,8 @@ export class FilterManager {
         for (const config of filterConfigs) {
             if (config.type === 'grouped-checkbox') {
                 this.createGroupedCheckboxFilter(config);
+            } else if (config.type === 'scenario-select') { 
+                this.createScenarioSelectFilter(config);
             } else if (config.type === 'multi-select') {
                 await this.createMultiSelectFilter(config);
             }
@@ -238,6 +240,60 @@ export class FilterManager {
         });
 
         wrapper.appendChild(checkboxContainer);
+        this.container.appendChild(wrapper);
+    }
+
+    createScenarioSelectFilter(config) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'filter-group';
+        wrapper.style.marginBottom = '20px';
+    
+        // Create label
+        const label = document.createElement('calcite-label');
+        label.innerText = config.label;
+        label.style.fontWeight = 'bold';
+        label.style.marginBottom = '8px';
+        label.style.display = 'block';
+        wrapper.appendChild(label);
+    
+        // Create combobox for multi-select
+        const combobox = document.createElement('calcite-combobox');
+        combobox.setAttribute('selection-mode', 'multiple');
+        combobox.setAttribute('placeholder', `Select ${config.label.toLowerCase()}...`);
+        combobox.setAttribute('max-items', '10');
+    
+        // Add options from the 'items' array in your config
+        config.items.forEach(item => {
+            const comboboxItem = document.createElement('calcite-combobox-item');
+            // Use the unique field name as the internal value for the option
+            comboboxItem.setAttribute('value', item.field);
+            comboboxItem.setAttribute('text-label', item.label);
+            combobox.appendChild(comboboxItem);
+        });
+    
+        // Add event listener with custom logic
+        combobox.addEventListener('calciteComboboxChange', (event) => {
+            const selectedFields = event.target.selectedItems.map(item => item.value);
+    
+            // Clear the current filter state for this ID
+            this.currentFilters[config.id] = {};
+    
+            // Re-populate the filter state based on the selected fields
+            selectedFields.forEach(selectedField => {
+                const originalItem = config.items.find(item => item.field === selectedField);
+                if (originalItem) {
+                    this.currentFilters[config.id][originalItem.field] = {
+                        field: originalItem.field,
+                        value: originalItem.value,
+                        dataType: 'number' // Assuming all scenario fields are numeric flags
+                    };
+                }
+            });
+    
+            this.applyFilters();
+        });
+    
+        wrapper.appendChild(combobox);
         this.container.appendChild(wrapper);
     }
 

@@ -12,7 +12,7 @@ export const CONFIG = {
         {
             id: 'flood-scenario',
             label: 'Flood Scenario',
-            type: 'grouped-checkbox', // Special type for combining multiple fields with OR
+            type: 'scenario-select', // Special type for combining multiple fields with OR
             description: 'Select one or more flood scenarios to analyze.',
             // Each item represents a checkbox that corresponds to a specific database field and value.
             items: [
