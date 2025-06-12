@@ -28,17 +28,30 @@ export class FilterManager {
 
     async initializeFilters() {
         this.container.innerHTML = '';
+        
+        // 1. Create the reset button first and add it directly to the main container.
         this.createResetButton();
+
+        // 2. Create a new wrapper specifically for the grid of filter dropdowns.
+        const filtersGridWrapper = document.createElement('div');
+        filtersGridWrapper.className = 'filters-grid-wrapper';
+        
         const filterConfigs = CONFIG.filterConfig || [];
         filterConfigs.forEach(config => {
             this.currentFilters[config.id] = (config.type === 'scenario-select') ? {} : [];
         });
+
         for (const config of filterConfigs) {
-            await this._createFilterUI(config);
+            // 3. Add each filter UI group into the new grid wrapper, not the main container.
+            await this._createFilterUI(config, filtersGridWrapper);
         }
+
+        // 4. Add the grid wrapper to the main container.
+        this.container.appendChild(filtersGridWrapper);
     }
 
-    async _createFilterUI(config) {
+    // This function now accepts a `parent` argument to know where to add the filter group.
+    async _createFilterUI(config, parent) {
         const wrapper = document.createElement('div');
         wrapper.className = 'filter-group';
 
@@ -53,7 +66,7 @@ export class FilterManager {
         combobox.className = 'filter-combobox';
         combobox.setAttribute('selection-mode', 'multiple');
         combobox.setAttribute('placeholder', `Select ${config.label.toLowerCase()}...`);
-        combobox.setAttribute('label', `${config.label} filter`); // For accessibility
+        combobox.setAttribute('label', `${config.label} filter`);
 
         const overflowIndicator = document.createElement('span');
         overflowIndicator.className = 'filter-overflow-indicator';
@@ -61,9 +74,8 @@ export class FilterManager {
         inputArea.appendChild(combobox);
         inputArea.appendChild(overflowIndicator);
         wrapper.appendChild(inputArea);
-        this.container.appendChild(wrapper);
+        parent.appendChild(wrapper); // Append to the provided parent (the grid wrapper).
 
-        // Populate options
         const options = config.type === 'scenario-select'
             ? config.items
             : (config.options && config.options.length > 0)
@@ -77,10 +89,28 @@ export class FilterManager {
             combobox.appendChild(comboboxItem);
         });
         
-        // Add master event listener
         combobox.addEventListener('calciteComboboxChange', (event) => {
             this._handleSelectionChange(event, config);
         });
+    }
+
+    // This method now creates a button with kind="danger" for styling.
+    createResetButton() {
+        const resetContainer = document.createElement('div');
+        resetContainer.className = 'filter-reset-container';
+        
+        const resetButton = document.createElement('calcite-button');
+        resetButton.id = 'reset-all-filters-btn'; // Give it a specific ID
+        resetButton.setAttribute('kind', 'danger'); // This makes the button red
+        resetButton.setAttribute('appearance', 'outline');
+        resetButton.setAttribute('scale', 's');
+        resetButton.innerText = 'Reset All';
+        resetButton.iconStart = 'reset';
+        
+        resetButton.addEventListener('click', () => this.resetAllFilters());
+        
+        resetContainer.appendChild(resetButton);
+        this.container.appendChild(resetContainer);
     }
 
     _handleSelectionChange(event, config) {
@@ -101,30 +131,20 @@ export class FilterManager {
     }
     
     _updateChipDisplay(combobox) {
-        // A small timeout ensures Calcite has rendered the chips before we interact with them.
         setTimeout(() => {
             const chips = Array.from(combobox.querySelectorAll('calcite-chip'));
             const overflowIndicator = combobox.nextElementSibling;
-            
-            // By default, all chips are hidden by CSS. We only show the first one.
             if (chips.length > 0) {
-                // This logic ensures only the first selected item's chip is visible.
                 chips.forEach((chip, index) => {
                     chip.style.display = (index === 0) ? 'inline-flex' : 'none';
                 });
             }
-            
-            // Show or hide the "+N" indicator based on the number of remaining chips.
             const overflowCount = chips.length - 1;
             if (overflowIndicator) {
-                if (overflowCount > 0) {
-                    overflowIndicator.textContent = `+${overflowCount}`;
-                    overflowIndicator.style.display = 'inline-flex';
-                } else {
-                    overflowIndicator.style.display = 'none';
-                }
+                overflowIndicator.style.display = (overflowCount > 0) ? 'inline-flex' : 'none';
+                overflowIndicator.textContent = `+${overflowCount}`;
             }
-        }, 0); // A 0ms timeout pushes this to the end of the execution queue.
+        }, 0);
     }
 
     async getUniqueValues(fieldName) {
@@ -132,26 +152,11 @@ export class FilterManager {
         const query = new Query({ where: "1=1", outFields: [fieldName], returnDistinctValues: true, orderByFields: [fieldName] });
         try {
             const results = await this.layer.queryFeatures(query);
-            return results.features
-                .map(f => f.attributes[fieldName])
-                .filter(v => v !== null && v !== undefined && String(v).trim() !== "")
-                .map(v => ({ label: String(v), value: String(v) }));
+            return results.features.map(f => f.attributes[fieldName]).filter(v => v !== null && v !== undefined && String(v).trim() !== "").map(v => ({ label: String(v), value: String(v) }));
         } catch (error) {
             console.error(`Error fetching unique values for "${fieldName}":`, error);
             return [];
         }
-    }
-
-    createResetButton() {
-        const resetContainer = document.createElement('div');
-        resetContainer.className = 'filter-reset-container';
-        const resetButton = document.createElement('calcite-button');
-        resetButton.setAttribute('kind', 'neutral');
-        resetButton.setAttribute('scale', 's');
-        resetButton.innerText = 'Reset All Filters';
-        resetButton.addEventListener('click', () => this.resetAllFilters());
-        resetContainer.appendChild(resetButton);
-        this.container.appendChild(resetButton);
     }
 
     resetAllFilters() {
@@ -175,9 +180,7 @@ export class FilterManager {
                 hasActiveFilters = true;
                 const { field, dataType } = filterData[0];
                 const values = filterData.map(item => item.value);
-                const valueList = (dataType === 'string')
-                    ? values.map(v => `'${String(v).replace(/'/g, "''")}'`).join(', ')
-                    : values.join(', ');
+                const valueList = (dataType === 'string') ? values.map(v => `'${String(v).replace(/'/g, "''")}'`).join(', ') : values.join(', ');
                 if (valueList) whereClauseArray.push(`${field} IN (${valueList})`);
             } else if (typeof filterData === 'object' && Object.keys(filterData).length > 0) {
                 hasActiveFilters = true;
@@ -185,14 +188,12 @@ export class FilterManager {
                 if (fieldConditions.length > 0) whereClauseArray.push(`(${fieldConditions.join(' OR ')})`);
             }
         });
-        // Toggle the layer's visibility based on whether any filters are active.
-        this.layer.visible = hasActiveFilters;
         const whereClause = whereClauseArray.join(' AND ') || '1=1';
         this.layer.definitionExpression = whereClause;
         if (hasActiveFilters && this.view && this.layer?.visible) {
             try {
                 const { extent } = await this.layer.queryExtent(this.layer.createQuery());
-                if (extent) await this.view.goTo(extent.expand(0.8), { duration: 1000, easing: "ease-in-out" });
+                if (extent) await this.view.goTo(extent.expand(1.5));
             } catch (error) {
                 if (!error.name?.includes("AbortError")) console.error("Error zooming to filtered extent:", error);
             }

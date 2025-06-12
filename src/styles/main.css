@@ -146,32 +146,52 @@ body {
   color: var(--text-primary);
 }
 
-/* ===== FILTER COMPONENTS (Definitive UI/UX Fix) ===== */
+/* ===== FILTER COMPONENTS (Final UI/UX Fix) ===== */
 
 /* 1. Main container for the filter bar */
 #filter-controls-container {
-    display: grid;
-    /* Create a flexible grid that adapts to screen size */
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    display: flex;
+    flex-wrap: wrap; /* Allow items to wrap on smaller screens */
+    align-items: flex-start; /* Align all items to the top */
     gap: var(--spacing-md);
     padding: var(--spacing-md) var(--spacing-lg);
     background-color: var(--bg-tertiary);
     border-bottom: 1px solid var(--border-secondary);
-    align-items: start; /* Align all groups to the top */
 }
 
-/* 2. A single filter group (e.g., "County") */
+/* 2. Container for the "Reset All" button */
+.filter-reset-container {
+    display: flex;
+    align-items: center; /* Center the button vertically */
+    /* Add padding to align the button with the top of the filter inputs */
+    padding-top: 32px; 
+    margin-right: var(--spacing-lg);
+    flex-shrink: 0; /* Prevent this container from shrinking */
+}
+
+/* 3. The new wrapper for the grid of filter dropdowns */
+.filters-grid-wrapper {
+    display: grid;
+    /* Create a responsive grid that fits as many columns as possible */
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--spacing-md);
+    flex-grow: 1; /* Allow the grid to take up the remaining space */
+}
+
+
+/* 4. A single filter group (e.g., "County") */
 .filter-group {
     display: flex;
     flex-direction: column;
-    position: relative;
+    position: relative; /* Crucial for the z-index fix */
     background: var(--bg-quaternary);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
     padding: var(--spacing-lg);
 }
 
-/* 3. The z-index fix: When a group is active, bring it to the front */
+/* 5. The z-index fix for the clipped dropdown */
+/* When a filter group is focused (i.e., you click into it), bring it to the front */
 .filter-group:focus-within {
     z-index: 10;
 }
@@ -180,12 +200,11 @@ body {
 .filter-group > calcite-label {
     font-weight: 600;
     margin-bottom: var(--spacing-sm);
-    flex-shrink: 0;
 }
 
-/* 4. The container for the dropdown and its "+N" indicator */
+/* 6. The area containing the dropdown and the '+N' indicator */
 .filter-input-area {
-    position: relative; /* This is crucial for positioning the indicator */
+    position: relative; /* Needed for positioning the indicator */
     margin-top: var(--spacing-sm);
 }
 
@@ -193,20 +212,25 @@ body {
     width: 100%;
 }
 
-/* 5. Custom styling for the selected filter chips */
+/* 7. THE CRITICAL FIX: Allow the pop-up menu to be visible */
+/* This tells the Calcite component that its pop-up menu can "overflow" its container */
+.filter-combobox {
+    --calcite-combobox-overflow: visible;
+}
+
+/* 8. Custom styling for the selected filter "chips" */
 .filter-combobox calcite-chip {
   --calcite-chip-background: var(--color-primary-light); 
   --calcite-chip-text-color: var(--color-primary-dark);
   font-weight: 500;
   border: 1px solid var(--color-primary);
-  /* The chips will be hidden/shown by JS */
-  display: none;
+  display: none; /* JS will control which chips are visible */
 }
 
-/* 6. The "+N" indicator element */
+/* 9. The '+N' indicator element */
 .filter-overflow-indicator {
     display: none; /* Hidden by default */
-    position: absolute; /* Positioned relative to the input area */
+    position: absolute;
     top: 50%;
     right: 40px; /* Position it just before the dropdown arrow */
     transform: translateY(-50%);
@@ -215,17 +239,8 @@ body {
     font-size: 0.75rem;
     font-weight: 600;
     padding: 4px 8px;
-    border-radius: 999px; /* Pill shape */
+    border-radius: 999px;
     pointer-events: none; /* Make it non-interactive */
-}
-
-/* Reset button styling */
-.filter-reset-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding-right: var(--spacing-lg);
-    margin-right: var(--spacing-lg);
 }
 
 
