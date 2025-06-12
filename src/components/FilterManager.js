@@ -53,7 +53,7 @@ export class FilterManager {
         combobox.className = 'filter-combobox';
         combobox.setAttribute('selection-mode', 'multiple');
         combobox.setAttribute('placeholder', `Select ${config.label.toLowerCase()}...`);
-        combobox.setAttribute('label', `${config.label} filter`);
+        combobox.setAttribute('label', `${config.label} filter`); // For accessibility
 
         const overflowIndicator = document.createElement('span');
         overflowIndicator.className = 'filter-overflow-indicator';
@@ -63,6 +63,7 @@ export class FilterManager {
         wrapper.appendChild(inputArea);
         this.container.appendChild(wrapper);
 
+        // Populate options
         const options = config.type === 'scenario-select'
             ? config.items
             : (config.options && config.options.length > 0)
@@ -76,6 +77,7 @@ export class FilterManager {
             combobox.appendChild(comboboxItem);
         });
         
+        // Add master event listener
         combobox.addEventListener('calciteComboboxChange', (event) => {
             this._handleSelectionChange(event, config);
         });
@@ -99,18 +101,30 @@ export class FilterManager {
     }
     
     _updateChipDisplay(combobox) {
-        const overflowIndicator = combobox.nextElementSibling;
-        const selectedCount = combobox.selectedItems.length;
-        const maxVisible = 1; 
-        
-        const overflowCount = selectedCount - maxVisible;
-
-        if (overflowCount > 0) {
-            overflowIndicator.textContent = `+${overflowCount}`;
-            overflowIndicator.style.display = 'inline-flex';
-        } else {
-            overflowIndicator.style.display = 'none';
-        }
+        // A small timeout ensures Calcite has rendered the chips before we interact with them.
+        setTimeout(() => {
+            const chips = Array.from(combobox.querySelectorAll('calcite-chip'));
+            const overflowIndicator = combobox.nextElementSibling;
+            
+            // By default, all chips are hidden by CSS. We only show the first one.
+            if (chips.length > 0) {
+                // This logic ensures only the first selected item's chip is visible.
+                chips.forEach((chip, index) => {
+                    chip.style.display = (index === 0) ? 'inline-flex' : 'none';
+                });
+            }
+            
+            // Show or hide the "+N" indicator based on the number of remaining chips.
+            const overflowCount = chips.length - 1;
+            if (overflowIndicator) {
+                if (overflowCount > 0) {
+                    overflowIndicator.textContent = `+${overflowCount}`;
+                    overflowIndicator.style.display = 'inline-flex';
+                } else {
+                    overflowIndicator.style.display = 'none';
+                }
+            }
+        }, 0); // A 0ms timeout pushes this to the end of the execution queue.
     }
 
     async getUniqueValues(fieldName) {
@@ -137,7 +151,7 @@ export class FilterManager {
         resetButton.innerText = 'Reset All Filters';
         resetButton.addEventListener('click', () => this.resetAllFilters());
         resetContainer.appendChild(resetButton);
-        this.container.appendChild(resetContainer);
+        this.container.appendChild(resetButton);
     }
 
     resetAllFilters() {
