@@ -146,53 +146,50 @@ body {
   color: var(--text-primary);
 }
 
-/* ===== FILTER COMPONENTS (Final UI/UX Fixes) ===== */
+/* ===== FILTER COMPONENTS (Final UI/UX Fix) ===== */
 
-/* --- FIX 1: Use Flexbox for consistent height --- */
-/* By making the main container a flexbox, we can align all filter groups. */
+/* Use Flexbox on the main container for alignment */
 #filter-controls-container {
+    display: flex;
+    flex-wrap: wrap; 
+    gap: var(--spacing-md);
     padding: var(--spacing-md) var(--spacing-lg);
     background-color: var(--bg-tertiary);
     border-bottom: 1px solid var(--border-secondary);
-    /* Make this a flex container */
-    display: flex; 
-    /* Allow items to wrap if the screen is too small */
-    flex-wrap: wrap; 
-    gap: var(--spacing-md);
 }
 
-/* This is a single filter group (e.g., "County") */
+/* A single filter group (e.g., "County") */
 .filter-group {
-    /* Tell each filter group to grow and take up equal space */
-    flex: 1; 
-    /* Set a minimum width to prevent them from becoming too narrow */
-    min-width: 200px; 
+    flex: 1; /* Each group will grow to take up equal space */
+    min-width: 220px; /* Prevent groups from becoming too narrow */
     display: flex;
     flex-direction: column;
-    padding: var(--spacing-lg);
+    background: var(--bg-quaternary);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
-    background: var(--bg-quaternary);
-    margin-bottom: 0; /* No need for margin-bottom with flex gap */
+    padding: var(--spacing-lg);
 }
 
 /* The label for each filter group */
-.filter-group calcite-label {
+.filter-group > calcite-label {
     font-weight: 600;
-    color: var(--text-primary);
     margin-bottom: var(--spacing-sm);
 }
 
-/* --- FIX 2: Correct the Combobox Wrapper --- */
-.filter-combobox-wrapper {
-    /* No fixed height needed anymore, it will stretch with the flex parent. */
-    /* REMOVED: overflow-y: auto; -- THIS IS THE CRITICAL FIX for the hidden dropdown menu. */
-    padding: 5px;
-    border: 1px solid var(--border-tertiary);
-    border-radius: var(--radius-sm);
-    background-color: var(--bg-input);
+/* This is the new container for the combobox and the '+N' indicator */
+.filter-input-area {
+    display: flex;
+    align-items: center; /* Vertically align dropdown and indicator */
+    gap: var(--spacing-sm);
     margin-top: var(--spacing-sm);
-    flex-grow: 1; /* Allows the wrapper to fill the space in the filter group */
+}
+
+.filter-input-area .filter-combobox {
+    flex-grow: 1; /* Combobox takes up available space */
+    /* This forces the calcite-combobox to hide its internal wrapping chips */
+    --calcite-combobox-chip-area-display: block; 
+    --calcite-combobox-chip-area-wrap: nowrap;
+    overflow: hidden;
 }
 
 /* Custom styling for the selected filter chips */
@@ -203,15 +200,25 @@ body {
   border: 1px solid var(--color-primary);
 }
 
+/* The '+N' indicator element */
+.filter-overflow-indicator {
+    display: none; /* Hidden by default, JS will show it */
+    background-color: var(--color-primary);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 999px; /* Pill shape */
+    cursor: default;
+    white-space: nowrap;
+}
 
 /* Reset button styling */
-/* Giving the reset button a fixed-width container helps with alignment */
 .filter-reset-container {
     display: flex;
     align-items: center;
     justify-content: center;
     padding-right: var(--spacing-lg);
-    border-right: 1px solid var(--border-primary);
     margin-right: var(--spacing-lg);
 }
 
@@ -219,33 +226,6 @@ body {
     min-width: 120px;
 }
 
-/* ===== FILTER UX - PLUS N INDICATOR ===== */
-
-/* This is the new container for the combobox and the '+N' indicator */
-.filter-input-area {
-    display: flex;
-    align-items: center; /* Vertically align the dropdown and the indicator */
-    gap: var(--spacing-sm); /* Space between dropdown and indicator */
-    margin-top: var(--spacing-sm);
-}
-
-.filter-input-area .filter-combobox {
-    flex-grow: 1; /* Allows the combobox to take up all available space */
-}
-
-/* This is the '+N' indicator element */
-.filter-overflow-indicator {
-    display: none; /* Hidden by default, JS will show it */
-    background-color: var(--color-primary-light);
-    color: var(--color-primary-dark);
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 6px 10px;
-    border-radius: 999px; /* Make it a pill shape */
-    cursor: default;
-    white-space: nowrap; /* Prevent text like '+10' from wrapping */
-    transition: all var(--transition-fast);
-}
 
 /* ===== BUTTON COMPONENTS ===== */
 .btn {
