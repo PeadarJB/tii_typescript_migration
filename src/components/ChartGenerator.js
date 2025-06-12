@@ -44,7 +44,7 @@ export class ChartGenerator {
                 <h3>Create Your Chart</h3>
                 <div class="control-group">
                     <calcite-label>Feature(s) to Analyze (Max ${this.maxFeatures}):</calcite-label>
-                    <div id="feature-checkbox-list" class="chart-feature-list"></div>
+                    <calcite-combobox id="feature-select" selection-mode="multiple" placeholder="Select features..."></calcite-combobox>
                 </div>
                 <div class="control-group">
                     <calcite-label for="group-by-select">Group by:</calcite-label>
@@ -112,7 +112,7 @@ export class ChartGenerator {
     }
 
     setupEventListeners() {
-        this.elements.feature_checkbox_list.addEventListener('calciteCheckboxChange', () => this.validateSelections());
+        this.elements.feature_select.addEventListener('calciteComboboxChange', () => this.validateSelections());
         this.elements.group_by_select.addEventListener('calciteSelectChange', () => this.validateSelections());
         this.elements.chart_type_select.addEventListener('calciteSelectChange', () => this.validateSelections());
 
@@ -191,14 +191,11 @@ export class ChartGenerator {
         if (!this.layer.loaded) await this.layer.load();
 
         CONFIG.chartingFeatures.forEach(feature => {
-            const label = document.createElement('calcite-label');
-            label.layout = 'inline-flex';
-            const checkbox = document.createElement('calcite-checkbox');
-            checkbox.value = feature.field;
-            checkbox.dataset.label = feature.label;
-            label.appendChild(checkbox);
-            label.append(feature.label);
-            this.elements.feature_checkbox_list.appendChild(label);
+            const item = document.createElement('calcite-combobox-item');
+            item.value = feature.field;
+            item.setAttribute('text-label', feature.label);
+            item.dataset.description = feature.description; // Store description if needed
+            this.elements.feature_select.appendChild(item);
         });
 
         const suitableGroupByFields = ['string', 'small-integer', 'integer'];
@@ -353,9 +350,11 @@ export class ChartGenerator {
     }
 
     getSelectedFeatures() {
-        return [...this.elements.feature_checkbox_list.querySelectorAll('calcite-checkbox')]
-            .filter(cb => cb.checked)
-            .map(cb => ({ value: cb.value, label: cb.dataset.label }));
+        if (!this.elements.feature_select) return [];
+        return this.elements.feature_select.selectedItems.map(item => ({
+            value: item.value,
+            label: item.textLabel
+        }));
     }
 
     downloadChart() {
