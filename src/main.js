@@ -80,8 +80,6 @@ class AppManager {
 
             await roadNetworkLayer.load();
             this.components.roadNetworkLayer = roadNetworkLayer;
-            // Start with the road network layer invisible.
-            roadNetworkLayer.visible = false; 
             console.log(`AppManager: Road network layer "${roadNetworkLayer.title}" loaded successfully.`);
 
         } catch (error) {
