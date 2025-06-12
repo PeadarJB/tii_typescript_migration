@@ -85,7 +85,7 @@ export class ReportGenerator {
                 let valueText;
                 if (filterConfig.type === 'scenario-select') {
                     // For scenarios, map the field names back to their labels
-                    valueText = Object.keys(values)
+                    valueText = values
                         .map(field => filterConfig.items.find(item => item.field === field)?.label || field)
                         .join(', ');
                 } else if (filterConfig.options && filterConfig.options.length > 0) {
@@ -153,7 +153,7 @@ export class ReportGenerator {
         modalOverlay.innerHTML = `
             <style>
                 #report-preview-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1001; font-family: 'Avenir Next', sans-serif; }
-                .report-preview-container { background: white; width: 210mm; height: 297mm; display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+                .report-preview-container { background: white; width: 70%; height: 80%; display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
                 .report-preview-toolbar { padding: 10px; background: #f0f0f0; text-align: right; flex-shrink: 0; border-bottom: 1px solid #ddd; }
                 .report-preview-body { padding: 15mm; flex-grow: 1; overflow-y: auto; }
                 .report-preview-content h2 { font-size: 16px; font-weight: bold; color: #333; margin: 0 0 10px 0; }
