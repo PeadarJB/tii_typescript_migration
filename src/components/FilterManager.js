@@ -185,12 +185,14 @@ export class FilterManager {
                 if (fieldConditions.length > 0) whereClauseArray.push(`(${fieldConditions.join(' OR ')})`);
             }
         });
+        // Toggle the layer's visibility based on whether any filters are active.
+        this.layer.visible = hasActiveFilters;
         const whereClause = whereClauseArray.join(' AND ') || '1=1';
         this.layer.definitionExpression = whereClause;
         if (hasActiveFilters && this.view && this.layer?.visible) {
             try {
                 const { extent } = await this.layer.queryExtent(this.layer.createQuery());
-                if (extent) await this.view.goTo(extent.expand(1.5));
+                if (extent) await this.view.goTo(extent.expand(0.8), { duration: 1000, easing: "ease-in-out" });
             } catch (error) {
                 if (!error.name?.includes("AbortError")) console.error("Error zooming to filtered extent:", error);
             }
