@@ -414,7 +414,7 @@ export class FilterManager {
                 const results = await this.layer.queryExtent(extentQuery);
 
                 if (results && results.count > 0 && results.extent) {
-                    await this.view.goTo(results.extent.expand(1.5));
+                    await this.view.goTo(results.extent.expand(2));
                     console.log("FilterManager: Zoomed to filtered extent.");
                 } else if (results && results.count === 0) {
                     console.log("FilterManager: No features match the current filters.");
