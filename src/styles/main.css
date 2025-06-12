@@ -154,122 +154,147 @@ body {
   gap: var(--spacing-md);
 }
 
-/* ===== FILTER COMPONENTS ===== */
+/* ===== FILTER COMPONENTS (Refactored for UI/UX) ===== */
+
+/* This is the main container for the entire filter section */
 #filter-container {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-xl);
-  margin: var(--spacing-md);
-  box-shadow: var(--shadow-medium);
-  max-height: 400px;
-  overflow-y: auto;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    margin: var(--spacing-md);
+    box-shadow: var(--shadow-medium);
+    max-height: 400px;
+    overflow-y: auto;
 }
 
+/* This is a single filter group (e.g., "County") */
 .filter-group {
-  margin-bottom: var(--spacing-xl);
-  padding: var(--spacing-lg);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
-  background: var(--bg-quaternary);
+    margin-bottom: var(--spacing-xl);
+    padding: var(--spacing-lg);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    background: var(--bg-quaternary);
 }
 
 .filter-group:last-child {
-  margin-bottom: 0;
+    margin-bottom: 0;
 }
 
+/* The label for each filter group */
 .filter-group calcite-label {
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: var(--spacing-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
 }
 
 .filter-active {
-  border-left: 4px solid var(--border-accent);
-  background: var(--bg-highlight);
+    border-left: 4px solid var(--border-accent);
+    background: var(--bg-highlight);
 }
 
 .filter-active calcite-label {
-  color: var(--color-primary-dark);
+    color: var(--color-primary-dark);
 }
 
-/* Checkbox Groups */
-.checkbox-group {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-md);
-  border: 1px solid var(--border-tertiary);
+
+/* --- NEW: Wrapper for Combobox --- */
+/* This new wrapper controls the height and scrolling, preventing layout shifts. */
+.filter-combobox-wrapper {
+    /* Set a fixed height that comfortably fits two rows of chips before scrolling. */
+    max-height: 85px; 
+    /* Add a vertical scrollbar ONLY when content overflows. */
+    overflow-y: auto; 
+    /* Add some padding for better spacing and to prevent the scrollbar from touching the chips. */
+    padding: 5px;
+    border: 1px solid var(--border-tertiary);
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-input);
+    margin-top: var(--spacing-sm);
+}
+
+/* --- NEW: Scrollbar Styling for the Wrapper --- */
+.filter-combobox-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+.filter-combobox-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+.filter-combobox-wrapper::-webkit-scrollbar-thumb {
+  background-color: var(--border-secondary);
   border-radius: var(--radius-sm);
-  padding: var(--spacing-sm);
-  height: 140px;
-  overflow-y: auto;
-  background-color: var(--bg-input);
-  width: fit-content;
+  border: 2px solid var(--bg-input);
+}
+.filter-combobox-wrapper::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text-light);
 }
 
-.checkbox-group calcite-label,
-.checkbox-group .checkbox-label {
-  font-weight: normal;
-  font-size: 14px;
-  cursor: pointer;
-  padding: var(--spacing-xs) 0;
-  display: flex;
-  align-items: center;
-  transition: background-color var(--transition-fast);
+
+/* --- NEW: Custom Chip Styling --- */
+/* We target the calcite-chip element inside our custom combobox class. */
+.filter-combobox calcite-chip {
+  /* Use the app's primary accent color for the background. */
+  --calcite-chip-background: var(--color-primary-light); 
+  /* Use a darker text for better contrast. */
+  --calcite-chip-text-color: var(--color-primary-dark);
+  font-weight: 500;
+  border: 1px solid var(--color-primary);
 }
 
-.checkbox-group calcite-label:hover,
-.checkbox-group .checkbox-label:hover {
-  background-color: var(--bg-tertiary);
-  border-radius: var(--radius-sm);
-  padding: var(--spacing-xs) var(--spacing-sm);
-}
 
-.checkbox-group calcite-checkbox {
-  margin-right: var(--spacing-sm);
-}
-
-/* Filter Controls */
-calcite-combobox {
-  width: 100%;
-  margin-top: var(--spacing-sm);
-}
-
+/* Reset button styling */
 .filter-reset-container {
-  text-align: center;
-  margin-bottom: var(--spacing-lg);
-  padding-bottom: var(--spacing-lg);
-  border-bottom: 1px solid var(--border-primary);
+    text-align: center;
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-lg);
+    border-bottom: 1px solid var(--border-primary);
 }
 
 .filter-reset-container calcite-button {
-  min-width: 120px;
+    min-width: 120px;
 }
 
+/* Other filter-related styles (unchanged) */
 .filter-summary {
-  background: var(--color-primary-light);
-  border: 1px solid var(--color-primary);
-  border-radius: var(--radius-sm);
-  padding: var(--spacing-md);
-  margin-bottom: var(--spacing-lg);
-  font-size: 14px;
+    background: var(--color-primary-light);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    font-size: 14px;
 }
 
 .filter-summary-title {
-  font-weight: 600;
-  color: var(--color-primary-dark);
-  margin-bottom: 5px;
+    font-weight: 600;
+    color: var(--color-primary-dark);
+    margin-bottom: 5px;
 }
 
 .filter-summary-content {
-  color: var(--text-secondary);
+    color: var(--text-secondary);
 }
 
 .filter-loading {
-  opacity: 0.6;
-  pointer-events: none;
+    opacity: 0.6;
+    pointer-events: none;
 }
+
+/* NOTE: The old .checkbox-group styles can be removed if you are no longer using that filter type. */
+/* I've kept them here for now just in case. */
+.checkbox-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-md);
+    border: 1px solid var(--border-tertiary);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-sm);
+    height: 140px;
+    overflow-y: auto;
+    background-color: var(--bg-input);
+    width: fit-content;
+}
+
 
 /* ===== BUTTON COMPONENTS ===== */
 .btn {
