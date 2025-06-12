@@ -146,130 +146,89 @@ body {
   color: var(--text-primary);
 }
 
+/* ===== FILTER COMPONENTS (Definitive UI/UX Fix) ===== */
+
+/* 1. Main container for the filter bar */
 #filter-controls-container {
-  padding: var(--spacing-md) var(--spacing-lg);
-  background-color: var(--bg-tertiary);
-  border-bottom: 1px solid var(--border-secondary);
-  display: flex;
-  gap: var(--spacing-md);
+    display: grid;
+    /* Create a flexible grid that adapts to screen size */
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-lg);
+    background-color: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-secondary);
+    align-items: start; /* Align all groups to the top */
 }
 
-/* ===== FILTER COMPONENTS ===== */
-#filter-container {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-xl);
-  margin: var(--spacing-md);
-  box-shadow: var(--shadow-medium);
-  max-height: 400px;
-  overflow-y: auto;
-}
-
+/* 2. A single filter group (e.g., "County") */
 .filter-group {
-  margin-bottom: var(--spacing-xl);
-  padding: var(--spacing-lg);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
-  background: var(--bg-quaternary);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    background: var(--bg-quaternary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
 }
 
-.filter-group:last-child {
-  margin-bottom: 0;
+/* 3. The z-index fix: When a group is active, bring it to the front */
+.filter-group:focus-within {
+    z-index: 10;
 }
 
-.filter-group calcite-label {
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: var(--spacing-sm);
+/* The label for each filter group */
+.filter-group > calcite-label {
+    font-weight: 600;
+    margin-bottom: var(--spacing-sm);
+    flex-shrink: 0;
 }
 
-.filter-active {
-  border-left: 4px solid var(--border-accent);
-  background: var(--bg-highlight);
+/* 4. The container for the dropdown and its "+N" indicator */
+.filter-input-area {
+    position: relative; /* This is crucial for positioning the indicator */
+    margin-top: var(--spacing-sm);
 }
 
-.filter-active calcite-label {
-  color: var(--color-primary-dark);
+.filter-input-area .filter-combobox {
+    width: 100%;
 }
 
-/* Checkbox Groups */
-.checkbox-group {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-md);
-  border: 1px solid var(--border-tertiary);
-  border-radius: var(--radius-sm);
-  padding: var(--spacing-sm);
-  height: 140px;
-  overflow-y: auto;
-  background-color: var(--bg-input);
-  width: fit-content;
-}
-
-.checkbox-group calcite-label,
-.checkbox-group .checkbox-label {
-  font-weight: normal;
-  font-size: 14px;
-  cursor: pointer;
-  padding: var(--spacing-xs) 0;
-  display: flex;
-  align-items: center;
-  transition: background-color var(--transition-fast);
-}
-
-.checkbox-group calcite-label:hover,
-.checkbox-group .checkbox-label:hover {
-  background-color: var(--bg-tertiary);
-  border-radius: var(--radius-sm);
-  padding: var(--spacing-xs) var(--spacing-sm);
-}
-
-.checkbox-group calcite-checkbox {
-  margin-right: var(--spacing-sm);
-}
-
-/* Filter Controls */
-calcite-combobox {
-  width: 100%;
-  margin-top: var(--spacing-sm);
-}
-
-.filter-reset-container {
-  text-align: center;
-  margin-bottom: var(--spacing-lg);
-  padding-bottom: var(--spacing-lg);
-  border-bottom: 1px solid var(--border-primary);
-}
-
-.filter-reset-container calcite-button {
-  min-width: 120px;
-}
-
-.filter-summary {
-  background: var(--color-primary-light);
+/* 5. Custom styling for the selected filter chips */
+.filter-combobox calcite-chip {
+  --calcite-chip-background: var(--color-primary-light); 
+  --calcite-chip-text-color: var(--color-primary-dark);
+  font-weight: 500;
   border: 1px solid var(--color-primary);
-  border-radius: var(--radius-sm);
-  padding: var(--spacing-md);
-  margin-bottom: var(--spacing-lg);
-  font-size: 14px;
+  /* The chips will be hidden/shown by JS */
+  display: none;
 }
 
-.filter-summary-title {
-  font-weight: 600;
-  color: var(--color-primary-dark);
-  margin-bottom: 5px;
+/* 6. The "+N" indicator element */
+.filter-overflow-indicator {
+    display: none; /* Hidden by default */
+    position: absolute; /* Positioned relative to the input area */
+    top: 50%;
+    right: 40px; /* Position it just before the dropdown arrow */
+    transform: translateY(-50%);
+    background-color: var(--color-primary);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 999px; /* Pill shape */
+    pointer-events: none; /* Make it non-interactive */
 }
 
-.filter-summary-content {
-  color: var(--text-secondary);
+/* Reset button styling */
+.filter-reset-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-right: var(--spacing-lg);
+    margin-right: var(--spacing-lg);
 }
 
-.filter-loading {
-  opacity: 0.6;
-  pointer-events: none;
-}
+
 
 /* ===== BUTTON COMPONENTS ===== */
 .btn {
