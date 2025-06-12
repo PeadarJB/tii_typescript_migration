@@ -5,279 +5,410 @@ import Query from "@arcgis/core/rest/support/Query.js";
 
 export class FilterManager {
     constructor(container, view, roadNetworkLayer) {
-        // --- SETUP ---
+        // SETUP: Get the HTML container where filters will be displayed
         this.container = typeof container === 'string' ? document.getElementById(container) : container;
+        
+        // SETUP: Store references to the map view and data layer
         this.view = view;
         this.layer = roadNetworkLayer;
         
-        // --- STATE MANAGEMENT ---
-        // Stores the state of active filters, e.g., { county: ['Dublin', 'Kildare'], criticality: [4, 5] }
-        this.activeFilters = new Map(); 
+        // SETUP: Initialize tracking variables for multi-select filters
+        this.currentFilters = {}; // Stores active filter values per filter ID
         this.onFilterChangeCallback = null;
         this.initialExtent = null;
-        this.filterElements = new Map(); // Store references to UI components
 
-        // --- VALIDATION ---
+        // ERROR CHECKING: Make sure we have a valid container
         if (!this.container) {
             console.error("FilterManager: Container not found. Filters cannot be created.");
             return;
         }
+        
         if (!this.view || !this.layer) {
-            console.warn("FilterManager: View or Layer not provided. Zoom and query functionality will be affected.");
+            console.error("FilterManager: View or Layer is not provided. Zoom functionality may be affected.");
         }
 
-        // --- INITIALIZATION ---
-        this.storeInitialExtent();
-        console.log("FilterManager initialized.");
-    }
-
-    /**
-     * Stores the initial map extent to allow for resetting the view.
-     */
-    storeInitialExtent() {
-        if (this.view?.extent) {
+        // SAVE INITIAL MAP POSITION
+        if (this.view && this.view.extent) {
             this.initialExtent = this.view.extent.clone();
+            console.log("FilterManager: Initial map extent stored directly.", this.initialExtent);
         } else if (this.view) {
-            this.view.when(view => {
-                this.initialExtent = view.extent?.clone();
-                console.log("FilterManager: Initial map extent stored on view ready.", this.initialExtent);
-            }).catch(error => console.error("FilterManager: Error storing initial extent:", error));
+            this.view.when(() => {
+                if (this.view.extent) {
+                    this.initialExtent = this.view.extent.clone();
+                    console.log("FilterManager: Initial map extent stored via view.when().", this.initialExtent);
+                } else {
+                    console.warn("FilterManager: View became ready, but extent is still not available.");
+                }
+            }).catch(error => {
+                console.error("FilterManager: Error storing initial extent via view.when():", error);
+            });
         }
+
+        console.log("FilterManager initialized successfully.");
     }
 
-    /**
-     * Sets a callback function to be executed when filters are changed.
-     * @param {function} callback - The function to call with the new definitionExpression.
-     */
+    // CALLBACK SETUP: Allow other parts of the app to know when filters change
     onFilterChange(callback) {
         this.onFilterChangeCallback = callback;
     }
 
-    /**
-     * Main initialization method. Clears the container and builds all filters from the config.
-     */
+    // MAIN INITIALIZATION: Create all filter UI elements based on configuration
     async initializeFilters() {
-        this.container.innerHTML = ''; // Clear previous content
+        // Clear any existing filter UI elements
+        this.container.innerHTML = '';
+        
+        // Create reset button first
+        this.createResetButton();
 
-        // Create a container for the filter buttons
-        const filterControlsWrapper = document.createElement('div');
-        filterControlsWrapper.className = 'filter-controls-wrapper';
-        this.container.appendChild(filterControlsWrapper);
-
-        // Build each filter UI component
-        for (const config of CONFIG.filterConfig) {
-            // Dynamically populate options if needed
-            if (config.type === 'multi-select' && config.options.length === 0) {
-                config.options = await this.getUniqueValues(config.field);
+        // Get filter configuration (you'll need to add this to your CONFIG)
+        const filterConfigs = CONFIG.filterConfig || [
+            {
+                id: 'flood-scenario',
+                label: 'Flood Scenario',
+                type: 'grouped-checkbox',
+                items: [
+                    { label: 'Future Flooding (Mid-Range, RCP 4.5%)', field: 'future_flood_intersection_m', value: 1 },
+                    { label: 'Future Flooding (High-Range, RCP 8.5%)', field: 'future_flood_intersection_h', value: 1 },
+                    { label: 'Historic & Future (Mid-Range, RCP 4.5%)', field: 'historic_intersection_m', value: 1 },
+                    { label: 'Historic & Future (High-Range, RCP 8.5%)', field: 'historic_intersection_h', value: 1 },
+                    { label: 'Historic Only (Mid-Range, RCP 4.5%)', field: 'hist_no_future_m', value: 1 },
+                    { label: 'Historic Only (High-Range, RCP 8.5%)', field: 'hist_no_future_h', value: 1 }
+                ]
+            },
+            {
+                id: 'county',
+                label: 'County',
+                type: 'multi-select',
+                field: 'COUNTY',
+                dataType: 'string',
+                options: await this.getUniqueValues('COUNTY')
+            },
+            {
+                id: 'criticality',
+                label: 'Criticality',
+                type: 'multi-select',
+                field: 'Criticality_Rating_Num1',
+                dataType: 'number',
+                options: [
+                    { label: "Very High", value: "5" },
+                    { label: "High", value: "4" },
+                    { label: "Medium", value: "3" },
+                    { label: "Low", value: "2" },
+                    { label: "Very Low", value: "1" },
+                ]
+            },
+            {
+                id: 'subnet',
+                label: 'Subnet',
+                type: 'multi-select',
+                field: 'Subnet',
+                dataType: 'number',
+                options: [
+                    { label: "0 - Motorway/Dual Carriageway", value: "0" },
+                    { label: "1 - Engineered Pavements", value: "1" },
+                    { label: "2 - Urban", value: "2" },
+                    { label: "3 - Legacy Pavements (High Traffic)", value: "3" },
+                    { label: "4 - Legacy Pavements (Low Traffic)", value: "4" },
+                ]
+            },
+            {
+                id: 'lifeline',
+                label: 'Lifeline Route',
+                type: 'multi-select',
+                field: 'Lifeline',
+                dataType: 'number',
+                options: [
+                    { label: "Lifeline Route", value: "1" },
+                    { label: "Non-lifeline Route", value: "0" },
+                ]
             }
-            this.createFilter(config, filterControlsWrapper);
+        ];
+
+        // Initialize current filters object
+        filterConfigs.forEach(config => {
+            if (config.type === 'grouped-checkbox') {
+                this.currentFilters[config.id] = {};
+            } else {
+                this.currentFilters[config.id] = [];
+            }
+        });
+
+        // CREATE EACH FILTER: Build UI elements based on type
+        for (const config of filterConfigs) {
+            if (config.type === 'grouped-checkbox') {
+                this.createGroupedCheckboxFilter(config);
+            } else if (config.type === 'multi-select') {
+                await this.createMultiSelectFilter(config);
+            }
         }
 
-        console.log("FilterManager: All filters initialized.");
+        console.log("FilterManager: All filter UI elements have been initialized.");
     }
 
-    /**
-     * Creates a single filter component (dropdown with checkboxes or pick list).
-     * @param {object} config - The configuration object for a single filter.
-     * @param {HTMLElement} parent - The parent element to append the filter to.
-     */
-    createFilter(config, parent) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'filter-dropdown-wrapper';
-
-        const dropdown = document.createElement('calcite-dropdown');
-        dropdown.width = 'auto';
-        
-        const button = document.createElement('calcite-button');
-        button.setAttribute('slot', 'trigger');
-        button.id = `btn-${config.id}`;
-        button.innerText = config.label;
-        button.appearance = 'outline-fill';
-        button.kind = 'neutral';
-        
-        const panel = document.createElement('calcite-dropdown-group');
-        panel.setAttribute('slot', 'content');
-        panel.selectionMode = 'multiple';
-
-        const pickList = document.createElement('calcite-pick-list');
-        pickList.filterEnabled = true; // Enable search within the list
-        pickList.filterPlaceholder = `Filter ${config.label}...`;
-        pickList.multiple = true;
-
-        // Populate items
-        config.items?.forEach(item => {
-             const pickListItem = document.createElement('calcite-pick-list-item');
-             pickListItem.label = item.label;
-             // Use a composite value for grouped-checkbox type
-             pickListItem.value = `${item.field}||${item.value}`;
-             pickList.appendChild(pickListItem);
-        });
-        
-        const populateList = (items, isGrouped = false) => {
-            items?.forEach(item => {
-                const pickListItem = document.createElement('calcite-pick-list-item');
-                if (typeof item === 'object') {
-                    pickListItem.label = item.label;
-                    // Use a composite value for grouped-checkbox type
-                    pickListItem.value = isGrouped ? `${item.field}||${item.value}` : item.value;
-                } else {
-                    pickListItem.label = item;
-                    pickListItem.value = item;
-                }
-                pickList.appendChild(pickListItem);
-            });
-        };
-
-        populateList(config.items, true);
-        populateList(config.options, false);
-
-
-        // Event Listener for selection changes
-        pickList.addEventListener('calcitePickListChange', (event) => {
-            const selectedItems = event.target.selectedItems.map(item => item.value);
-            this.activeFilters.set(config.id, selectedItems);
-            this.updateFilterButton(button, config.label, selectedItems.length);
-            this.applyFilters();
-        });
-        
-        // Assemble the component
-        panel.appendChild(pickList);
-        dropdown.appendChild(button);
-        dropdown.appendChild(panel);
-        wrapper.appendChild(dropdown);
-        parent.appendChild(wrapper);
-
-        this.filterElements.set(config.id, { wrapper, button, pickList });
-    }
-
-     /**
-     * Updates a filter button's appearance based on active selections.
-     * @param {HTMLElement} button - The button element to update.
-     * @param {string} baseLabel - The default label for the button.
-     * @param {number} count - The number of selected items.
-     */
-    updateFilterButton(button, baseLabel, count) {
-        if (count > 0) {
-            button.innerText = `${baseLabel} (${count})`;
-            button.iconEnd = 'chevron-down-t';
-            button.appearance = 'solid'; // Change appearance to indicate it's active
-            button.kind = 'brand';
-        } else {
-            button.innerText = baseLabel;
-            button.iconEnd = null;
-            button.appearance = 'outline-fill';
-            button.kind = 'neutral';
-        }
-    }
-
-
-    /**
-     * Fetches unique values for a given field from the feature layer.
-     * @param {string} fieldName - The name of the field to query.
-     * @returns {Promise<string[]>} A promise that resolves to an array of unique string values.
-     */
+    // DATA RETRIEVAL: Get all unique values from a database field
     async getUniqueValues(fieldName) {
-        if (!this.layer) return [];
+        if (!this.layer) {
+            console.warn("FilterManager: Layer not available for getUniqueValues.");
+            return [];
+        }
+
+        const uniqueValuesQuery = new Query({
+            where: "1=1",
+            outFields: [fieldName],
+            returnDistinctValues: true,
+            orderByFields: [fieldName]
+        });
+
         try {
-            const query = new Query({
-                where: "1=1",
-                outFields: [fieldName],
-                returnDistinctValues: true,
-                orderByFields: [fieldName]
-            });
-            const results = await this.layer.queryFeatures(query);
+            const results = await this.layer.queryFeatures(uniqueValuesQuery);
             return results.features
                 .map(feature => feature.attributes[fieldName])
-                .filter(value => value !== null && value !== undefined && String(value).trim() !== "");
+                .filter(value => value !== null && value !== undefined && String(value).trim() !== "")
+                .map(value => ({ label: String(value), value: String(value) }));
         } catch (error) {
-            console.error(`FilterManager: Error fetching unique values for "${fieldName}":`, error);
+            console.error(`FilterManager: Error fetching unique values for field "${fieldName}":`, error);
             return [];
         }
     }
 
-    /**
-     * Constructs and applies the definitionExpression to the layer based on active filters.
-     */
-    async applyFilters() {
-        const whereClauses = [];
+    // CREATE RESET BUTTON: Add a button to clear all filters
+    createResetButton() {
+        const resetContainer = document.createElement('div');
+        resetContainer.className = 'filter-reset-container';
+        resetContainer.style.marginBottom = '15px';
 
-        for (const [filterId, selectedValues] of this.activeFilters.entries()) {
-            if (selectedValues.length === 0) continue;
-
-            const config = CONFIG.filterConfig.find(c => c.id === filterId);
-            if (!config) continue;
-
-            let groupClause = '';
-            if (config.type === 'multi-select') {
-                const values = (config.dataType === 'string')
-                    ? selectedValues.map(v => `'${v.replace(/'/g, "''")}'`).join(',')
-                    : selectedValues.join(',');
-                groupClause = `${config.field} IN (${values})`;
-            } else if (config.type === 'grouped-checkbox') {
-                 const orClauses = selectedValues.map(val => {
-                    const [field, value] = val.split('||');
-                    return `${field} = ${value}`;
-                });
-                groupClause = orClauses.join(' OR ');
-            }
-            
-            if(groupClause) {
-                whereClauses.push(`(${groupClause})`);
-            }
-        }
-
-        const newDefinitionExpression = whereClauses.length > 0 ? whereClauses.join(" AND ") : "1=1";
+        const resetButton = document.createElement('calcite-button');
+        resetButton.setAttribute('kind', 'neutral');
+        resetButton.setAttribute('scale', 's');
+        resetButton.innerText = 'Reset All Filters';
         
-        if (this.layer.definitionExpression !== newDefinitionExpression) {
-            this.layer.definitionExpression = newDefinitionExpression;
-            console.log("FilterManager: Applied definitionExpression:", newDefinitionExpression);
-            await this.zoomToFilteredExtent(newDefinitionExpression === "1=1");
-        }
-        
-        if (this.onFilterChangeCallback) {
-            this.onFilterChangeCallback(newDefinitionExpression);
-        }
+        resetButton.addEventListener('click', () => {
+            this.resetAllFilters();
+        });
+
+        resetContainer.appendChild(resetButton);
+        this.container.appendChild(resetContainer);
     }
-    
-    /**
-     * Zooms the map to the extent of the currently filtered features.
-     * @param {boolean} isReset - If true, zooms to the initial full extent.
-     */
-    async zoomToFilteredExtent(isReset) {
-        if (!this.view || !this.layer) return;
 
-        if (isReset) {
-            if (this.initialExtent) this.view.goTo(this.initialExtent);
-            return;
-        }
+    // CREATE GROUPED CHECKBOX FILTER: For flood scenario selections
+    createGroupedCheckboxFilter(config) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'filter-group';
+        wrapper.style.marginBottom = '20px';
 
-        try {
-            const extentQuery = this.layer.createQuery();
-            const { extent, count } = await this.layer.queryExtent(extentQuery);
-            if (count > 0 && extent) {
-                this.view.goTo(extent.expand(1.5));
+        // Create label
+        const label = document.createElement('calcite-label');
+        label.innerText = config.label;
+        label.style.fontWeight = 'bold';
+        label.style.marginBottom = '8px';
+        label.style.display = 'block';
+        wrapper.appendChild(label);
+
+        // Create checkbox container
+        const checkboxContainer = document.createElement('div');
+        checkboxContainer.className = 'checkbox-group';
+        checkboxContainer.style.display = 'grid';
+        checkboxContainer.style.gridTemplateColumns = 'repeat(auto-fit, minmax(300px, 1fr))';
+        checkboxContainer.style.gap = '8px';
+
+        // Create checkboxes for each item
+        config.items.forEach((item, index) => {
+            const checkboxWrapper = document.createElement('calcite-label');
+            checkboxWrapper.setAttribute('layout', 'inline');
+
+            const checkbox = document.createElement('calcite-checkbox');
+            checkbox.setAttribute('id', `${config.id}-${index}`);
+            
+            checkbox.addEventListener('calciteCheckboxChange', (event) => {
+                if (event.target.checked) {
+                    this.currentFilters[config.id][item.field] = {
+                        field: item.field,
+                        value: item.value,
+                        dataType: 'number'
+                    };
+                } else {
+                    delete this.currentFilters[config.id][item.field];
+                }
+                this.applyFilters();
+            });
+
+            checkboxWrapper.appendChild(checkbox);
+            checkboxWrapper.appendChild(document.createTextNode(item.label));
+            checkboxContainer.appendChild(checkboxWrapper);
+        });
+
+        wrapper.appendChild(checkboxContainer);
+        this.container.appendChild(wrapper);
+    }
+
+    // CREATE MULTI-SELECT FILTER: For dropdowns with multiple selections
+    async createMultiSelectFilter(config) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'filter-group';
+        wrapper.style.marginBottom = '20px';
+
+        // Create label
+        const label = document.createElement('calcite-label');
+        label.innerText = config.label;
+        label.style.fontWeight = 'bold';
+        label.style.marginBottom = '8px';
+        label.style.display = 'block';
+        wrapper.appendChild(label);
+
+        // Create combobox for multi-select
+        const combobox = document.createElement('calcite-combobox');
+        combobox.setAttribute('selection-mode', 'multiple');
+        combobox.setAttribute('placeholder', `Select ${config.label.toLowerCase()}...`);
+        combobox.setAttribute('max-items', '10');
+
+        // Add options
+        config.options.forEach(option => {
+            const comboboxItem = document.createElement('calcite-combobox-item');
+            comboboxItem.setAttribute('value', option.value);
+            comboboxItem.setAttribute('text-label', option.label);
+            combobox.appendChild(comboboxItem);
+        });
+
+        // Add event listener
+        combobox.addEventListener('calciteComboboxChange', (event) => {
+            const selectedValues = event.target.selectedItems.map(item => item.value);
+            this.currentFilters[config.id] = selectedValues.map(value => ({
+                field: config.field,
+                value: value,
+                dataType: config.dataType
+            }));
+            this.applyFilters();
+        });
+
+        wrapper.appendChild(combobox);
+        this.container.appendChild(wrapper);
+    }
+
+    // RESET ALL FILTERS: Clear all active filters and return to initial view
+    resetAllFilters() {
+        // Clear all current filters
+        Object.keys(this.currentFilters).forEach(filterId => {
+            if (Array.isArray(this.currentFilters[filterId])) {
+                this.currentFilters[filterId] = [];
+            } else {
+                this.currentFilters[filterId] = {};
             }
-        } catch (error) {
-            if (!error.name?.includes("AbortError")) {
+        });
+
+        // Reset all UI elements
+        this.container.querySelectorAll('calcite-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+
+        this.container.querySelectorAll('calcite-combobox').forEach(combobox => {
+            combobox.selectedItems = [];
+        });
+
+        // Apply empty filters (shows all data)
+        this.applyFilters();
+    }
+
+    // FILTER APPLICATION: Convert all active filters into SQL and apply to layer
+    async applyFilters() {
+        let whereClauseArray = [];
+        let hasActiveFilters = false;
+
+        // Process each filter group
+        Object.keys(this.currentFilters).forEach(filterId => {
+            const filterData = this.currentFilters[filterId];
+            
+            if (Array.isArray(filterData) && filterData.length > 0) {
+                // Multi-select filter
+                hasActiveFilters = true;
+                const field = filterData[0].field;
+                const dataType = filterData[0].dataType;
+                const values = filterData.map(item => item.value);
+                
+                if (dataType === 'string') {
+                    const valueList = values.map(v => `'${String(v).replace(/'/g, "''")}'`).join(', ');
+                    whereClauseArray.push(`${field} IN (${valueList})`);
+                } else {
+                    const valueList = values.join(', ');
+                    whereClauseArray.push(`${field} IN (${valueList})`);
+                }
+            } else if (typeof filterData === 'object' && Object.keys(filterData).length > 0) {
+                // Grouped checkbox filter (flood scenarios)
+                hasActiveFilters = true;
+                const fieldConditions = Object.values(filterData).map(item => {
+                    return `${item.field} = ${item.value}`;
+                });
+                
+                if (fieldConditions.length > 0) {
+                    whereClauseArray.push(`(${fieldConditions.join(' OR ')})`);
+                }
+            }
+        });
+
+        // Build final WHERE clause
+        const whereClause = whereClauseArray.length > 0 ? whereClauseArray.join(' AND ') : '';
+        
+        // Apply to layer
+        this.layer.definitionExpression = whereClause;
+        console.log("FilterManager: Applied definition expression:", whereClause);
+
+        // Handle zooming
+        if (hasActiveFilters && this.view && this.layer && this.layer.visible) {
+            try {
+                const extentQuery = this.layer.createQuery();
+                const results = await this.layer.queryExtent(extentQuery);
+
+                if (results && results.count > 0 && results.extent) {
+                    await this.view.goTo(results.extent.expand(1.5));
+                    console.log("FilterManager: Zoomed to filtered extent.");
+                } else if (results && results.count === 0) {
+                    console.log("FilterManager: No features match the current filters.");
+                    if (this.initialExtent) {
+                        await this.view.goTo(this.initialExtent);
+                        console.log("FilterManager: No features found, zoomed to initial extent.");
+                    }
+                }
+            } catch (error) {
                 console.error("FilterManager: Error zooming to filtered extent:", error);
             }
-        }
-    }
-    
-    /**
-     * PUBLIC METHOD: Resets all active filters and clears the UI.
-     */
-    resetAllFilters() {
-        this.activeFilters.clear();
-        
-        // Reset UI components
-        for (const [id, elements] of this.filterElements.entries()) {
-            const config = CONFIG.filterConfig.find(c => c.id === id);
-            elements.pickList.selectedItems = [];
-            this.updateFilterButton(elements.button, config.label, 0);
+        } else if (!hasActiveFilters && this.view && this.initialExtent) {
+            await this.view.goTo(this.initialExtent);
+            console.log("FilterManager: All filters cleared. Zoomed to initial map extent.");
         }
 
-        this.applyFilters();
-        console.log("FilterManager: All filters have been reset.");
+        // Notify callback
+        if (this.onFilterChangeCallback) {
+            this.onFilterChangeCallback(whereClause);
+        }
+    }
+
+    // UTILITY: Get current filter summary for reporting
+    getCurrentFilterSummary() {
+        const summary = {};
+        
+        Object.keys(this.currentFilters).forEach(filterId => {
+            const filterData = this.currentFilters[filterId];
+            
+            if (Array.isArray(filterData) && filterData.length > 0) {
+                summary[filterId] = filterData.map(item => item.value);
+            } else if (typeof filterData === 'object' && Object.keys(filterData).length > 0) {
+                summary[filterId] = Object.keys(filterData);
+            }
+        });
+        
+        return summary;
+    }
+
+    // UTILITY: Get count of filtered features
+    async getFilteredFeatureCount() {
+        if (!this.layer) return 0;
+        
+        try {
+            const query = this.layer.createQuery();
+            const result = await this.layer.queryFeatureCount(query);
+            return result;
+        } catch (error) {
+            console.error("FilterManager: Error getting feature count:", error);
+            return 0;
+        }
     }
 }
