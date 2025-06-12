@@ -259,7 +259,7 @@ export class FilterManager {
         // Create combobox for multi-select
         const combobox = document.createElement('calcite-combobox');
         combobox.setAttribute('selection-mode', 'multiple');
-        combobox.setAttribute('placeholder', `Select ${config.label.toLowerCase()}...`);
+        combobox.setAttribute('placeholder', `-`);
         combobox.setAttribute('max-items', '10');
     
         // Add options from the 'items' array in your config
@@ -314,7 +314,7 @@ export class FilterManager {
         // Create combobox for multi-select
         const combobox = document.createElement('calcite-combobox');
         combobox.setAttribute('selection-mode', 'multiple');
-        combobox.setAttribute('placeholder', `Select ${config.label.toLowerCase()}...`);
+        combobox.setAttribute('placeholder', `-`);
         combobox.setAttribute('max-items', '10');
 
         // Add options
