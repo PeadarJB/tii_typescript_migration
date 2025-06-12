@@ -153,5 +153,26 @@ export const CONFIG = {
             field: "nifm_f_h_0020",
             description: "Segments affected by the NIFM Fluvial model under RCP 8.5."
         }
-    ]
+    ],
+
+    swipeLayerConfig: {
+        leftPanel: {
+            label: 'Left/Top Layer(s) (RCP 4.5)',
+            layers: [
+                { title: "CFRAM f m 0010",   label: "CFRAM Fluvial (10yr, RCP 4.5)" },
+                { title: "CFRAM c m 0010",   label: "CFRAM Coastal (10yr, RCP 4.5)" },
+                { title: "NIFM f m 0020",    label: "NIFM Fluvial (20yr, RCP 4.5)" },
+                { title: "NCFHM c m 0010",   label: "NCFHM Coastal (10yr, RCP 4.5)" }
+            ]
+        },
+        rightPanel: {
+            label: 'Right/Bottom Layer(s) (RCP 8.5)',
+            layers: [
+                { title: "CFRAM f h 0100",   label: "CFRAM Fluvial (100yr, RCP 8.5)" },
+                { title: "CFRAM c h 0200",   label: "CFRAM Coastal (200yr, RCP 8.5)" },
+                { title: "NIFM f h 0100",    label: "NIFM Fluvial (100yr, RCP 8.5)" },
+                { title: "NCFHM c c 0200",   label: "NCFHM Coastal (200yr, RCP 8.5)" }
+            ]
+        }
+    }
 };
