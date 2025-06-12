@@ -190,7 +190,7 @@ export class FilterManager {
         });
         const whereClause = whereClauseArray.join(' AND ') || '1=1';
         this.layer.definitionExpression = whereClause;
-        if (hasActiveFilters && this.view && this.layer?.visible) {
+        if (hasActiveFilters && this.view) {
             try {
                 const { extent } = await this.layer.queryExtent(this.layer.createQuery());
                 if (extent) await this.view.goTo(extent.expand(1.5));

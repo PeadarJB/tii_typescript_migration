@@ -104,6 +104,13 @@ body {
 }
 
 /* ===== LAYOUT COMPONENTS ===== */
+#app-body {
+    display: flex;
+    flex-grow: 1;
+    position: relative; /* Needed for child elements that are positioned absolutely */
+    overflow: hidden;   /* Prevents content from spilling out */
+}
+
 #main-content-wrapper {
   display: flex;
   flex-direction: row;
@@ -157,6 +164,8 @@ body {
     padding: var(--spacing-md) var(--spacing-lg);
     background-color: var(--bg-tertiary);
     border-bottom: 1px solid var(--border-secondary);
+    position: relative; /* This is required for z-index to work */
+    z-index: 30;        /* This lifts the entire filter bar above other content */
 }
 
 /* 2. Container for the "Reset All" button */
@@ -193,7 +202,7 @@ body {
 /* 5. The z-index fix for the clipped dropdown */
 /* When a filter group is focused (i.e., you click into it), bring it to the front */
 .filter-group:focus-within {
-    z-index: 10;
+    z-index: 100000;
 }
 
 /* The label for each filter group */
@@ -598,6 +607,52 @@ input[type="range"] {
 .chart-feature-list::-webkit-scrollbar-thumb:hover,
 .checkbox-group::-webkit-scrollbar-thumb:hover {
   background: var(--text-light);
+}
+
+/* ===== SWIPE COMPARISON MODE STYLES ===== */
+
+/* --- Default (Dashboard Mode) State --- */
+
+/* 1. Hide the swipe tool's controls by default */
+#swipe-controls-container {
+  display: none;
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+/* 2. Prepare dashboard panels for a smooth fade/slide transition */
+#filter-controls-container,
+#statistics-panel,
+#chart-generator-shell-panel {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s ease, transform 0.3s ease, width 0.3s ease, padding 0.3s ease;
+}
+
+
+/* --- Active Swipe Mode State --- */
+/* These rules apply when the 'swipe-mode-active' class is on the body */
+
+/* 3. Hide the main dashboard panels */
+.swipe-mode-active #filter-controls-container,
+.swipe-mode-active #chart-generator-shell-panel {
+  display: none;
+}
+
+/* 4. For the statistics panel, we set width and padding to 0 to make it slide away */
+.swipe-mode-active #statistics-panel {
+    width: 0;
+    padding: 0;
+    border-left: none;
+    overflow: hidden; /* Hide content as it shrinks */
+}
+
+/* 5. Make the swipe controls visible and fade them in */
+.swipe-mode-active #swipe-controls-container {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* ===== RESPONSIVE DESIGN ===== */
