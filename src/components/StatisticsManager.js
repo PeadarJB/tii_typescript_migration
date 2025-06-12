@@ -39,6 +39,7 @@ export class StatisticsManager {
         this.indicatorContainer = typeof indicatorContainer === 'string' ? document.getElementById(indicatorContainer) : indicatorContainer;
         this.chartContainer = typeof chartContainer === 'string' ? document.getElementById(chartContainer) : chartContainer;
         this.layer = roadNetworkLayer;
+        this.lastScenariosData = null;
         // this.pieChartInstance = null; // To hold a Chart.js instance later
 
         if (!this.indicatorContainer) { // chartContainer can be optional if not used yet
@@ -60,7 +61,7 @@ export class StatisticsManager {
         // If the layer isn't available, do nothing.
         if (!this.layer) {
             console.warn("StatisticsManager: Road network layer is not available. Cannot update statistics.");
-            this.indicatorContainer.innerHTML = `<p style="color: orange;">Statistics unavailable: Layer not ready.</p>`;
+            this.indicatorContainer.innerHTML = `<calcite-loader-bar type="indeterminate"></calcite-loader-bar><p><em>Loading statistics...</em></p>`;
             return;
         }
 
@@ -68,82 +69,76 @@ export class StatisticsManager {
         this.indicatorContainer.innerHTML = '<p><em>Loading all statistics...</em></p>';
 
         try {
-            // --- Define and Fetch All Stats for the RCP 4.5 Scenario ---
-            const rcp45_stats = [
-                // Moved "Any Future Flood Intersection" into the RCP 4.5% group as requested
-                await this.querySegmentCountAndDerivedLength(
-                    baseDefinitionExpression,
-                    `${CONFIG.fields.floodAffected} = 1`,
-                    "Any Midrange Future Flood Intersection",
-                    "count_general_flood"
-                ),
-                await this.querySegmentCountAndDerivedLength(
-                    baseDefinitionExpression, `${CONFIG.fields.cfram_f_m_0010} = 1`, "CFRAM Fluvial Model", "count_cfram_fluvial"
-                ),
-                await this.querySegmentCountAndDerivedLength(
-                    baseDefinitionExpression, `${CONFIG.fields.cfram_c_m_0010} = 1`, "CFRAM Coastal Model", "count_cfram_coastal"
-                ),
-                await this.querySegmentCountAndDerivedLength(
-                    baseDefinitionExpression, `${CONFIG.fields.nifm_f_m_0020} = 1`, "NIFM Fluvial Model", "count_nifm_fluvial"
-                ),
-                await this.querySegmentCountAndDerivedLength(
-                    baseDefinitionExpression, `${CONFIG.fields.ncfhm_c_m_0010} = 1`, "NCFHM Coastal Model", "count_ncfhm_coastal"
-                )
-            ];
-            
-            // --- Placeholder for RCP 8.5 stats to be added later ---
-            const rcp85_stats = [
-                await this.querySegmentCountAndDerivedLength(
-                    baseDefinitionExpression,
-                    `${CONFIG.fields.floodAffected_h} = 1`,
-                    "Any Highrange Future Flood Intersection",
-                    "count_general_flood"
-                ),
-                await this.querySegmentCountAndDerivedLength(
-                    baseDefinitionExpression, `${CONFIG.fields.cfram_f_h_0100} = 1`, "CFRAM Fluvial Model", "count_cfram_fluvial"
-                ),
-                await this.querySegmentCountAndDerivedLength(
-                    baseDefinitionExpression, `${CONFIG.fields.cfram_c_h_0200} = 1`, "CFRAM Coastal Model", "count_cfram_coastal"
-                ),
-                await this.querySegmentCountAndDerivedLength(
-                    baseDefinitionExpression, `${CONFIG.fields.nifm_f_h_0100} = 1`, "NIFM Fluvial Model", "count_nifm_fluvial"
-                ),
-                await this.querySegmentCountAndDerivedLength(
-                    baseDefinitionExpression, `${CONFIG.fields.ncfhm_c_c_0200} = 1`, "NCFHM Coastal Model", "count_ncfhm_coastal"
-                )
-            ];
+            // --- REFACTORED: Fetch stats for both scenarios in parallel ---
+            const [rcp45_stats, rcp85_stats] = await Promise.all([
+                this._fetchStatsForScenario(baseDefinitionExpression, 'rcp45'),
+                this._fetchStatsForScenario(baseDefinitionExpression, 'rcp85')
+            ]);
 
-            // Create the structured list of scenarios with the corrected grouping
+            // --- Structure and Cache the Data ---
             const scenarios = [
-                { title: "RCP 4.5% Flood Scenario (10 - 20 year return period)", stats: rcp45_stats },
-                { title: "RCP 8.5% Flood Scenario (100 - 200 year return period)", stats: rcp85_stats }
+                { title: "RCP 4.5 Flood Scenario (10 - 20 year return period)", stats: rcp45_stats },
+                { title: "RCP 8.5 Flood Scenario (100 - 200 year return period)", stats: rcp85_stats }
             ];
 
+            // ** THE CRITICAL STEP FOR THE REPORT GENERATOR **
+            // Cache the newly fetched data so other components can access it.
+            this.lastScenariosData = scenarios; 
+            
+            // --- Display the data in the UI ---
             this.displayAllStatsUI(scenarios);
 
         } catch (error) {
-            console.error("StatisticsManager: Error in updateAllStatistics pipeline:", error);
-            this.indicatorContainer.innerHTML = `<p style="color: red;">Error loading statistics. (Check console)</p>`;
+            console.error("StatisticsManager: Error updating statistics:", error);
+            this.indicatorContainer.innerHTML = `<p style="color: red;">Error loading statistics.</p>`;
+            this.lastScenariosData = []; // Clear cache on error
         }
     }
 
     /**
-     * Helper function to query the count of segments for a specific condition 
-     * (combined with base filters) and calculate the derived length.
-     * @param {string} baseDefinitionExpression - Filters from user selections.
-     * @param {string} specificCondition - Additional condition for this stat set (e.g., "binary_field = 1").
-     * @param {string} statLabel - A label for this statistic set (used for display/logging).
-     * @param {string} outCountFieldName - An alias for the count statistic in the query result.
-     * @returns {Promise<object>} A promise resolving to an object with:
-     * { count: number, derivedLengthKm: number, label: string }
-     * Returns 0 for count/length if no features match or on error.
+     * REFACTORED: Private helper to fetch all statistics for a single RCP scenario.
+     * This avoids code duplication.
+     * @param {string} baseDefinitionExpression - The base filter expression.
+     * @param {'rcp45' | 'rcp85'} scenarioType - The type of scenario to fetch.
+     * @returns {Promise<object[]>} A promise resolving to an array of statistics objects.
+     */
+    _fetchStatsForScenario(baseDefinitionExpression, scenarioType) {
+        // Define the specific fields for the chosen scenario
+        const fields = scenarioType === 'rcp45' 
+            ? {
+                any: CONFIG.fields.floodAffected,
+                cfram_f: CONFIG.fields.cfram_f_m_0010,
+                cfram_c: CONFIG.fields.cfram_c_m_0010,
+                nifm_f: CONFIG.fields.nifm_f_m_0020,
+                ncfhm_c: CONFIG.fields.ncfhm_c_m_0010
+            } : {
+                any: CONFIG.fields.floodAffected_h,
+                cfram_f: CONFIG.fields.cfram_f_h_0100,
+                cfram_c: CONFIG.fields.cfram_c_h_0200,
+                nifm_f: CONFIG.fields.nifm_f_h_0100,
+                ncfhm_c: CONFIG.fields.ncfhm_c_c_0200
+            };
+        
+        // Create an array of promises for each statistic query
+        const statPromises = [
+            this.querySegmentCountAndDerivedLength(baseDefinitionExpression, `${fields.any} = 1`, `Any Future Flood Intersection`, `count_any`),
+            this.querySegmentCountAndDerivedLength(baseDefinitionExpression, `${fields.cfram_f} = 1`, `CFRAM Fluvial Model`, `count_cfram_f`),
+            this.querySegmentCountAndDerivedLength(baseDefinitionExpression, `${fields.cfram_c} = 1`, `CFRAM Coastal Model`, `count_cfram_c`),
+            this.querySegmentCountAndDerivedLength(baseDefinitionExpression, `${fields.nifm_f} = 1`, `NIFM Fluvial Model`, `count_nifm_f`),
+            this.querySegmentCountAndDerivedLength(baseDefinitionExpression, `${fields.ncfhm_c} = 1`, `NCFHM Coastal Model`, `count_ncfhm_c`)
+        ];
+        
+        // Return a single promise that resolves when all stats for this scenario are fetched
+        return Promise.all(statPromises);
+    }
+
+    /**
+     * Helper function to query segment count and calculate derived length.
+     * @returns {Promise<object>} An object with { count, derivedLengthKm, label }.
      */
     async querySegmentCountAndDerivedLength(baseDefinitionExpression, specificCondition, statLabel, outCountFieldName) {
-        const effectiveBaseExpression = (baseDefinitionExpression && baseDefinitionExpression.trim() !== "") ? baseDefinitionExpression : "1=1";
-        const combinedWhereClause = `(${effectiveBaseExpression}) AND (${specificCondition})`;
+        const combinedWhereClause = `(${baseDefinitionExpression || '1=1'}) AND (${specificCondition})`;
         
-        console.log(`StatisticsManager: Querying for "${statLabel}" with WHERE clause: ${combinedWhereClause}`);
-
         const statsQuery = new Query({
             where: combinedWhereClause,
             outStatistics: [{
@@ -155,13 +150,25 @@ export class StatisticsManager {
 
         try {
             const results = await this.layer.queryFeatures(statsQuery);
-            const count = results.features.length > 0 ? results.features[0].attributes[outCountFieldName] || 0 : 0;
+            const count = results.features[0]?.attributes[outCountFieldName] || 0;
             const derivedLengthKm = count * 0.1;
             return { count, derivedLengthKm, label: statLabel };
         } catch (error) {
-            console.error(`StatisticsManager: Error querying stats for "${statLabel}":`, error);
+            if (!error.name?.includes("AbortError")) {
+               console.error(`StatisticsManager: Error querying for "${statLabel}":`, error);
+            }
             return { count: 0, derivedLengthKm: 0, label: `${statLabel} (Error)` };
         }
+    }
+
+    /**
+     * **PUBLIC GETTER METHOD**
+     * Returns the last successfully fetched statistics data.
+     * This is the method your ReportGenerator calls.
+     * @returns {object[] | null} The cached scenario data.
+     */
+    getCurrentScenariosData() {
+        return this.lastScenariosData;
     }
 
     /**

@@ -14,7 +14,8 @@
     "@arcgis/core": "^4.32.10",
     "@esri/calcite-components": "3.2.0",
     "animejs": "^4.0.2",
-    "chart.js": "^4.4.9"
+    "chart.js": "^4.4.9",
+    "html2pdf.js": "^0.10.3"
   },
   "devDependencies": {
     "@arcgis/webpack-plugin": "^4.22.0",

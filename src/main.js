@@ -7,6 +7,7 @@ import { SwipeWidgetManager } from './components/SwipeWidgetManager.js';
 import { SwipeControlsUI } from './components/SwipeControlsUI.js';
 import { ChartGenerator } from './components/ChartGenerator.js'; // Missing import
 import { CONFIG } from './config/appConfig.js';
+import { ReportGenerator } from './components/ReportGenerator.js';
 import './styles/main.css';
 
 // --- Application State Management ---
@@ -41,10 +42,12 @@ class AppManager {
             try {
                 await this.initializeUIComponents();
                 this.setupComponentInteractions();
+                 this.components.reportGenerator = new ReportGenerator(this);
+
                 await this.performInitialDataLoad();
 
                 this.isInitialized = true;
-                this.hideLoadingState(); // Hide after all app components are ready.
+                this.hideLoadingState();
                 console.log("AppManager: Application initialization complete.");
 
             } catch (postMapInitError) {
@@ -114,6 +117,20 @@ class AppManager {
             console.error("AppManager: UI component initialization failed:", error);
             throw new Error(`Component initialization failed: ${error.message}`);
         }
+
+        this.components.reportGenerator = new ReportGenerator(
+            'report-generator-container', // Or whatever container it needs
+            this.components.view,
+            this.components.filterManager,
+            this.components.statsManager,
+            this.components.chartGenerator
+        );
+        
+        // ...and hook up the button...
+        const generateReportBtn = document.getElementById('generate-report-btn');
+        generateReportBtn.addEventListener('click', () => {
+            this.components.reportGenerator.generateReport();
+        });
     }
 
     /**
@@ -222,6 +239,24 @@ class AppManager {
                     this.showErrorMessage("Failed to update data after filter change.");
                 }
             });
+            // Connect the reset button to the filter manager's public method.
+            const resetButton = document.getElementById('reset-filters-btn');
+            if (resetButton && this.components.filterManager) {
+                resetButton.addEventListener('click', () => {
+                    this.components.filterManager.resetAllFilters();
+                });
+                console.log("AppManager: Reset button interaction configured.");
+            } else {
+                console.warn("AppManager: Reset button or FilterManager not found, cannot configure interaction.");
+            }
+
+        console.log("AppManager: Component interactions configured.");
+            const reportBtn = document.getElementById('generate-report-btn');
+            if (reportBtn) {
+                reportBtn.addEventListener('click', () => {
+                    this.components.reportGenerator?.generateReport();
+                });
+            }
 
             console.log("AppManager: Component interactions configured.");
 
