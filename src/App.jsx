@@ -7,6 +7,10 @@ import 'dayjs/locale/en';
 import { theme } from './config/themeConfig';
 import MainLayout from './layouts/MainLayout';
 import { AppManager } from './core/AppManager';
+
+// Import Ant Design reset CSS
+import 'antd/dist/reset.css';
+// Import custom global styles
 import './styles/global.less';
 
 // Set dayjs locale
