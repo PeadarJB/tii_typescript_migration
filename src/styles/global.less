@@ -1,0 +1,206 @@
+// Global styles for TII Flood Risk Dashboard
+// Integrates with Ant Design's theme system
+
+// Import Ant Design styles
+@import '~antd/dist/reset.css';
+
+// Reset and base styles
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+    'Noto Color Emoji';
+  font-variant: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+// Ensure the map container takes full height
+#viewDiv {
+  width: 100%;
+  height: 100%;
+  outline: none;
+  
+  // Override ESRI UI component positioning
+  .esri-ui-top-left,
+  .esri-ui-top-right,
+  .esri-ui-bottom-left,
+  .esri-ui-bottom-right {
+    transition: all 0.3s ease;
+  }
+  
+  // Style ESRI components to match Ant Design
+  .esri-widget {
+    font-family: inherit;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 
+                0 1px 6px -1px rgba(0, 0, 0, 0.02), 
+                0 2px 4px 0 rgba(0, 0, 0, 0.02);
+  }
+  
+  .esri-popup {
+    .esri-popup__header {
+      background-color: #fafafa;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .esri-popup__content {
+      font-size: 14px;
+    }
+  }
+}
+
+// Ant Design component customizations
+.ant-pro-card {
+  .ant-pro-card-body {
+    padding: 16px;
+  }
+  
+  &.ant-pro-card-size-small {
+    .ant-pro-card-body {
+      padding: 12px;
+    }
+  }
+}
+
+// Custom scrollbar styles
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f0f0f0;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #bfbfbf;
+  border-radius: 4px;
+  
+  &:hover {
+    background: #999;
+  }
+}
+
+// Loading states
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+}
+
+// Chart container styles
+.chart-container {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  min-height: 300px;
+  
+  canvas {
+    max-height: 100%;
+    max-width: 100%;
+  }
+}
+
+// Floating panel styles
+.floating-panel {
+  position: absolute;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 6px 16px 0 rgba(0, 0, 0, 0.08), 
+              0 3px 6px -4px rgba(0, 0, 0, 0.12), 
+              0 9px 28px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
+  
+  &:hover {
+    box-shadow: 0 6px 20px 0 rgba(0, 0, 0, 0.12), 
+                0 4px 8px -4px rgba(0, 0, 0, 0.16), 
+                0 12px 32px 8px rgba(0, 0, 0, 0.08);
+  }
+}
+
+// Animation classes
+.fade-enter {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.fade-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 0.3s ease-out;
+}
+
+.fade-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.fade-exit-active {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.3s ease-out;
+}
+
+// Utility classes
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.full-height {
+  height: 100%;
+}
+
+.full-width {
+  width: 100%;
+}
+
+// Print styles
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-only {
+    display: block !important;
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .floating-panel {
+    position: relative;
+    width: 100% !important;
+    margin: 8px;
+    max-width: calc(100% - 16px);
+  }
+  
+  .ant-pro-sider {
+    display: none;
+  }
+}
+
+// Dark mode support (future enhancement)
+[data-theme='dark'] {
+  #viewDiv {
+    .esri-widget {
+      background-color: #141414;
+      color: rgba(255, 255, 255, 0.85);
+    }
+  }
+}
