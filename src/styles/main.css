@@ -351,6 +351,20 @@ body {
   background-color: var(--bg-primary); /* Ensures a solid background */
 }
 
+/* Custom style for the Layer Comparison toggle button */
+#toggle-swipe-mode-btn {
+    /* These variables override Calcite's defaults for the button's standard state */
+    --calcite-button-background: var(--color-accent);
+    --calcite-button-border-color: var(--color-accent);
+    --calcite-button-border-width: 1px;
+    
+    /* These variables control the hover and focus states */
+    --calcite-button-background-hover: var(--color-accent);
+    --calcite-button-text-color-hover: var(--text-accent);
+    --calcite-button-border-color-hover: var(--color-accent);
+    --calcite-button-text-color: white;
+}
+
 /* A group of related controls (e.g., a label and its input) */
 .control-group {
   display: flex;
