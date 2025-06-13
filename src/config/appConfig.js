@@ -2,7 +2,7 @@ export const CONFIG = {
     // --- Core Application Settings ---
     // The webMapId is the primary source for the map and its layers. 
     // The FilterManager and other components will get the layer directly from the loaded WebMap.
-    webMapId: "78a86c5888c84e0793b3345a62d7282e", 
+    webMapId: "bb27815620254e69819e7ce6b56f14b8", 
     roadNetworkLayerTitle: "TII CAIP NM", // The title of the layer within the WebMap to use for filtering and analysis.
 
     // --- Centralized Filter Configuration ---
