@@ -107,7 +107,6 @@ export class AppManager {
                 this.components.roadNetworkLayer
             );
             
-            // Note: Actual initialization will be called by the React component
             console.log('AppManager: FilterManager created');
         } catch (error) {
             console.error('AppManager: FilterManager initialization failed', error);
