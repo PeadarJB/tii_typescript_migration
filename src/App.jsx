@@ -13,6 +13,7 @@ import SimpleFilterPanel from './components/SimpleFilterPanel';
 import SimpleStatsPanel from './components/SimpleStatsPanel';
 import SimpleChartPanel from './components/SimpleChartPanel';
 import SimpleSwipePanel from './components/SimpleSwipePanel';
+import SimpleReportGenerator from './components/SimpleReportGenerator';
 import { CONFIG } from './config/appConfig';
 import 'antd/dist/reset.css';
 
@@ -28,6 +29,9 @@ function App() {
   const [showStats, setShowStats] = useState(true);
   const [showChart, setShowChart] = useState(false);
   const [showSwipe, setShowSwipe] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [currentFilters, setCurrentFilters] = useState({});
+  const [currentStats, setCurrentStats] = useState(null);
   const mapContainerRef = useRef(null);
   const initStarted = useRef(false);
 
@@ -193,7 +197,7 @@ function App() {
             <Button
               type="primary"
               icon={<DownloadOutlined />}
-              onClick={() => message.info('Report generation coming soon')}
+              onClick={() => setShowReportModal(true)}
             >
               Generate Report
             </Button>
@@ -230,8 +234,33 @@ function App() {
             </div>
           )}
           
-          
-         
+          {/* Welcome Card */}
+          {!loading && (
+            <Card
+              size="small"
+              style={{
+                position: 'absolute',
+                top: 16,
+                left: 16,
+                width: 300,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              }}
+              title="Welcome"
+            >
+              <p>
+                Phase 1 Implementation Complete
+              </p>
+              <ul style={{ paddingLeft: 20, margin: '10px 0', fontSize: 13 }}>
+                <li>✅ Ant Design UI Framework</li>
+                <li>✅ ArcGIS Map Integration</li>
+                <li>✅ Enhanced Filters with Flood Scenarios</li>
+                <li>✅ Real-time Statistics Panel</li>
+                <li>✅ Chart Visualization</li>
+                <li>✅ Layer Comparison Tool</li>
+                <li>⏳ Report Generation</li>
+              </ul>
+            </Card>
+          )}
           
           {/* Filter Panel - Conditionally Rendered */}
           {showFilters && roadLayer && mapView && (
