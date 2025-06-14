@@ -20,6 +20,10 @@ function App() {
     const initMap = async () => {
       try {
         console.log('Initializing map...');
+        
+        // Wait a bit to ensure DOM is ready
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         const { view, webmap } = await initializeMapView('viewDiv');
         
         // Find road network layer
@@ -31,6 +35,8 @@ function App() {
           await roadLayer.load();
           console.log('Road network layer loaded');
           setRoadLayer(roadLayer);
+        } else {
+          console.warn('Road network layer not found');
         }
         
         setMapView(view);
@@ -44,8 +50,11 @@ function App() {
       }
     };
 
-    initMap();
-  }, []);
+    // Only initialize if not already loading/loaded
+    if (loading && !mapView) {
+      initMap();
+    }
+  }, []); // Remove strict mode double-initialization issue
 
   if (loading) {
     return (
@@ -185,6 +194,30 @@ function App() {
               webmap={webmap}
               roadLayer={roadLayer}
             />
+          )}
+          
+          {/* Debug info */}
+          {showFilters && !roadLayer && (
+            <Card
+              size="small"
+              style={{
+                position: 'absolute',
+                top: 16,
+                right: 16,
+                width: 300,
+                background: '#fff3cd',
+                borderColor: '#ffeaa7',
+              }}
+            >
+              <p style={{ margin: 0, color: '#856404' }}>
+                Waiting for road layer to load...
+              </p>
+              <p style={{ margin: 0, fontSize: 12, color: '#856404' }}>
+                showFilters: {String(showFilters)}<br/>
+                roadLayer: {String(!!roadLayer)}<br/>
+                mapView: {String(!!mapView)}
+              </p>
+            </Card>
           )}
         </Content>
       </Layout>
