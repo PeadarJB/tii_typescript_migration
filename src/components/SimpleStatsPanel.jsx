@@ -3,7 +3,7 @@ import { Card, Statistic, Progress, Space, Tag, Spin, Empty } from 'antd';
 import { WarningOutlined, RiseOutlined } from '@ant-design/icons';
 import { CONFIG } from '../config/appConfig';
 
-const SimpleStatsPanel = ({ roadLayer }) => {
+const SimpleStatsPanel = ({ roadLayer, onStatsChange }) => {
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState(null);
 
@@ -95,6 +95,15 @@ const SimpleStatsPanel = ({ roadLayer }) => {
           length: totalLength
         }
       });
+      
+      // Notify parent component
+      if (onStatsChange) {
+        onStatsChange({
+          rcp45: { segments: affected45, length: length45, percent: percent45 },
+          rcp85: { segments: affected85, length: length85, percent: percent85 },
+          total: { segments: totalSegments, length: totalLength }
+        });
+      }
       
     } catch (error) {
       console.error('Failed to calculate statistics:', error);
