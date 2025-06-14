@@ -186,7 +186,7 @@ const SimpleStatsPanel = ({ roadLayer, onStatsChange }) => {
           marginBottom: 8 
         }}>
           <Statistic
-            title="Total Road Network"
+            title="Maximum Network Length Affected"
             value={stats.total.length.toFixed(1)}
             suffix="km"
             prefix={<RiseOutlined />}
