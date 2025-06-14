@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Layout, Menu, Button, Space, Spin, Card, message, Switch } from 'antd';
 import { DashboardOutlined, WarningOutlined, DownloadOutlined, FilterOutlined } from '@ant-design/icons';
 import { initializeMapView } from './components/MapView';
@@ -15,15 +15,30 @@ function App() {
   const [roadLayer, setRoadLayer] = useState(null);
   const [error, setError] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const mapContainerRef = useRef(null);
+  const initStarted = useRef(false);
 
   useEffect(() => {
     const initMap = async () => {
+      // Prevent multiple initializations
+      if (initStarted.current) return;
+      initStarted.current = true;
+
       try {
-        console.log('Initializing map...');
+        console.log('Waiting for map container...');
         
-        // Wait a bit to ensure DOM is ready
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
+        // Wait for the map container to be in the DOM
+        let retries = 0;
+        while (!document.getElementById('viewDiv') && retries < 20) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          retries++;
+        }
+
+        if (!document.getElementById('viewDiv')) {
+          throw new Error('Map container not found after waiting');
+        }
+
+        console.log('Map container found, initializing map...');
         const { view, webmap } = await initializeMapView('viewDiv');
         
         // Find road network layer
@@ -33,10 +48,11 @@ function App() {
         
         if (roadLayer) {
           await roadLayer.load();
-          console.log('Road network layer loaded');
+          console.log('Road network layer loaded:', roadLayer.title);
           setRoadLayer(roadLayer);
         } else {
-          console.warn('Road network layer not found');
+          console.warn('Road network layer not found. Available layers:', 
+            webmap.layers.map(l => l.title).join(', '));
         }
         
         setMapView(view);
@@ -45,30 +61,15 @@ function App() {
         message.success('Application loaded successfully');
       } catch (err) {
         console.error('Failed to initialize:', err);
-        setError(err.message);
+        setError(err.message || 'Failed to initialize map');
         setLoading(false);
       }
     };
 
-    // Only initialize if not already loading/loaded
-    if (loading && !mapView) {
-      initMap();
-    }
-  }, []); // Remove strict mode double-initialization issue
-
-  if (loading) {
-    return (
-      <div style={{ 
-        height: '100vh', 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center',
-        background: '#f0f2f5'
-      }}>
-        <Spin size="large" tip="Loading TII Flood Risk Dashboard..." />
-      </div>
-    );
-  }
+    // Start initialization after a short delay
+    const timer = setTimeout(initMap, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   if (error) {
     return (
@@ -84,6 +85,9 @@ function App() {
             <WarningOutlined style={{ fontSize: 48, color: '#ff4d4f' }} />
             <h2>Error Loading Application</h2>
             <p>{error}</p>
+            <Button onClick={() => window.location.reload()}>
+              Reload Page
+            </Button>
           </Space>
         </Card>
       </div>
@@ -162,33 +166,63 @@ function App() {
         </Header>
         
         <Content style={{ position: 'relative' }}>
-          <div id="viewDiv" style={{ width: '100%', height: 'calc(100vh - 64px)' }} />
+          {/* Map Container */}
+          <div 
+            ref={mapContainerRef}
+            id="viewDiv" 
+            style={{ 
+              width: '100%', 
+              height: 'calc(100vh - 64px)',
+              position: 'relative'
+            }} 
+          />
           
-          <Card
-            size="small"
-            style={{
+          {/* Loading Overlay */}
+          {loading && (
+            <div style={{
               position: 'absolute',
-              top: 16,
-              left: 16,
-              width: 300,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-            }}
-            title="Welcome"
-          >
-            <p>
-              Phase 1 Implementation Complete
-            </p>
-            <ul style={{ paddingLeft: 20, margin: '10px 0' }}>
-              <li>✅ Ant Design UI Framework</li>
-              <li>✅ ArcGIS Map Integration</li>
-              <li>✅ Basic Layout Structure</li>
-              <li>✅ County Filter (NEW!)</li>
-              <li>⏳ Statistics & Analysis (Phase 2)</li>
-            </ul>
-          </Card>
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              background: 'rgba(255, 255, 255, 0.9)',
+              zIndex: 1000
+            }}>
+              <Spin size="large" />
+            </div>
+          )}
+          
+          {/* Welcome Card */}
+          {!loading && (
+            <Card
+              size="small"
+              style={{
+                position: 'absolute',
+                top: 16,
+                left: 16,
+                width: 300,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              }}
+              title="Welcome"
+            >
+              <p>
+                Phase 1 Implementation Complete
+              </p>
+              <ul style={{ paddingLeft: 20, margin: '10px 0' }}>
+                <li>✅ Ant Design UI Framework</li>
+                <li>✅ ArcGIS Map Integration</li>
+                <li>✅ Basic Layout Structure</li>
+                <li>{roadLayer ? '✅' : '⏳'} County Filter</li>
+                <li>⏳ Statistics & Analysis (Phase 2)</li>
+              </ul>
+            </Card>
+          )}
           
           {/* Filter Panel - Conditionally Rendered */}
-          {showFilters && roadLayer && (
+          {showFilters && roadLayer && mapView && (
             <SimpleFilterPanel
               view={mapView}
               webmap={webmap}
@@ -197,7 +231,7 @@ function App() {
           )}
           
           {/* Debug info */}
-          {showFilters && !roadLayer && (
+          {showFilters && !roadLayer && !loading && (
             <Card
               size="small"
               style={{
@@ -210,12 +244,13 @@ function App() {
               }}
             >
               <p style={{ margin: 0, color: '#856404' }}>
-                Waiting for road layer to load...
+                Cannot show filters: Road layer not found
               </p>
-              <p style={{ margin: 0, fontSize: 12, color: '#856404' }}>
-                showFilters: {String(showFilters)}<br/>
-                roadLayer: {String(!!roadLayer)}<br/>
-                mapView: {String(!!mapView)}
+              <p style={{ margin: '8px 0 0 0', fontSize: 12, color: '#856404' }}>
+                Looking for layer: "{CONFIG.roadNetworkLayerTitle}"
+              </p>
+              <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#856404' }}>
+                Available layers: {webmap?.layers?.map(l => l.title).join(', ') || 'None'}
               </p>
             </Card>
           )}
