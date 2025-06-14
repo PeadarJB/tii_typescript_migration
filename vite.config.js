@@ -8,6 +8,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // Fix for lodash imports in @ant-design/charts
+      'lodash': 'lodash-es',
     },
   },
   css: {
@@ -25,10 +27,13 @@ export default defineConfig({
       '@ant-design/icons',
       '@ant-design/pro-components',
       '@ant-design/charts',
+      'lodash',
+      'lodash-es',
     ],
+    exclude: ['@arcgis/core'],
   },
   server: {
-    port: 5173,
+    port: 3000,
     open: true,
   },
 });

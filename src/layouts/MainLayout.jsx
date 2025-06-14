@@ -15,11 +15,11 @@ import {
   DownloadOutlined,
 } from '@ant-design/icons';
 import { ProLayout, ProCard } from '@ant-design/pro-components';
-import { Button, Space, Badge, Avatar, Dropdown, Switch, Typography } from 'antd';
+import { Button, Space, Badge, Avatar, Dropdown, Switch, Typography, Empty } from 'antd';
 import MapContainer from '../components/MapContainer';
 import FilterPanel from '../components/panels/FilterPanel';
 import StatisticsPanel from '../components/panels/StatisticsPanel';
-import ChartPanel from '../components/panels/ChartPanel';
+// import ChartPanel from '../components/panels/ChartPanel';
 import SwipePanel from '../components/panels/SwipePanel';
 import { theme } from '../config/themeConfig';
 
@@ -259,7 +259,16 @@ const MainLayout = ({ appManager, error }) => {
               maxHeight: 'calc(100% - 32px)',
               zIndex: 10,
             }}>
-              <ChartPanel appManager={appManager} />
+              {/* Temporarily disabled due to lodash issue */}
+              {/* <ChartPanel appManager={appManager} /> */}
+              <ProCard
+                title="Charts"
+                size="small"
+                bordered
+                style={{ boxShadow: theme.token.boxShadowSecondary }}
+              >
+                <Empty description="Charts will be available in Phase 2" />
+              </ProCard>
             </div>
           )}
           
