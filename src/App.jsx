@@ -1,159 +1,169 @@
 import React, { useState, useEffect } from 'react';
-import { ConfigProvider, App as AntApp, Spin, message } from 'antd';
-import { ProConfigProvider } from '@ant-design/pro-components';
-import enUS from 'antd/locale/en_US';
-import dayjs from 'dayjs';
-import 'dayjs/locale/en';
-import { theme } from './config/themeConfig';
-import MainLayout from './layouts/MainLayout';
-import { AppManager } from './core/AppManager';
-
-// Import Ant Design reset CSS
+import { Layout, Menu, Button, Space, Spin, Card, message } from 'antd';
+import { DashboardOutlined, WarningOutlined, DownloadOutlined } from '@ant-design/icons';
+import { initializeMapView } from './components/MapView';
+import { CONFIG } from './config/appConfig';
 import 'antd/dist/reset.css';
-// Import custom global styles
-import './styles/global.less';
 
-// Set dayjs locale
-dayjs.locale('en');
-
-// Create a single instance of AppManager
-const appManager = new AppManager();
+const { Header, Sider, Content } = Layout;
 
 function App() {
   const [loading, setLoading] = useState(true);
+  const [mapView, setMapView] = useState(null);
+  const [webmap, setWebmap] = useState(null);
   const [error, setError] = useState(null);
-  const { message: messageApi, notification, modal } = AntApp.useApp();
 
   useEffect(() => {
-    // Initialize the application
-    const initializeApp = async () => {
+    const initMap = async () => {
       try {
-        setLoading(true);
-        await appManager.initialize();
-        messageApi.success('Application loaded successfully');
+        console.log('Initializing map...');
+        const { view, webmap } = await initializeMapView('viewDiv');
+        
+        // Find road network layer
+        const roadLayer = webmap.layers.find(
+          layer => layer.title === CONFIG.roadNetworkLayerTitle
+        );
+        
+        if (roadLayer) {
+          await roadLayer.load();
+          console.log('Road network layer loaded');
+        }
+        
+        setMapView(view);
+        setWebmap(webmap);
+        setLoading(false);
+        message.success('Application loaded successfully');
       } catch (err) {
-        console.error('Failed to initialize application:', err);
-        setError(err.message || 'Failed to initialize application');
-        notification.error({
-          message: 'Initialization Error',
-          description: err.message || 'Failed to initialize application',
-          duration: 0,
-        });
-      } finally {
+        console.error('Failed to initialize:', err);
+        setError(err.message);
         setLoading(false);
       }
     };
 
-    initializeApp();
-
-    // Cleanup on unmount
-    return () => {
-      appManager.destroy();
-    };
+    initMap();
   }, []);
-
-  // Global error boundary
-  const handleError = (error, errorInfo) => {
-    console.error('Global error:', error, errorInfo);
-    notification.error({
-      message: 'Application Error',
-      description: error.toString(),
-      duration: 0,
-    });
-  };
 
   if (loading) {
     return (
-      <ConfigProvider theme={theme} locale={enUS}>
-        <div style={{
-          height: '100vh',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          background: theme.token.colorBgLayout,
-        }}>
-          <Spin size="large" tip="Loading TII Flood Risk Dashboard..." />
-        </div>
-      </ConfigProvider>
+      <div style={{ 
+        height: '100vh', 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        background: '#f0f2f5'
+      }}>
+        <Spin size="large" tip="Loading TII Flood Risk Dashboard..." />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ 
+        height: '100vh', 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        background: '#f0f2f5'
+      }}>
+        <Card>
+          <Space direction="vertical" align="center">
+            <WarningOutlined style={{ fontSize: 48, color: '#ff4d4f' }} />
+            <h2>Error Loading Application</h2>
+            <p>{error}</p>
+          </Space>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <ConfigProvider theme={theme} locale={enUS}>
-      <ProConfigProvider dark={false}>
-        <AntApp
-          message={{ maxCount: 3 }}
-          notification={{ placement: 'topRight' }}
-        >
-          <MainLayout appManager={appManager} error={error} />
-        </AntApp>
-      </ProConfigProvider>
-    </ConfigProvider>
+    <Layout style={{ minHeight: '100vh' }}>
+      <Sider 
+        collapsible 
+        style={{ background: '#fff' }}
+        defaultCollapsed={false}
+      >
+        <div style={{
+          height: 64,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderBottom: '1px solid #f0f0f0',
+          background: '#003d82',
+          color: '#fff',
+          fontWeight: 'bold',
+          fontSize: '20px'
+        }}>
+          TII
+        </div>
+        <Menu
+          mode="inline"
+          defaultSelectedKeys={['1']}
+          style={{ borderRight: 0 }}
+          items={[
+            {
+              key: '1',
+              icon: <DashboardOutlined />,
+              label: 'Dashboard',
+            },
+            {
+              key: '2',
+              icon: <WarningOutlined />,
+              label: 'Flood Analysis',
+            },
+          ]}
+        />
+      </Sider>
+      
+      <Layout>
+        <Header style={{
+          padding: '0 24px',
+          background: '#fff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderBottom: '1px solid #f0f0f0',
+        }}>
+          <h2 style={{ margin: 0 }}>TII Flood Risk Dashboard</h2>
+          
+          <Button
+            type="primary"
+            icon={<DownloadOutlined />}
+            onClick={() => message.info('Report generation coming in Phase 2')}
+          >
+            Generate Report
+          </Button>
+        </Header>
+        
+        <Content style={{ position: 'relative' }}>
+          <div id="viewDiv" style={{ width: '100%', height: 'calc(100vh - 64px)' }} />
+          
+          <Card
+            size="small"
+            style={{
+              position: 'absolute',
+              top: 16,
+              left: 16,
+              width: 300,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            }}
+            title="Welcome"
+          >
+            <p>
+              Phase 1 Implementation Complete
+            </p>
+            <ul style={{ paddingLeft: 20, margin: '10px 0' }}>
+              <li>✅ Ant Design UI Framework</li>
+              <li>✅ ArcGIS Map Integration</li>
+              <li>✅ Basic Layout Structure</li>
+              <li>⏳ Filters & Analysis (Phase 2)</li>
+            </ul>
+          </Card>
+        </Content>
+      </Layout>
+    </Layout>
   );
 }
 
-// Error Boundary Component
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error('Error Boundary caught:', error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <ConfigProvider theme={theme} locale={enUS}>
-          <div style={{
-            height: '100vh',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            background: theme.token.colorBgLayout,
-            padding: '20px',
-          }}>
-            <div style={{ textAlign: 'center', maxWidth: '600px' }}>
-              <h1 style={{ color: theme.token.colorError }}>Something went wrong</h1>
-              <p style={{ color: theme.token.colorTextSecondary, marginBottom: '20px' }}>
-                The application encountered an unexpected error.
-              </p>
-              <button
-                onClick={() => window.location.reload()}
-                style={{
-                  padding: '10px 20px',
-                  background: theme.token.colorPrimary,
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: theme.token.borderRadius,
-                  cursor: 'pointer',
-                }}
-              >
-                Reload Application
-              </button>
-            </div>
-          </div>
-        </ConfigProvider>
-      );
-    }
-
-    return this.props.children;
-  }
-}
-
-// Export wrapped App
-export default function WrappedApp() {
-  return (
-    <ErrorBoundary>
-      <AntApp>
-        <App />
-      </AntApp>
-    </ErrorBoundary>
-  );
-}
+export default App;
