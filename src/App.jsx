@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Layout, Menu, Button, Space, Spin, Card, message, Switch } from 'antd';
-import { DashboardOutlined, WarningOutlined, DownloadOutlined, FilterOutlined } from '@ant-design/icons';
+import { DashboardOutlined, WarningOutlined, DownloadOutlined, FilterOutlined, BarChartOutlined } from '@ant-design/icons';
 import { initializeMapView } from './components/MapView';
 import SimpleFilterPanel from './components/SimpleFilterPanel';
+import SimpleStatsPanel from './components/SimpleStatsPanel';
 import { CONFIG } from './config/appConfig';
 import 'antd/dist/reset.css';
 
@@ -15,6 +16,7 @@ function App() {
   const [roadLayer, setRoadLayer] = useState(null);
   const [error, setError] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [showStats, setShowStats] = useState(true);
   const mapContainerRef = useRef(null);
   const initStarted = useRef(false);
 
@@ -146,12 +148,20 @@ function App() {
           
           <Space>
             <Space size="small">
-              <span>Show Filters:</span>
+              <span>Panels:</span>
               <Switch
                 checked={showFilters}
                 onChange={setShowFilters}
-                checkedChildren={<FilterOutlined />}
-                unCheckedChildren={<FilterOutlined />}
+                checkedChildren="Filters"
+                unCheckedChildren="Filters"
+                style={{ minWidth: 70 }}
+              />
+              <Switch
+                checked={showStats}
+                onChange={setShowStats}
+                checkedChildren="Stats"
+                unCheckedChildren="Stats"
+                style={{ minWidth: 60 }}
               />
             </Space>
             
@@ -215,8 +225,9 @@ function App() {
                 <li>✅ Ant Design UI Framework</li>
                 <li>✅ ArcGIS Map Integration</li>
                 <li>✅ Basic Layout Structure</li>
-                <li>{roadLayer ? '✅' : '⏳'} County Filter</li>
-                <li>⏳ Statistics & Analysis (Phase 2)</li>
+                <li>✅ Enhanced Filters with Flood Scenarios</li>
+                <li>✅ Real-time Statistics Panel</li>
+                <li>⏳ Charts & Analysis (Phase 2)</li>
               </ul>
             </Card>
           )}
@@ -228,6 +239,11 @@ function App() {
               webmap={webmap}
               roadLayer={roadLayer}
             />
+          )}
+          
+          {/* Statistics Panel */}
+          {showStats && roadLayer && !loading && (
+            <SimpleStatsPanel roadLayer={roadLayer} />
           )}
           
           {/* Debug info */}
