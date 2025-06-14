@@ -3,7 +3,7 @@ import { Card, Select, Button, Space, Divider, Checkbox, Tag, message, Spin } fr
 import { FilterOutlined, ClearOutlined, WarningOutlined } from '@ant-design/icons';
 import { CONFIG } from '../config/appConfig';
 
-const SimpleFilterPanel = ({ view, webmap, roadLayer }) => {
+const SimpleFilterPanel = ({ view, webmap, roadLayer, onFiltersChange }) => {
   const [counties, setCounties] = useState([]);
   const [selectedCounties, setSelectedCounties] = useState([]);
   const [selectedScenarios, setSelectedScenarios] = useState([]);
@@ -88,6 +88,21 @@ const SimpleFilterPanel = ({ view, webmap, roadLayer }) => {
         message.info('Showing all roads');
       }
       
+      // Notify parent component about filter changes
+      if (onFiltersChange) {
+        const filterSummary = {};
+        if (selectedScenarios.length > 0) {
+          filterSummary['Flood Scenarios'] = selectedScenarios.map(field => {
+            const scenario = floodScenarios.find(s => s.field === field);
+            return scenario ? scenario.label : field;
+          });
+        }
+        if (selectedCounties.length > 0) {
+          filterSummary['Counties'] = selectedCounties;
+        }
+        onFiltersChange(filterSummary);
+      }
+      
     } catch (error) {
       console.error('Failed to apply filters:', error);
       message.error('Failed to apply filters');
@@ -101,6 +116,11 @@ const SimpleFilterPanel = ({ view, webmap, roadLayer }) => {
     setSelectedScenarios([]);
     roadLayer.definitionExpression = '1=1';
     message.info('All filters cleared');
+    
+    // Notify parent component
+    if (onFiltersChange) {
+      onFiltersChange({});
+    }
   };
 
   const hasActiveFilters = selectedCounties.length > 0 || selectedScenarios.length > 0;
