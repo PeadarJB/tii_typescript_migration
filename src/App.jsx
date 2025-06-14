@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Button, Space, Spin, Card, message } from 'antd';
-import { DashboardOutlined, WarningOutlined, DownloadOutlined } from '@ant-design/icons';
+import { Layout, Menu, Button, Space, Spin, Card, message, Switch } from 'antd';
+import { DashboardOutlined, WarningOutlined, DownloadOutlined, FilterOutlined } from '@ant-design/icons';
 import { initializeMapView } from './components/MapView';
+import SimpleFilterPanel from './components/SimpleFilterPanel';
 import { CONFIG } from './config/appConfig';
 import 'antd/dist/reset.css';
 
@@ -11,7 +12,9 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [mapView, setMapView] = useState(null);
   const [webmap, setWebmap] = useState(null);
+  const [roadLayer, setRoadLayer] = useState(null);
   const [error, setError] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     const initMap = async () => {
@@ -27,6 +30,7 @@ function App() {
         if (roadLayer) {
           await roadLayer.load();
           console.log('Road network layer loaded');
+          setRoadLayer(roadLayer);
         }
         
         setMapView(view);
@@ -127,13 +131,25 @@ function App() {
         }}>
           <h2 style={{ margin: 0 }}>TII Flood Risk Dashboard</h2>
           
-          <Button
-            type="primary"
-            icon={<DownloadOutlined />}
-            onClick={() => message.info('Report generation coming in Phase 2')}
-          >
-            Generate Report
-          </Button>
+          <Space>
+            <Space size="small">
+              <span>Show Filters:</span>
+              <Switch
+                checked={showFilters}
+                onChange={setShowFilters}
+                checkedChildren={<FilterOutlined />}
+                unCheckedChildren={<FilterOutlined />}
+              />
+            </Space>
+            
+            <Button
+              type="primary"
+              icon={<DownloadOutlined />}
+              onClick={() => message.info('Report generation coming in Phase 2')}
+            >
+              Generate Report
+            </Button>
+          </Space>
         </Header>
         
         <Content style={{ position: 'relative' }}>
@@ -157,9 +173,19 @@ function App() {
               <li>✅ Ant Design UI Framework</li>
               <li>✅ ArcGIS Map Integration</li>
               <li>✅ Basic Layout Structure</li>
-              <li>⏳ Filters & Analysis (Phase 2)</li>
+              <li>✅ County Filter (NEW!)</li>
+              <li>⏳ Statistics & Analysis (Phase 2)</li>
             </ul>
           </Card>
+          
+          {/* Filter Panel - Conditionally Rendered */}
+          {showFilters && roadLayer && (
+            <SimpleFilterPanel
+              view={mapView}
+              webmap={webmap}
+              roadLayer={roadLayer}
+            />
+          )}
         </Content>
       </Layout>
     </Layout>
