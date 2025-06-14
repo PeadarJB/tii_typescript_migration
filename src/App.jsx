@@ -240,7 +240,6 @@ function App() {
               roadLayer={roadLayer}
             />
           )}
-          
           {/* Statistics Panel */}
           {showStats && roadLayer && !loading && (
             <SimpleStatsPanel roadLayer={roadLayer} />
