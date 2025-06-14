@@ -1,9 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Layout, Menu, Button, Space, Spin, Card, message, Switch } from 'antd';
-import { DashboardOutlined, WarningOutlined, DownloadOutlined, FilterOutlined, BarChartOutlined } from '@ant-design/icons';
+import { 
+  DashboardOutlined, 
+  WarningOutlined, 
+  DownloadOutlined, 
+  FilterOutlined, 
+  BarChartOutlined,
+  SwapOutlined 
+} from '@ant-design/icons';
 import { initializeMapView } from './components/MapView';
 import SimpleFilterPanel from './components/SimpleFilterPanel';
 import SimpleStatsPanel from './components/SimpleStatsPanel';
+import SimpleChartPanel from './components/SimpleChartPanel';
+import SimpleSwipePanel from './components/SimpleSwipePanel';
 import { CONFIG } from './config/appConfig';
 import 'antd/dist/reset.css';
 
@@ -17,6 +26,8 @@ function App() {
   const [error, setError] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [showStats, setShowStats] = useState(true);
+  const [showChart, setShowChart] = useState(false);
+  const [showSwipe, setShowSwipe] = useState(false);
   const mapContainerRef = useRef(null);
   const initStarted = useRef(false);
 
@@ -150,25 +161,39 @@ function App() {
             <Space size="small">
               <span>Panels:</span>
               <Switch
+                size="small"
                 checked={showFilters}
                 onChange={setShowFilters}
-                checkedChildren="Filters"
-                unCheckedChildren="Filters"
-                style={{ minWidth: 70 }}
+                checkedChildren="Filter"
+                unCheckedChildren="Filter"
               />
               <Switch
+                size="small"
                 checked={showStats}
                 onChange={setShowStats}
                 checkedChildren="Stats"
                 unCheckedChildren="Stats"
-                style={{ minWidth: 60 }}
+              />
+              <Switch
+                size="small"
+                checked={showChart}
+                onChange={setShowChart}
+                checkedChildren="Chart"
+                unCheckedChildren="Chart"
+              />
+              <Switch
+                size="small"
+                checked={showSwipe}
+                onChange={setShowSwipe}
+                checkedChildren="Swipe"
+                unCheckedChildren="Swipe"
               />
             </Space>
             
             <Button
               type="primary"
               icon={<DownloadOutlined />}
-              onClick={() => message.info('Report generation coming in Phase 2')}
+              onClick={() => message.info('Report generation coming soon')}
             >
               Generate Report
             </Button>
@@ -205,32 +230,8 @@ function App() {
             </div>
           )}
           
-          {/* Welcome Card */}
-          {!loading && (
-            <Card
-              size="small"
-              style={{
-                position: 'absolute',
-                top: 16,
-                left: 16,
-                width: 300,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-              }}
-              title="Welcome"
-            >
-              <p>
-                Phase 1 Implementation Complete
-              </p>
-              <ul style={{ paddingLeft: 20, margin: '10px 0' }}>
-                <li>✅ Ant Design UI Framework</li>
-                <li>✅ ArcGIS Map Integration</li>
-                <li>✅ Basic Layout Structure</li>
-                <li>✅ Enhanced Filters with Flood Scenarios</li>
-                <li>✅ Real-time Statistics Panel</li>
-                <li>⏳ Charts & Analysis (Phase 2)</li>
-              </ul>
-            </Card>
-          )}
+          
+         
           
           {/* Filter Panel - Conditionally Rendered */}
           {showFilters && roadLayer && mapView && (
@@ -240,6 +241,17 @@ function App() {
               roadLayer={roadLayer}
             />
           )}
+          
+          {/* Chart Panel */}
+          {showChart && roadLayer && !loading && (
+            <SimpleChartPanel roadLayer={roadLayer} />
+          )}
+          
+          {/* Swipe Panel */}
+          {showSwipe && mapView && webmap && !loading && (
+            <SimpleSwipePanel view={mapView} webmap={webmap} />
+          )}
+          
           {/* Statistics Panel */}
           {showStats && roadLayer && !loading && (
             <SimpleStatsPanel roadLayer={roadLayer} />
