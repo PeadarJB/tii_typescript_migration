@@ -257,9 +257,20 @@ function App() {
                 <li>✅ Real-time Statistics Panel</li>
                 <li>✅ Chart Visualization</li>
                 <li>✅ Layer Comparison Tool</li>
-                <li>⏳ Report Generation</li>
+                <li>✅ Report Generation</li>
               </ul>
             </Card>
+          )}
+          
+          {/* Report Generator Modal */}
+          {showReportModal && mapView && (
+            <SimpleReportGenerator
+              view={mapView}
+              roadLayer={roadLayer}
+              activeFilters={currentFilters}
+              statistics={currentStats}
+              onClose={() => setShowReportModal(false)}
+            />
           )}
           
           {/* Filter Panel - Conditionally Rendered */}
@@ -268,6 +279,7 @@ function App() {
               view={mapView}
               webmap={webmap}
               roadLayer={roadLayer}
+              onFiltersChange={setCurrentFilters}
             />
           )}
           
@@ -283,7 +295,10 @@ function App() {
           
           {/* Statistics Panel */}
           {showStats && roadLayer && !loading && (
-            <SimpleStatsPanel roadLayer={roadLayer} />
+            <SimpleStatsPanel 
+              roadLayer={roadLayer} 
+              onStatsChange={setCurrentStats}
+            />
           )}
           
           {/* Debug info */}
