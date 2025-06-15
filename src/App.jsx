@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Layout, Menu, Button, Space, Spin, Card, message, Switch } from 'antd';
+import { Layout, Menu, Button, Space, Spin, Card, message, Switch, Tooltip } from 'antd';
 import { 
   DashboardOutlined, 
   WarningOutlined, 
@@ -27,8 +27,8 @@ function App() {
   const [error, setError] = useState(null);
   const [siderCollapsed, setSiderCollapsed] = useState(true);
   const siderRef = useRef(null);
-  const [showFilters, setShowFilters] = useState(true);
-  const [showStats, setShowStats] = useState(false);
+  const [showFilters, setShowFilters] = useState(true); // Show filters by default
+  const [showStats, setShowStats] = useState(false); // Start with stats panel hidden
   const [showChart, setShowChart] = useState(false);
   const [showSwipe, setShowSwipe] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -98,6 +98,20 @@ function App() {
     const timer = setTimeout(initMap, 100);
     return () => clearTimeout(timer);
   }, []);
+
+  // Determine if any filters are active
+  const hasActiveFilters = Object.values(currentFilters).some(arr => Array.isArray(arr) && arr.length > 0);
+  
+  // Handler for filter changes to also manage stats panel visibility
+  const handleFiltersChange = (filters) => {
+    setCurrentFilters(filters);
+    const isActive = Object.values(filters).some(arr => Array.isArray(arr) && arr.length > 0);
+    // If filters are cleared, automatically hide the stats panel.
+    if (!isActive) {
+      setShowStats(false);
+    }
+  };
+
 
   if (error) {
     return (
@@ -190,13 +204,16 @@ function App() {
                 checkedChildren="Filter"
                 unCheckedChildren="Filter"
               />
-              <Switch
-                size="small"
-                checked={showStats}
-                onChange={setShowStats}
-                checkedChildren="Stats"
-                unCheckedChildren="Stats"
-              />
+              <Tooltip title={!hasActiveFilters ? 'Please select filters to view statistics' : ''}>
+                <Switch
+                  size="small"
+                  checked={showStats}
+                  onChange={setShowStats}
+                  checkedChildren="Stats"
+                  unCheckedChildren="Stats"
+                  disabled={!hasActiveFilters}
+                />
+              </Tooltip>
               <Switch
                 size="small"
                 checked={showChart}
@@ -277,7 +294,7 @@ function App() {
               view={mapView}
               webmap={webmap}
               roadLayer={roadLayer}
-              onFiltersChange={setCurrentFilters}
+              onFiltersChange={handleFiltersChange}
               initialExtent={initialExtent}
             />
           )}
@@ -293,7 +310,7 @@ function App() {
           )}
           
           {/* Statistics Panel */}
-          {showStats && roadLayer && !loading && (
+          {showStats && hasActiveFilters && roadLayer && !loading && (
             <EnhancedStatsPanel 
               roadLayer={roadLayer} 
               onStatsChange={setCurrentStats}
