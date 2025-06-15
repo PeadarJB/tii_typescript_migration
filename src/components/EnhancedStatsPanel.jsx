@@ -167,11 +167,11 @@ const EnhancedStatsPanel = ({ roadLayer, onStatsChange }) => {
     return (
       <Card
         size="small"
-        style={{ position: 'absolute', bottom: 16, left: 16, width: 450, maxHeight: 420, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+        style={{ position: 'absolute', bottom: 16, left: 16, width: 450, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
       >
         <div style={{ textAlign: 'center', padding: '100px 20px' }}>
           <Spin size="large" />
-          <p style={{ marginTop: 16 }}>Calculating flood risk statistics...</p>
+          <p style={{ marginTop: 16 }}>Calculating statistics...</p>
         </div>
       </Card>
     );
@@ -182,7 +182,7 @@ const EnhancedStatsPanel = ({ roadLayer, onStatsChange }) => {
     return (
       <Card
         size="small"
-        style={{ position: 'absolute', bottom: 16, left: 16, width: 450, height: 380, boxShadow: '0 2px 8px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        style={{ position: 'absolute', bottom: 16, left: 16, width: 450, boxShadow: '0 2px 8px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '200px' }}
       >
         <Empty
           image={<WarningOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />}
@@ -201,7 +201,7 @@ const EnhancedStatsPanel = ({ roadLayer, onStatsChange }) => {
     // Check if data and data.any exist before trying to access properties
     if (!data || !data.any) {
         return (
-            <div style={{ padding: '0 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+            <div style={{ padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 250 }}>
                 <Empty description={`No data for ${scenario.toUpperCase()} scenario found within the current filter.`} />
             </div>
         );
@@ -210,10 +210,10 @@ const EnhancedStatsPanel = ({ roadLayer, onStatsChange }) => {
     const anyRisk = getRiskLevel(data.any.percentage);
     
     return (
-      <div style={{ padding: '0 20px', height: '100%', display: 'flex', flexDirection: 'column' }}>
-        <Space direction="vertical" style={{ width: '100%', flexShrink: 0 }} size="small">
+      <div style={{ padding: '0 20px 20px 20px' }}>
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
           {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: 8 }}>
+          <div style={{ textAlign: 'center' }}>
             <Title level={4} style={{ margin: 0 }}>
               {scenario === 'rcp45' ? (
                 <Space><Tag color="blue">RCP 4.5</Tag><span>Flood Scenario</span></Space>
@@ -256,10 +256,9 @@ const EnhancedStatsPanel = ({ roadLayer, onStatsChange }) => {
               </Col>
             </Row>
           </Card>
-        </Space>
           
-        {/* Detailed Model Breakdown - now scrollable */}
-        <div style={{ marginTop: 8, overflowY: 'auto', flex: 1 }}>
+          {/* Detailed Model Breakdown */}
+          <div>
             <Text strong style={{ display: 'block', marginBottom: 8 }}>Model Breakdown:</Text>
             <Space direction="vertical" style={{ width: '100%' }} size="small">
               {Object.entries(data).filter(([key]) => key !== 'any' && data[key] && data[key].count > 0).map(([key, modelData]) => (
@@ -287,14 +286,15 @@ const EnhancedStatsPanel = ({ roadLayer, onStatsChange }) => {
                 </div>
               ))}
             </Space>
-        </div>
+          </div>
 
-        {/* Network Summary - Fixed at the bottom */}
-        <div style={{ marginTop: 8, padding: '8px', background: '#f5f5f5', borderRadius: 4, textAlign: 'center', flexShrink: 0 }}>
+          {/* Network Summary */}
+          <div style={{ padding: '8px', background: '#f5f5f5', borderRadius: 4, textAlign: 'center' }}>
             <Text type="secondary" style={{ fontSize: 12 }}>
               Total Network Analyzed: {stats.total.length.toFixed(1)} km ({stats.total.segments.toLocaleString()} segments)
             </Text>
-        </div>
+          </div>
+        </Space>
       </div>
     );
   };
@@ -311,14 +311,14 @@ const EnhancedStatsPanel = ({ roadLayer, onStatsChange }) => {
         </Space>
       }
       size="small"
-      style={{ position: 'absolute', bottom: 16, left: 16, width: 450, maxHeight: 420, boxShadow: '0 2px 8px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column' }}
-      bodyStyle={{ padding: '12px 0', flex: 1, overflow: 'hidden', position: 'relative' }}
+      style={{ position: 'absolute', bottom: 16, left: 16, width: 450, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+      bodyStyle={{ padding: '12px 0 30px 0', position: 'relative' }} // Added padding-bottom to make space for carousel dots
     >
       <Carousel
         ref={setCarouselRef}
-        dots={false} // Using custom tags instead
+        dots={false}
         afterChange={setCurrentSlide}
-        style={{ height: '100%' }}
+        adaptiveHeight // This will adjust the carousel height to the current slide's content
       >
         <div>{stats && renderScenarioSlide('rcp45', stats.rcp45)}</div>
         <div>{stats && renderScenarioSlide('rcp85', stats.rcp85)}</div>
