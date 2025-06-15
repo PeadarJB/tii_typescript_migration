@@ -172,8 +172,35 @@ const EnhancedFilterPanel = ({ view, webmap, roadLayer, onFiltersChange, initial
       const finalWhereClause = whereClauses.length > 0 ? whereClauses.join(' AND ') : '1=1';
       roadLayer.definitionExpression = finalWhereClause;
       
-      // The rest of the logic for zooming and notifying parent remains the same
-      message.success('Filters applied successfully');
+      if (whereClauses.length > 0) {
+        // Show layer when filters are applied
+        roadLayer.visible = true;
+        
+        message.success(`Filters applied successfully`);
+        
+        // Zoom to filtered extent
+        const Query = (await import('@arcgis/core/rest/support/Query.js')).default;
+        const query = new Query({ where: finalWhereClause });
+        
+        const extent = await roadLayer.queryExtent(query);
+        if (extent && extent.extent) {
+          await view.goTo(extent.extent.expand(1.2));
+        }
+      } else {
+        // Hide layer when no filters
+        roadLayer.visible = false;
+        message.info('No filters applied - road layer hidden');
+        
+        // Return to initial extent
+        if (initialExtent) {
+          await view.goTo(initialExtent);
+        }
+      }
+      
+      // Notify parent component about filter changes
+      if (onFiltersChange) {
+        onFiltersChange(filterValues);
+      }
 
     } catch (error) {
       console.error('Failed to apply filters:', error);
@@ -183,10 +210,21 @@ const EnhancedFilterPanel = ({ view, webmap, roadLayer, onFiltersChange, initial
     }
   };
   
-  const clearAllFilters = () => {
+  const clearAllFilters = async () => {
     setFilterValues(getInitialFilterState());
-    if(roadLayer) roadLayer.definitionExpression = '1=1';
-    message.info('All filters cleared. Click "Apply Filters" to update the map.');
+    if(roadLayer) {
+        roadLayer.definitionExpression = '1=1';
+        roadLayer.visible = false;
+    }
+    message.info('All filters cleared');
+
+    if (initialExtent && view) {
+        await view.goTo(initialExtent);
+    }
+
+    if (onFiltersChange) {
+        onFiltersChange({});
+    }
   };
   
   const clearFilterGroup = (id) => {

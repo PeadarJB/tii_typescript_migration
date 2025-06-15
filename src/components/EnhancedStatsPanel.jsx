@@ -9,25 +9,7 @@ import {
   LeftOutlined,
   RightOutlined
 } from '@ant-design/icons';
-// Assuming CONFIG is correctly imported from your project structure
-// import { CONFIG } from '../config/appConfig';
-
-// Mock CONFIG for demonstration
-const CONFIG = {
-  fields: {
-    floodAffected: 'flood_any',
-    floodAffected_h: 'flood_any_h',
-    cfram_f_m_0010: 'cfram_f_m_0010',
-    cfram_c_m_0010: 'cfram_c_m_0010',
-    nifm_f_m_0020: 'nifm_f_m_0020',
-    ncfhm_c_m_0010: 'ncfhm_c_m_0010',
-    cfram_f_h_0100: 'cfram_f_h_0100',
-    cfram_c_h_0200: 'cfram_c_h_0200',
-    nifm_f_h_0100: 'nifm_f_h_0100',
-    ncfhm_c_c_0200: 'ncfhm_c_c_0200',
-    object_id: 'OBJECTID'
-  }
-};
+import { CONFIG } from '../config/appConfig';
 
 
 const { Title, Text } = Typography;
@@ -39,39 +21,109 @@ const EnhancedStatsPanel = ({ roadLayer, onStatsChange }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
-    // Mocking roadLayer and its watch method for demonstration
-    if (roadLayer || !window.Cypress) {
-      // In a real app, this would be triggered by the roadLayer prop
-      // calculateStatistics(); 
-      // const handle = roadLayer.watch('definitionExpression', () => {
-      //   calculateStatistics();
-      // });
-      // return () => handle.remove();
+    if (roadLayer) {
+      // Load initial statistics
+      calculateStatistics();
       
-      // For demonstration, we'll set some mock stats
-      setLoading(true);
-      setTimeout(() => {
-        setStats({
-          rcp45: {
-            any: { lengthKm: 150.5, percentage: 12.5, count: 1505 },
-            cfram_f: { lengthKm: 80.2, percentage: 6.7, count: 802 },
-            cfram_c: { lengthKm: 70.3, percentage: 5.8, count: 703 }
-          },
-          rcp85: {
-            any: { lengthKm: 280.9, percentage: 23.4, count: 2809 },
-            cfram_f: { lengthKm: 150.1, percentage: 12.5, count: 1501 },
-            cfram_c: { lengthKm: 130.8, percentage: 10.9, count: 1308 }
-          },
-          total: { length: 1200, segments: 12000 }
-        });
-        setLoading(false);
-      }, 1500);
+      // Listen for definition expression changes on the layer
+      const handle = roadLayer.watch('definitionExpression', () => {
+        calculateStatistics();
+      });
+      
+      // Cleanup the watcher when the component is removed
+      return () => handle.remove();
     }
   }, [roadLayer]);
 
   const calculateStatistics = async () => {
      if (!roadLayer) return;
-     // This function logic would remain the same
+     
+     try {
+        setLoading(true);
+        const Query = (await import('@arcgis/core/rest/support/Query.js')).default;
+        
+        const baseWhere = roadLayer.definitionExpression || '1=1';
+
+        // Get total count in current filter
+        const queryTotal = new Query({
+            where: baseWhere,
+            outStatistics: [{
+                statisticType: 'count',
+                onStatisticField: CONFIG.fields.object_id,
+                outStatisticFieldName: 'total_count'
+            }]
+        });
+
+        const totalResult = await roadLayer.queryFeatures(queryTotal);
+        const totalSegments = totalResult.features[0]?.attributes.total_count || 0;
+        const totalLength = totalSegments * 0.1;
+
+        // Define field sets for each scenario
+        const rcp45_fields = {
+            any: CONFIG.fields.floodAffected,
+            cfram_f: CONFIG.fields.cfram_f_m_0010,
+            cfram_c: CONFIG.fields.cfram_c_m_0010,
+            nifm_f: CONFIG.fields.nifm_f_m_0020,
+            ncfhm_c: CONFIG.fields.ncfhm_c_m_0010
+        };
+
+        const rcp85_fields = {
+            any: CONFIG.fields.floodAffected_h,
+            cfram_f: CONFIG.fields.cfram_f_h_0100,
+            cfram_c: CONFIG.fields.cfram_c_h_0200,
+            nifm_f: CONFIG.fields.nifm_f_h_0100,
+            ncfhm_c: CONFIG.fields.ncfhm_c_c_0200
+        };
+        
+        // Helper to run queries for a set of fields
+        const getStatsForScenario = async (fields) => {
+            const scenarioStats = {};
+            for (const [key, field] of Object.entries(fields)) {
+                if (!field) continue; // Skip if field is not in config
+                const query = new Query({
+                    where: `(${baseWhere}) AND (${field} = 1)`,
+                    outStatistics: [{
+                        statisticType: 'count',
+                        onStatisticField: CONFIG.fields.object_id,
+                        outStatisticFieldName: 'affected_count'
+                    }]
+                });
+                const result = await roadLayer.queryFeatures(query);
+                const count = result.features[0]?.attributes.affected_count || 0;
+                scenarioStats[key] = {
+                    count: count,
+                    lengthKm: count * 0.1,
+                    percentage: totalSegments > 0 ? (count / totalSegments) * 100 : 0
+                };
+            }
+            return scenarioStats;
+        };
+
+        const [rcp45, rcp85] = await Promise.all([
+            getStatsForScenario(rcp45_fields),
+            getStatsForScenario(rcp85_fields)
+        ]);
+        
+        const finalStats = {
+            rcp45,
+            rcp85,
+            total: {
+                segments: totalSegments,
+                length: totalLength
+            }
+        };
+
+        setStats(finalStats);
+        if (onStatsChange) {
+            onStatsChange(finalStats);
+        }
+
+     } catch (error) {
+        console.error('Failed to calculate statistics:', error);
+        setStats(null);
+     } finally {
+        setLoading(false);
+     }
   };
 
   const getRiskLevel = (percent) => {
@@ -123,6 +175,15 @@ const EnhancedStatsPanel = ({ roadLayer, onStatsChange }) => {
   }
 
   const renderScenarioSlide = (scenario, data) => {
+    // Check if data and data.any exist before trying to access properties
+    if (!data || !data.any) {
+        return (
+            <div style={{ padding: '0 20px' }}>
+                <Empty description={`No data for ${scenario.toUpperCase()} scenario.`} />
+            </div>
+        );
+    }
+
     const anyRisk = getRiskLevel(data.any.percentage);
     
     return (
@@ -177,7 +238,7 @@ const EnhancedStatsPanel = ({ roadLayer, onStatsChange }) => {
           <div>
             <Text strong style={{ display: 'block', marginBottom: 8 }}>Model Breakdown:</Text>
             <Space direction="vertical" style={{ width: '100%' }} size="small">
-              {Object.entries(data).filter(([key]) => key !== 'any').map(([key, modelData]) => (
+              {Object.entries(data).filter(([key]) => key !== 'any' && data[key] && data[key].count > 0).map(([key, modelData]) => (
                 <div key={key} style={{ padding: '8px 12px', background: '#fafafa', borderRadius: 4, border: '1px solid #f0f0f0' }}>
                   <Row align="middle">
                     <Col span={14}>
