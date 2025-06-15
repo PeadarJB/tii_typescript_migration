@@ -1,351 +1,412 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Card, Select, Button, Space, Spin, Empty, Radio, InputNumber, Switch } from 'antd';
-import { BarChartOutlined, ReloadOutlined, PieChartOutlined, DownloadOutlined } from '@ant-design/icons';
-import Chart from 'chart.js/auto';
+import React, { useState, useEffect } from 'react';
+import { Card, Statistic, Progress, Space, Tag, Spin, Empty, Carousel, Typography, Row, Col, Tooltip } from 'antd';
+import { 
+  WarningOutlined, 
+  RiseOutlined, 
+  EnvironmentOutlined,
+  ThunderboltOutlined,
+  InfoCircleOutlined,
+  LeftOutlined,
+  RightOutlined
+} from '@ant-design/icons';
 import { CONFIG } from '../config/appConfig';
 
-const EnhancedChartPanel = ({ roadLayer }) => {
+const { Title, Text } = Typography;
+
+const EnhancedStatsPanel = ({ roadLayer, onStatsChange }) => {
   const [loading, setLoading] = useState(false);
-  const [groupByField, setGroupByField] = useState('COUNTY');
-  const [selectedFeatures, setSelectedFeatures] = useState(['future_flood_intersection_m']);
-  const [chartType, setChartType] = useState('bar');
-  const [maxCategories, setMaxCategories] = useState(10);
-  const [metric, setMetric] = useState('length');
-  const [chartData, setChartData] = useState(null);
-  const chartRef = useRef(null);
-  const chartInstance = useRef(null);
-
-  // Feature options from config
-  const featureOptions = CONFIG.chartingFeatures.map(feature => ({
-    label: feature.label,
-    value: feature.field,
-    description: feature.description
-  }));
-
-  // Group by field options
-  const groupByOptions = [
-    { label: 'County', value: 'COUNTY' },
-    { label: 'Criticality Rating', value: 'Criticality_Rating_Num1' },
-    { label: 'Road Subnet', value: 'Subnet' },
-    { label: 'Lifeline Route', value: 'Lifeline' },
-    { label: 'Route', value: 'Route' }
-  ];
+  const [stats, setStats] = useState(null);
+  const [carouselRef, setCarouselRef] = useState(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
-    return () => {
-      if (chartInstance.current) {
-        chartInstance.current.destroy();
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (chartData && chartRef.current) {
-      renderChart();
+    if (roadLayer) {
+      // Load initial statistics
+      calculateStatistics();
+      
+      // Listen for definition expression changes
+      const handle = roadLayer.watch('definitionExpression', () => {
+        calculateStatistics();
+      });
+      
+      return () => handle.remove();
     }
-  }, [chartData, chartType]);
+  }, [roadLayer]);
 
-  const generateChart = async () => {
-    if (!roadLayer || selectedFeatures.length === 0) return;
-
+  const calculateStatistics = async () => {
+    if (!roadLayer) return;
+    
     try {
       setLoading(true);
       const Query = (await import('@arcgis/core/rest/support/Query.js')).default;
       
+      // Get current filter
       const baseWhere = roadLayer.definitionExpression || '1=1';
-      const allData = [];
       
-      // Query for each selected feature
-      for (const featureField of selectedFeatures) {
-        const feature = CONFIG.chartingFeatures.find(f => f.field === featureField);
-        const whereClause = `(${baseWhere}) AND (${featureField} = 1)`;
+      // Define the statistics to calculate for each scenario
+      const rcp45Fields = {
+        any: CONFIG.fields.floodAffected,
+        cfram_f: CONFIG.fields.cfram_f_m_0010,
+        cfram_c: CONFIG.fields.cfram_c_m_0010,
+        nifm_f: CONFIG.fields.nifm_f_m_0020,
+        ncfhm_c: CONFIG.fields.ncfhm_c_m_0010
+      };
+      
+      const rcp85Fields = {
+        any: CONFIG.fields.floodAffected_h,
+        cfram_f: CONFIG.fields.cfram_f_h_0100,
+        cfram_c: CONFIG.fields.cfram_c_h_0200,
+        nifm_f: CONFIG.fields.nifm_f_h_0100,
+        ncfhm_c: CONFIG.fields.ncfhm_c_c_0200
+      };
+      
+      // Calculate statistics for each field
+      const calculateFieldStats = async (fields) => {
+        const results = {};
         
-        const query = new Query({
-          where: whereClause,
-          groupByFieldsForStatistics: [groupByField],
-          outStatistics: [{
-            statisticType: 'count',
-            onStatisticField: 'OBJECTID',
-            outStatisticFieldName: 'segment_count'
-          }],
-          orderByFields: ['segment_count DESC']
-        });
-
-        const results = await roadLayer.queryFeatures(query);
-        
-        results.features.forEach((f) => {
-          const groupValue = f.attributes[groupByField] || 'Unknown';
-          const count = f.attributes.segment_count || 0;
-          
-          allData.push({
-            category: String(groupValue),
-            feature: feature.label,
-            featureField: featureField,
-            count: count,
-            length: count * 0.1
+        for (const [key, field] of Object.entries(fields)) {
+          const query = new Query({
+            where: `(${baseWhere}) AND (${field} = 1)`,
+            outStatistics: [{
+              statisticType: 'count',
+              onStatisticField: CONFIG.fields.object_id,
+              outStatisticFieldName: 'affected_count'
+            }]
           });
-        });
-      }
-
-      // Sort and limit data
-      const categoryTotals = {};
-      allData.forEach(item => {
-        const value = metric === 'length' ? item.length : item.count;
-        categoryTotals[item.category] = (categoryTotals[item.category] || 0) + value;
-      });
-      
-      const topCategories = Object.entries(categoryTotals)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, maxCategories)
-        .map(([category]) => category);
-      
-      // Filter to top categories
-      const filteredData = allData.filter(item => topCategories.includes(item.category));
-      
-      // Prepare chart data
-      const datasets = selectedFeatures.map((featureField, index) => {
-        const feature = CONFIG.chartingFeatures.find(f => f.field === featureField);
-        const data = topCategories.map(category => {
-          const item = filteredData.find(d => 
-            d.category === category && d.featureField === featureField
-          );
-          return item ? (metric === 'length' ? item.length : item.count) : 0;
-        });
+          
+          const result = await roadLayer.queryFeatures(query);
+          const count = result.features[0]?.attributes.affected_count || 0;
+          const lengthKm = count * 0.1; // Each segment is 0.1km
+          
+          results[key] = {
+            count,
+            lengthKm,
+            field
+          };
+        }
         
-        return {
-          label: feature.label,
-          data: data,
-          backgroundColor: getChartColor(index, 0.7),
-          borderColor: getChartColor(index, 1),
-          borderWidth: 1
-        };
+        return results;
+      };
+      
+      // Get total count in current filter
+      const queryTotal = new Query({
+        where: baseWhere,
+        outStatistics: [{
+          statisticType: 'count',
+          onStatisticField: CONFIG.fields.object_id,
+          outStatisticFieldName: 'total_count'
+        }]
       });
-
-      setChartData({
-        labels: topCategories,
-        datasets: datasets
-      });
-
+      
+      const [rcp45Stats, rcp85Stats, totalResult] = await Promise.all([
+        calculateFieldStats(rcp45Fields),
+        calculateFieldStats(rcp85Fields),
+        roadLayer.queryFeatures(queryTotal)
+      ]);
+      
+      const totalSegments = totalResult.features[0]?.attributes.total_count || 0;
+      const totalLength = totalSegments * 0.1;
+      
+      // Calculate percentages
+      const calculatePercentages = (fieldStats) => {
+        const result = {};
+        for (const [key, data] of Object.entries(fieldStats)) {
+          result[key] = {
+            ...data,
+            percentage: totalSegments > 0 ? (data.count / totalSegments) * 100 : 0
+          };
+        }
+        return result;
+      };
+      
+      const statsData = {
+        rcp45: calculatePercentages(rcp45Stats),
+        rcp85: calculatePercentages(rcp85Stats),
+        total: {
+          segments: totalSegments,
+          length: totalLength
+        }
+      };
+      
+      setStats(statsData);
+      
+      // Notify parent component
+      if (onStatsChange) {
+        onStatsChange(statsData);
+      }
+      
     } catch (error) {
-      console.error('Failed to generate chart:', error);
-      setChartData(null);
+      console.error('Failed to calculate statistics:', error);
+      setStats(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const getChartColor = (index, opacity = 1) => {
-    const colors = [
-      `rgba(0, 61, 130, ${opacity})`,    // TII Blue
-      `rgba(250, 173, 20, ${opacity})`,  // Warning Orange
-      `rgba(82, 196, 26, ${opacity})`,   // Success Green
-      `rgba(255, 77, 79, ${opacity})`,   // Danger Red
-      `rgba(24, 144, 255, ${opacity})`,  // Info Blue
-      `rgba(114, 46, 209, ${opacity})`,  // Purple
-      `rgba(250, 140, 22, ${opacity})`,  // Dark Orange
-      `rgba(19, 194, 194, ${opacity})`   // Cyan
-    ];
-    return colors[index % colors.length];
+  const getRiskLevel = (percent) => {
+    if (percent < 5) return { level: 'Low', color: 'success', icon: '✓' };
+    if (percent < 15) return { level: 'Medium', color: 'warning', icon: '!' };
+    if (percent < 25) return { level: 'High', color: 'orange', icon: '!!' };
+    return { level: 'Extreme', color: 'error', icon: '!!!' };
   };
 
-  const renderChart = () => {
-    const ctx = chartRef.current.getContext('2d');
-    
-    if (chartInstance.current) {
-      chartInstance.current.destroy();
-    }
+  const getModelIcon = (modelType) => {
+    if (modelType.includes('coastal')) return <EnvironmentOutlined />;
+    return <ThunderboltOutlined />;
+  };
 
-    const config = {
-      type: chartType,
-      data: chartData,
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: selectedFeatures.length > 1,
-            position: 'top'
-          },
-          title: {
-            display: true,
-            text: `${metric === 'length' ? 'Road Length' : 'Segment Count'} by ${
-              groupByOptions.find(o => o.value === groupByField)?.label
-            }`
-          },
-          tooltip: {
-            callbacks: {
-              label: (context) => {
-                const label = context.dataset.label || '';
-                const value = context.parsed.y || context.parsed;
-                const suffix = metric === 'length' ? ' km' : ' segments';
-                return `${label}: ${value.toFixed(1)}${suffix}`;
-              }
-            }
-          }
-        }
-      }
+  const formatModelName = (key) => {
+    const names = {
+      any: 'Any Future Flood Intersection',
+      cfram_f: 'CFRAM Fluvial Model',
+      cfram_c: 'CFRAM Coastal Model',
+      nifm_f: 'NIFM Fluvial Model',
+      ncfhm_c: 'NCFHM Coastal Model'
     };
-
-    // Add specific options for different chart types
-    if (chartType === 'bar') {
-      config.options.scales = {
-        y: {
-          beginAtZero: true,
-          title: {
-            display: true,
-            text: metric === 'length' ? 'Length (km)' : 'Segment Count'
-          }
-        },
-        x: {
-          ticks: {
-            maxRotation: 45,
-            minRotation: 45
-          }
-        }
-      };
-    } else if (chartType === 'pie') {
-      config.options.plugins.legend.position = 'right';
-    }
-
-    chartInstance.current = new Chart(ctx, config);
+    return names[key] || key;
   };
 
-  const downloadChart = () => {
-    if (chartInstance.current) {
-      const url = chartInstance.current.toBase64Image();
-      const link = document.createElement('a');
-      link.download = `flood_risk_chart_${new Date().toISOString().split('T')[0]}.png`;
-      link.href = url;
-      link.click();
-    }
+  if (loading) {
+    return (
+      <Card 
+        size="small"
+        style={{
+          position: 'absolute',
+          bottom: 16,
+          left: 16,
+          width: 450,
+          height: 380,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+        }}
+      >
+        <div style={{ textAlign: 'center', padding: '100px 20px' }}>
+          <Spin size="large" />
+          <p style={{ marginTop: 16 }}>Calculating flood risk statistics...</p>
+        </div>
+      </Card>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <Card 
+        size="small"
+        style={{
+          position: 'absolute',
+          bottom: 16,
+          left: 16,
+          width: 450,
+          height: 380,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+        }}
+      >
+        <Empty description="No statistics available" />
+      </Card>
+    );
+  }
+
+  const renderScenarioSlide = (scenario, data) => {
+    const anyRisk = getRiskLevel(data.any.percentage);
+    
+    return (
+      <div style={{ padding: '0 20px' }}>
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: 16 }}>
+            <Title level={4} style={{ margin: 0 }}>
+              {scenario === 'rcp45' ? (
+                <Space>
+                  <Tag color="blue">RCP 4.5</Tag>
+                  <span>Flood Scenario</span>
+                </Space>
+              ) : (
+                <Space>
+                  <Tag color="red">RCP 8.5</Tag>
+                  <span>Flood Scenario</span>
+                </Space>
+              )}
+            </Title>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {scenario === 'rcp45' ? '10-20 year return period' : '100-200 year return period'}
+            </Text>
+          </div>
+          
+          {/* Overall Risk Summary */}
+          <Card 
+            size="small" 
+            style={{ 
+              background: anyRisk.color === 'error' ? '#fff2e8' : '#f6ffed',
+              borderColor: anyRisk.color === 'error' ? '#ffbb96' : '#b7eb8f'
+            }}
+          >
+            <Row gutter={16} align="middle">
+              <Col span={12}>
+                <Statistic
+                  title="Total Roads at Risk"
+                  value={data.any.lengthKm.toFixed(1)}
+                  suffix="km"
+                  prefix={<RiseOutlined />}
+                />
+              </Col>
+              <Col span={12} style={{ textAlign: 'right' }}>
+                <Tag color={anyRisk.color} style={{ fontSize: 14, padding: '4px 12px' }}>
+                  {anyRisk.icon} {anyRisk.level} Risk
+                </Tag>
+                <div style={{ marginTop: 8 }}>
+                  <Text strong style={{ fontSize: 20, color: anyRisk.color === 'error' ? '#ff4d4f' : undefined }}>
+                    {data.any.percentage.toFixed(1)}%
+                  </Text>
+                  <Text type="secondary" style={{ fontSize: 12 }}> of network</Text>
+                </div>
+              </Col>
+            </Row>
+          </Card>
+          
+          {/* Detailed Model Breakdown */}
+          <div>
+            <Text strong style={{ display: 'block', marginBottom: 8 }}>
+              Model Breakdown:
+            </Text>
+            <Space direction="vertical" style={{ width: '100%' }} size="small">
+              {Object.entries(data).filter(([key]) => key !== 'any').map(([key, modelData]) => (
+                <div key={key} style={{ 
+                  padding: '8px 12px', 
+                  background: '#fafafa', 
+                  borderRadius: 4,
+                  border: '1px solid #f0f0f0'
+                }}>
+                  <Row align="middle">
+                    <Col span={14}>
+                      <Space size="small">
+                        {getModelIcon(key)}
+                        <Text style={{ fontSize: 13 }}>{formatModelName(key)}</Text>
+                      </Space>
+                    </Col>
+                    <Col span={5} style={{ textAlign: 'right' }}>
+                      <Text strong>{modelData.lengthKm.toFixed(1)} km</Text>
+                    </Col>
+                    <Col span={5} style={{ textAlign: 'right' }}>
+                      <Progress
+                        percent={modelData.percentage}
+                        size="small"
+                        format={(percent) => `${percent.toFixed(1)}%`}
+                        strokeColor={modelData.percentage > 10 ? '#ff4d4f' : undefined}
+                        style={{ marginBottom: 0 }}
+                      />
+                    </Col>
+                  </Row>
+                </div>
+              ))}
+            </Space>
+          </div>
+          
+          {/* Network Summary */}
+          <div style={{ 
+            marginTop: 8,
+            padding: '8px',
+            background: '#f5f5f5',
+            borderRadius: 4,
+            textAlign: 'center'
+          }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Total Network Analyzed: {stats.total.length.toFixed(1)} km ({stats.total.segments.toLocaleString()} segments)
+            </Text>
+          </div>
+        </Space>
+      </div>
+    );
   };
 
   return (
     <Card
       title={
         <Space>
-          <BarChartOutlined />
-          <span>Advanced Analysis</span>
+          <WarningOutlined />
+          <span>Flood Risk Statistics</span>
+          <Tooltip title="Swipe to see different climate scenarios">
+            <InfoCircleOutlined style={{ fontSize: 12, color: '#8c8c8c' }} />
+          </Tooltip>
         </Space>
       }
       size="small"
       style={{
         position: 'absolute',
-        top: 16,
-        right: 16,
+        bottom: 16,
+        left: 16,
         width: 450,
-        height: 500,
+        height: 380,
         boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
       }}
-      extra={
-        <Space size="small">
-          <Button
-            size="small"
-            icon={<DownloadOutlined />}
-            onClick={downloadChart}
-            disabled={!chartData}
-          />
-          <Button
-            size="small"
-            type="primary"
-            icon={<ReloadOutlined />}
-            onClick={generateChart}
-            loading={loading}
-          >
-            Generate
-          </Button>
-        </Space>
-      }
       bodyStyle={{ 
-        padding: '8px',
-        display: 'flex',
-        flexDirection: 'column',
-        height: 'calc(100% - 45px)'
+        padding: '12px 0',
+        height: 'calc(100% - 45px)',
+        position: 'relative'
       }}
     >
-      <Space direction="vertical" style={{ width: '100%' }} size="small">
-        {/* Feature Selection */}
-        <Select
-          mode="multiple"
-          style={{ width: '100%' }}
-          placeholder="Select features to analyze..."
-          value={selectedFeatures}
-          onChange={setSelectedFeatures}
-          options={featureOptions}
-          maxTagCount={2}
-        />
+      <Carousel
+        ref={setCarouselRef}
+        dots={{ className: 'custom-dots' }}
+        afterChange={setCurrentSlide}
+        style={{ height: '100%' }}
+      >
+        {/* RCP 4.5 Slide */}
+        <div>
+          {stats && renderScenarioSlide('rcp45', stats.rcp45)}
+        </div>
         
-        {/* Group By */}
-        <Select
-          style={{ width: '100%' }}
-          value={groupByField}
-          onChange={setGroupByField}
-          options={groupByOptions}
-          placeholder="Group by..."
-        />
-        
-        {/* Chart Options Row */}
-        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-          <Radio.Group 
-            value={chartType} 
-            onChange={(e) => setChartType(e.target.value)}
-            size="small"
-            disabled={selectedFeatures.length > 1 && e?.target?.value === 'pie'}
-          >
-            <Radio.Button value="bar">
-              <BarChartOutlined /> Bar
-            </Radio.Button>
-            <Radio.Button value="pie" disabled={selectedFeatures.length > 1}>
-              <PieChartOutlined /> Pie
-            </Radio.Button>
-          </Radio.Group>
-          
-          <Radio.Group 
-            value={metric} 
-            onChange={(e) => setMetric(e.target.value)}
-            size="small"
-          >
-            <Radio.Button value="length">Length (km)</Radio.Button>
-            <Radio.Button value="count">Segments</Radio.Button>
-          </Radio.Group>
-        </Space>
-        
-        {/* Max Categories */}
-        <Space align="center">
-          <span style={{ fontSize: 12 }}>Max Categories:</span>
-          <InputNumber
-            min={5}
-            max={50}
-            value={maxCategories}
-            onChange={setMaxCategories}
-            size="small"
-            style={{ width: 60 }}
-          />
-        </Space>
-      </Space>
+        {/* RCP 8.5 Slide */}
+        <div>
+          {stats && renderScenarioSlide('rcp85', stats.rcp85)}
+        </div>
+      </Carousel>
       
-      {/* Chart Area */}
-      <div style={{ flex: 1, position: 'relative', marginTop: 8 }}>
-        {loading ? (
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            alignItems: 'center', 
-            height: '100%' 
-          }}>
-            <Spin />
-          </div>
-        ) : chartData ? (
-          <canvas ref={chartRef} />
-        ) : (
-          <Empty 
-            description="Configure options and click 'Generate' to create a chart" 
-            style={{ marginTop: 50 }}
-          />
-        )}
+      {/* Navigation Arrows */}
+      <Button
+        type="text"
+        icon={<LeftOutlined />}
+        onClick={() => carouselRef?.prev()}
+        style={{
+          position: 'absolute',
+          left: 8,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          zIndex: 10
+        }}
+        disabled={currentSlide === 0}
+      />
+      <Button
+        type="text"
+        icon={<RightOutlined />}
+        onClick={() => carouselRef?.next()}
+        style={{
+          position: 'absolute',
+          right: 8,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          zIndex: 10
+        }}
+        disabled={currentSlide === 1}
+      />
+      
+      {/* Slide Indicator */}
+      <div style={{
+        position: 'absolute',
+        bottom: 8,
+        left: 0,
+        right: 0,
+        textAlign: 'center'
+      }}>
+        <Space size="small">
+          <Tag color={currentSlide === 0 ? 'blue' : 'default'}>
+            RCP 4.5
+          </Tag>
+          <Tag color={currentSlide === 1 ? 'red' : 'default'}>
+            RCP 8.5
+          </Tag>
+        </Space>
       </div>
     </Card>
   );
 };
 
-export default EnhancedChartPanel;
+export default EnhancedStatsPanel;
