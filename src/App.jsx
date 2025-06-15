@@ -27,8 +27,8 @@ function App() {
   const [error, setError] = useState(null);
   const [siderCollapsed, setSiderCollapsed] = useState(true);
   const siderRef = useRef(null);
-  const [showFilters, setShowFilters] = useState(false);
-  const [showStats, setShowStats] = useState(true);
+  const [showFilters, setShowFilters] = useState(true);
+  const [showStats, setShowStats] = useState(false);
   const [showChart, setShowChart] = useState(false);
   const [showSwipe, setShowSwipe] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
