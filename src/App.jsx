@@ -14,7 +14,6 @@ import SimpleStatsPanel from './components/SimpleStatsPanel';
 import SimpleChartPanel from './components/SimpleChartPanel';
 import SimpleSwipePanel from './components/SimpleSwipePanel';
 import SimpleReportGenerator from './components/SimpleReportGenerator';
-import { createPopupTemplate } from './utils/popupConfig';
 import { CONFIG } from './config/appConfig';
 import 'antd/dist/reset.css';
 
@@ -73,9 +72,6 @@ function App() {
           
           // Hide road layer by default
           roadLayer.visible = false;
-          
-          // Apply styled popup template
-          roadLayer.popupTemplate = createPopupTemplate();
           
           setRoadLayer(roadLayer);
         } else {
