@@ -14,6 +14,7 @@ import SimpleStatsPanel from './components/SimpleStatsPanel';
 import SimpleChartPanel from './components/SimpleChartPanel';
 import SimpleSwipePanel from './components/SimpleSwipePanel';
 import SimpleReportGenerator from './components/SimpleReportGenerator';
+import { createPopupTemplate } from './utils/popupConfig';
 import { CONFIG } from './config/appConfig';
 import 'antd/dist/reset.css';
 
@@ -25,6 +26,8 @@ function App() {
   const [webmap, setWebmap] = useState(null);
   const [roadLayer, setRoadLayer] = useState(null);
   const [error, setError] = useState(null);
+  const [siderCollapsed, setSiderCollapsed] = useState(true);
+  const siderRef = useRef(null);
   const [showFilters, setShowFilters] = useState(false);
   const [showStats, setShowStats] = useState(true);
   const [showChart, setShowChart] = useState(false);
@@ -32,6 +35,7 @@ function App() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [currentFilters, setCurrentFilters] = useState({});
   const [currentStats, setCurrentStats] = useState(null);
+  const [initialExtent, setInitialExtent] = useState(null);
   const mapContainerRef = useRef(null);
   const initStarted = useRef(false);
 
@@ -66,11 +70,22 @@ function App() {
         if (roadLayer) {
           await roadLayer.load();
           console.log('Road network layer loaded:', roadLayer.title);
+          
+          // Hide road layer by default
+          roadLayer.visible = false;
+          
+          // Apply styled popup template
+          roadLayer.popupTemplate = createPopupTemplate();
+          
           setRoadLayer(roadLayer);
         } else {
           console.warn('Road network layer not found. Available layers:', 
             webmap.layers.map(l => l.title).join(', '));
         }
+        
+        // Store initial extent
+        const viewExtent = view.extent.clone();
+        setInitialExtent(viewExtent);
         
         setMapView(view);
         setWebmap(webmap);
@@ -114,9 +129,17 @@ function App() {
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider 
+        ref={siderRef}
         collapsible 
-        style={{ background: '#fff' }}
-        defaultCollapsed={false}
+        collapsed={siderCollapsed}
+        onCollapse={setSiderCollapsed}
+        trigger={null}
+        style={{ 
+          background: '#fff',
+          transition: 'all 0.2s'
+        }}
+        onMouseEnter={() => setSiderCollapsed(false)}
+        onMouseLeave={() => setSiderCollapsed(true)}
       >
         <div style={{
           height: 64,
@@ -188,7 +211,13 @@ function App() {
               <Switch
                 size="small"
                 checked={showSwipe}
-                onChange={setShowSwipe}
+                onChange={(checked) => {
+                  setShowSwipe(checked);
+                  // Don't reset swipe if just hiding panel
+                  if (!checked) {
+                    message.info('Swipe panel hidden - comparison still active if running');
+                  }
+                }}
                 checkedChildren="Swipe"
                 unCheckedChildren="Swipe"
               />
@@ -234,6 +263,34 @@ function App() {
             </div>
           )}
           
+          {/* Welcome Card */}
+          {!loading && (
+            <Card
+              size="small"
+              style={{
+                position: 'absolute',
+                top: 16,
+                left: 16,
+                width: 300,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              }}
+              title="Welcome"
+            >
+              <p>
+                Phase 1 Implementation Complete
+              </p>
+              <ul style={{ paddingLeft: 20, margin: '10px 0', fontSize: 13 }}>
+                <li>✅ Ant Design UI Framework</li>
+                <li>✅ ArcGIS Map Integration</li>
+                <li>✅ Enhanced Filters with Flood Scenarios</li>
+                <li>✅ Real-time Statistics Panel</li>
+                <li>✅ Chart Visualization</li>
+                <li>✅ Layer Comparison Tool</li>
+                <li>✅ Report Generation</li>
+              </ul>
+            </Card>
+          )}
+          
           {/* Report Generator Modal */}
           {showReportModal && mapView && (
             <SimpleReportGenerator
@@ -252,6 +309,7 @@ function App() {
               webmap={webmap}
               roadLayer={roadLayer}
               onFiltersChange={setCurrentFilters}
+              initialExtent={initialExtent}
             />
           )}
           
