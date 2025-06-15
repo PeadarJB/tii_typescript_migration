@@ -3,7 +3,7 @@ import { Card, Select, Button, Space, Divider, Checkbox, Tag, message, Spin } fr
 import { FilterOutlined, ClearOutlined, WarningOutlined } from '@ant-design/icons';
 import { CONFIG } from '../config/appConfig';
 
-const SimpleFilterPanel = ({ view, webmap, roadLayer, onFiltersChange }) => {
+const SimpleFilterPanel = ({ view, webmap, roadLayer, onFiltersChange, initialExtent }) => {
   const [counties, setCounties] = useState([]);
   const [selectedCounties, setSelectedCounties] = useState([]);
   const [selectedScenarios, setSelectedScenarios] = useState([]);
@@ -74,6 +74,9 @@ const SimpleFilterPanel = ({ view, webmap, roadLayer, onFiltersChange }) => {
       roadLayer.definitionExpression = finalWhereClause;
       
       if (whereClauses.length > 0) {
+        // Show layer when filters are applied
+        roadLayer.visible = true;
+        
         message.success(`Filters applied successfully`);
         
         // Zoom to filtered extent
@@ -85,7 +88,14 @@ const SimpleFilterPanel = ({ view, webmap, roadLayer, onFiltersChange }) => {
           await view.goTo(extent.extent.expand(1.2));
         }
       } else {
-        message.info('Showing all roads');
+        // Hide layer when no filters
+        roadLayer.visible = false;
+        message.info('No filters applied - road layer hidden');
+        
+        // Return to initial extent
+        if (initialExtent) {
+          await view.goTo(initialExtent);
+        }
       }
       
       // Notify parent component about filter changes
@@ -111,11 +121,17 @@ const SimpleFilterPanel = ({ view, webmap, roadLayer, onFiltersChange }) => {
     }
   };
 
-  const clearFilters = () => {
+  const clearFilters = async () => {
     setSelectedCounties([]);
     setSelectedScenarios([]);
     roadLayer.definitionExpression = '1=1';
-    message.info('All filters cleared');
+    roadLayer.visible = false;
+    message.info('All filters cleared - road layer hidden');
+    
+    // Return to initial extent
+    if (initialExtent && view) {
+      await view.goTo(initialExtent);
+    }
     
     // Notify parent component
     if (onFiltersChange) {
