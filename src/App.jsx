@@ -9,9 +9,9 @@ import {
   SwapOutlined 
 } from '@ant-design/icons';
 import { initializeMapView } from './components/MapView';
-import SimpleFilterPanel from './components/SimpleFilterPanel';
-import SimpleStatsPanel from './components/SimpleStatsPanel';
-import SimpleChartPanel from './components/SimpleChartPanel';
+import EnhancedFilterPanel from './components/EnhancedFilterPanel';
+import EnhancedStatsPanel from './components/EnhancedStatsPanel';
+import EnhancedChartPanel from './components/EnhancedChartPanel';
 import SimpleSwipePanel from './components/SimpleSwipePanel';
 import SimpleReportGenerator from './components/SimpleReportGenerator';
 import { CONFIG } from './config/appConfig';
@@ -300,7 +300,7 @@ function App() {
           
           {/* Filter Panel - Conditionally Rendered */}
           {showFilters && roadLayer && mapView && (
-            <SimpleFilterPanel
+            <EnhancedFilterPanel
               view={mapView}
               webmap={webmap}
               roadLayer={roadLayer}
@@ -311,7 +311,7 @@ function App() {
           
           {/* Chart Panel */}
           {showChart && roadLayer && !loading && (
-            <SimpleChartPanel roadLayer={roadLayer} />
+            <EnhancedChartPanel roadLayer={roadLayer} />
           )}
           
           {/* Swipe Panel */}
@@ -321,7 +321,7 @@ function App() {
           
           {/* Statistics Panel */}
           {showStats && roadLayer && !loading && (
-            <SimpleStatsPanel 
+            <EnhancedStatsPanel 
               roadLayer={roadLayer} 
               onStatsChange={setCurrentStats}
             />
