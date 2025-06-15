@@ -9,7 +9,7 @@ import {
   LeftOutlined,
   RightOutlined
 } from '@ant-design/icons';
-import { CONFIG } from '../config/appConfig';
+import { CONFIG } from '../config/appConfig.js';
 
 
 const { Title, Text } = Typography;
@@ -22,15 +22,29 @@ const EnhancedStatsPanel = ({ roadLayer, onStatsChange }) => {
 
   useEffect(() => {
     if (roadLayer) {
-      // Load initial statistics
-      calculateStatistics();
+      const handleFilterChange = () => {
+        // A filter is considered active if the definitionExpression is not the default '1=1'
+        const isFiltered = roadLayer.definitionExpression && roadLayer.definitionExpression !== '1=1';
+        
+        if (isFiltered) {
+          calculateStatistics();
+        } else {
+          // If no filters are active, clear the stats to show the placeholder
+          setStats(null);
+          setLoading(false);
+          if (onStatsChange) {
+            onStatsChange(null);
+          }
+        }
+      };
+
+      // Run once on initial load
+      handleFilterChange();
       
-      // Listen for definition expression changes on the layer
-      const handle = roadLayer.watch('definitionExpression', () => {
-        calculateStatistics();
-      });
+      // Listen for subsequent changes to the layer's filter
+      const handle = roadLayer.watch('definitionExpression', handleFilterChange);
       
-      // Cleanup the watcher when the component is removed
+      // Cleanup the watcher when the component unmounts
       return () => handle.remove();
     }
   }, [roadLayer]);
@@ -44,7 +58,7 @@ const EnhancedStatsPanel = ({ roadLayer, onStatsChange }) => {
         
         const baseWhere = roadLayer.definitionExpression || '1=1';
 
-        // Get total count in current filter
+        // Get total count in current filter to calculate percentages accurately
         const queryTotal = new Query({
             where: baseWhere,
             outStatistics: [{
@@ -58,7 +72,7 @@ const EnhancedStatsPanel = ({ roadLayer, onStatsChange }) => {
         const totalSegments = totalResult.features[0]?.attributes.total_count || 0;
         const totalLength = totalSegments * 0.1;
 
-        // Define field sets for each scenario
+        // Define field sets for each scenario based on appConfig.js
         const rcp45_fields = {
             any: CONFIG.fields.floodAffected,
             cfram_f: CONFIG.fields.cfram_f_m_0010,
@@ -79,7 +93,7 @@ const EnhancedStatsPanel = ({ roadLayer, onStatsChange }) => {
         const getStatsForScenario = async (fields) => {
             const scenarioStats = {};
             for (const [key, field] of Object.entries(fields)) {
-                if (!field) continue; // Skip if field is not in config
+                if (!field) continue; // Skip if field is not defined in config
                 const query = new Query({
                     where: `(${baseWhere}) AND (${field} = 1)`,
                     outStatistics: [{
@@ -153,7 +167,7 @@ const EnhancedStatsPanel = ({ roadLayer, onStatsChange }) => {
     return (
       <Card
         size="small"
-        style={{ position: 'absolute', bottom: 16, left: 16, width: 450, height: 380, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+        style={{ position: 'absolute', bottom: 16, left: 16, width: 450, maxHeight: 420, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
       >
         <div style={{ textAlign: 'center', padding: '100px 20px' }}>
           <Spin size="large" />
@@ -163,13 +177,22 @@ const EnhancedStatsPanel = ({ roadLayer, onStatsChange }) => {
     );
   }
 
+  // If not loading and stats are null, it means no filters are applied.
   if (!stats) {
     return (
       <Card
         size="small"
-        style={{ position: 'absolute', bottom: 16, left: 16, width: 450, height: 380, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+        style={{ position: 'absolute', bottom: 16, left: 16, width: 450, height: 380, boxShadow: '0 2px 8px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       >
-        <Empty description="No statistics available. Apply filters to begin." />
+        <Empty
+          image={<WarningOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />}
+          description={
+            <div style={{ color: '#8c8c8c' }}>
+              <Title level={5}>Statistics Unavailable</Title>
+              <Text type="secondary">Please apply a filter to view statistics.</Text>
+            </div>
+          }
+        />
       </Card>
     );
   }
@@ -178,8 +201,8 @@ const EnhancedStatsPanel = ({ roadLayer, onStatsChange }) => {
     // Check if data and data.any exist before trying to access properties
     if (!data || !data.any) {
         return (
-            <div style={{ padding: '0 20px' }}>
-                <Empty description={`No data for ${scenario.toUpperCase()} scenario.`} />
+            <div style={{ padding: '0 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                <Empty description={`No data for ${scenario.toUpperCase()} scenario found within the current filter.`} />
             </div>
         );
     }
@@ -187,10 +210,10 @@ const EnhancedStatsPanel = ({ roadLayer, onStatsChange }) => {
     const anyRisk = getRiskLevel(data.any.percentage);
     
     return (
-      <div style={{ padding: '0 20px' }}>
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+      <div style={{ padding: '0 20px', height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Space direction="vertical" style={{ width: '100%', flexShrink: 0 }} size="small">
           {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: 16 }}>
+          <div style={{ textAlign: 'center', marginBottom: 8 }}>
             <Title level={4} style={{ margin: 0 }}>
               {scenario === 'rcp45' ? (
                 <Space><Tag color="blue">RCP 4.5</Tag><span>Flood Scenario</span></Space>
@@ -233,9 +256,10 @@ const EnhancedStatsPanel = ({ roadLayer, onStatsChange }) => {
               </Col>
             </Row>
           </Card>
+        </Space>
           
-          {/* Detailed Model Breakdown */}
-          <div>
+        {/* Detailed Model Breakdown - now scrollable */}
+        <div style={{ marginTop: 8, overflowY: 'auto', flex: 1 }}>
             <Text strong style={{ display: 'block', marginBottom: 8 }}>Model Breakdown:</Text>
             <Space direction="vertical" style={{ width: '100%' }} size="small">
               {Object.entries(data).filter(([key]) => key !== 'any' && data[key] && data[key].count > 0).map(([key, modelData]) => (
@@ -263,15 +287,14 @@ const EnhancedStatsPanel = ({ roadLayer, onStatsChange }) => {
                 </div>
               ))}
             </Space>
-          </div>
-          
-          {/* Network Summary */}
-          <div style={{ marginTop: 8, padding: '8px', background: '#f5f5f5', borderRadius: 4, textAlign: 'center' }}>
+        </div>
+
+        {/* Network Summary - Fixed at the bottom */}
+        <div style={{ marginTop: 8, padding: '8px', background: '#f5f5f5', borderRadius: 4, textAlign: 'center', flexShrink: 0 }}>
             <Text type="secondary" style={{ fontSize: 12 }}>
               Total Network Analyzed: {stats.total.length.toFixed(1)} km ({stats.total.segments.toLocaleString()} segments)
             </Text>
-          </div>
-        </Space>
+        </div>
       </div>
     );
   };
@@ -288,8 +311,8 @@ const EnhancedStatsPanel = ({ roadLayer, onStatsChange }) => {
         </Space>
       }
       size="small"
-      style={{ position: 'absolute', bottom: 16, left: 16, width: 450, height: 380, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
-      bodyStyle={{ padding: '12px 0', height: 'calc(100% - 45px)', position: 'relative' }}
+      style={{ position: 'absolute', bottom: 16, left: 16, width: 450, maxHeight: 420, boxShadow: '0 2px 8px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column' }}
+      bodyStyle={{ padding: '12px 0', flex: 1, overflow: 'hidden', position: 'relative' }}
     >
       <Carousel
         ref={setCarouselRef}
