@@ -1,53 +1,60 @@
-import React, { useState, useEffect } from 'react';
+// src/components/SimpleSwipePanel.jsx
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Select, Button, Space, Slider, Radio, Tag, message } from 'antd';
 import { SwapOutlined, CloseOutlined } from '@ant-design/icons';
 import Swipe from '@arcgis/core/widgets/Swipe';
 import { CONFIG } from '../config/appConfig';
 
-const SimpleSwipePanel = ({ view, webmap }) => {
+// ** CHANGE **: Accept isSwipeActive and its setter from props, remove internal state
+const SimpleSwipePanel = ({ view, webmap, isSwipeActive, setIsSwipeActive }) => {
   const [swipeWidget, setSwipeWidget] = useState(null);
   const [leftLayers, setLeftLayers] = useState([]);
   const [rightLayers, setRightLayers] = useState([]);
   const [direction, setDirection] = useState('horizontal');
   const [position, setPosition] = useState(50);
-  const [isActive, setIsActive] = useState(false);
+  // const [isActive, setIsActive] = useState(false); // This state is now managed by the parent
 
-  // Get layer options from config
   const leftLayerOptions = CONFIG.swipeLayerConfig.leftPanel.layers;
   const rightLayerOptions = CONFIG.swipeLayerConfig.rightPanel.layers;
 
-  useEffect(() => {
-    return () => {
-      // Cleanup on unmount
-      if (swipeWidget) {
-        view.ui.remove(swipeWidget);
-        swipeWidget.destroy();
-      }
-    };
-  }, []);
-
-  const findLayer = (title) => {
-    // Find layer in webmap
-    let layer = webmap.layers.find(l => l.title === title);
-    
-    // Check in sublayers if not found
-    if (!layer) {
-      webmap.layers.forEach(parentLayer => {
-        if (parentLayer.layers) {
-          const found = parentLayer.layers.find(l => l.title === title);
-          if (found) layer = found;
+  // ** CHANGE **: Memoize the stopSwipe function to use in a cleanup effect
+  const stopSwipe = useCallback(() => {
+    if (swipeWidget) {
+      const allLayerTitles = [...leftLayers, ...rightLayers];
+      allLayerTitles.forEach(title => {
+        const layer = view.map.allLayers.find(l => l.title === title);
+        if (layer) {
+          layer.visible = false;
         }
       });
+
+      view.ui.remove(swipeWidget);
+      swipeWidget.destroy();
+      
+      setSwipeWidget(null);
+      setIsSwipeActive(false); // Update parent state
+      message.info('Layer comparison deactivated');
     }
-    
-    return layer;
+  }, [swipeWidget, view, leftLayers, rightLayers, setIsSwipeActive]);
+
+  // ** CHANGE **: This effect handles cleanup. It runs when the component unmounts
+  // (e.g., when the swipe toggle in the header is turned off).
+  useEffect(() => {
+    // Return a cleanup function
+    return () => {
+      stopSwipe();
+    };
+  }, [stopSwipe]); // The dependency ensures the latest stopSwipe function is used
+
+  const findLayer = (title) => {
+    return webmap.allLayers.find(l => l.title === title);
   };
 
   const startSwipe = async () => {
     if (!view || !webmap) return;
 
     try {
-      // Find selected layers
       const leftLayerObjects = leftLayers.map(title => findLayer(title)).filter(Boolean);
       const rightLayerObjects = rightLayers.map(title => findLayer(title)).filter(Boolean);
 
@@ -56,12 +63,10 @@ const SimpleSwipePanel = ({ view, webmap }) => {
         return;
       }
 
-      // Make selected layers visible
       [...leftLayerObjects, ...rightLayerObjects].forEach(layer => {
         layer.visible = true;
       });
 
-      // Create swipe widget
       const swipe = new Swipe({
         view: view,
         leadingLayers: leftLayerObjects,
@@ -70,36 +75,14 @@ const SimpleSwipePanel = ({ view, webmap }) => {
         position: position
       });
 
-      // Add to view
       view.ui.add(swipe);
       
       setSwipeWidget(swipe);
-      setIsActive(true);
+      setIsSwipeActive(true); // Update parent state
       message.success('Layer comparison activated');
     } catch (error) {
       console.error('Failed to create swipe:', error);
       message.error('Failed to activate layer comparison');
-    }
-  };
-
-  const stopSwipe = () => {
-    if (swipeWidget) {
-      // Hide layers
-      const allLayers = [...leftLayers, ...rightLayers]
-        .map(title => findLayer(title))
-        .filter(Boolean);
-      
-      allLayers.forEach(layer => {
-        layer.visible = false;
-      });
-
-      // Remove and destroy widget
-      view.ui.remove(swipeWidget);
-      swipeWidget.destroy();
-      
-      setSwipeWidget(null);
-      setIsActive(false);
-      message.info('Layer comparison deactivated');
     }
   };
 
@@ -123,7 +106,7 @@ const SimpleSwipePanel = ({ view, webmap }) => {
         <Space>
           <SwapOutlined />
           <span>Layer Comparison</span>
-          {isActive && <Tag color="green">Active</Tag>}
+          {isSwipeActive && <Tag color="green">Active</Tag>}
         </Space>
       }
       size="small"
@@ -136,7 +119,6 @@ const SimpleSwipePanel = ({ view, webmap }) => {
       }}
     >
       <Space direction="vertical" style={{ width: '100%' }}>
-        {/* Left Layers */}
         <div>
           <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
             Left/Top Layers (RCP 4.5):
@@ -147,15 +129,13 @@ const SimpleSwipePanel = ({ view, webmap }) => {
             placeholder="Select RCP 4.5 layers..."
             value={leftLayers}
             onChange={setLeftLayers}
-            disabled={isActive}
+            disabled={isSwipeActive}
             options={leftLayerOptions.map(layer => ({
               label: layer.label,
               value: layer.title
             }))}
           />
         </div>
-
-        {/* Right Layers */}
         <div>
           <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
             Right/Bottom Layers (RCP 8.5):
@@ -166,15 +146,13 @@ const SimpleSwipePanel = ({ view, webmap }) => {
             placeholder="Select RCP 8.5 layers..."
             value={rightLayers}
             onChange={setRightLayers}
-            disabled={isActive}
+            disabled={isSwipeActive}
             options={rightLayerOptions.map(layer => ({
               label: layer.label,
               value: layer.title
             }))}
           />
         </div>
-
-        {/* Direction */}
         <div>
           <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
             Swipe Direction:
@@ -182,15 +160,13 @@ const SimpleSwipePanel = ({ view, webmap }) => {
           <Radio.Group 
             value={direction} 
             onChange={(e) => updateDirection(e.target.value)}
-            disabled={!isActive}
+            disabled={!isSwipeActive}
           >
             <Radio.Button value="horizontal">Horizontal</Radio.Button>
             <Radio.Button value="vertical">Vertical</Radio.Button>
           </Radio.Group>
         </div>
-
-        {/* Position Slider */}
-        {isActive && (
+        {isSwipeActive && (
           <div>
             <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
               Position: {position}%
@@ -198,24 +174,18 @@ const SimpleSwipePanel = ({ view, webmap }) => {
             <Slider
               value={position}
               onChange={updatePosition}
-              marks={{
-                0: '0%',
-                50: '50%',
-                100: '100%'
-              }}
+              marks={{ 0: '0%', 50: '50%', 100: '100%' }}
             />
           </div>
         )}
-
-        {/* Action Button */}
         <Button
-          type={isActive ? 'default' : 'primary'}
-          icon={isActive ? <CloseOutlined /> : <SwapOutlined />}
-          onClick={isActive ? stopSwipe : startSwipe}
+          type={isSwipeActive ? 'default' : 'primary'}
+          icon={isSwipeActive ? <CloseOutlined /> : <SwapOutlined />}
+          onClick={isSwipeActive ? stopSwipe : startSwipe}
           block
-          danger={isActive}
+          danger={isSwipeActive}
         >
-          {isActive ? 'Stop Comparison' : 'Start Comparison'}
+          {isSwipeActive ? 'Stop Comparison' : 'Start Comparison'}
         </Button>
       </Space>
     </Card>

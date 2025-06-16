@@ -39,12 +39,12 @@ function App() {
   const [initialExtent, setInitialExtent] = useState(null);
   const mapContainerRef = useRef(null);
   const initStarted = useRef(false);
-  
-  // ** CHANGE **: Add a key to force re-mounting the filter panel to reset its state
   const [filterPanelKey, setFilterPanelKey] = useState(Date.now());
+  
+  // ** CHANGE **: State to track if swipe tool is active is now in the parent
+  const [isSwipeActive, setIsSwipeActive] = useState(false);
 
   useEffect(() => {
-    // ... (initialization useEffect remains the same)
     const initMap = async () => {
       if (initStarted.current) return;
       initStarted.current = true;
@@ -75,7 +75,7 @@ function App() {
   }, []);
 
   const hasActiveFilters = Object.values(currentFilters).some(arr => Array.isArray(arr) && arr.length > 0);
-  
+
   const handleFiltersChange = (filters) => {
     setCurrentFilters(filters);
     const isActive = Object.values(filters).some(arr => Array.isArray(arr) && arr.length > 0);
@@ -85,30 +85,26 @@ function App() {
   };
 
   const handleApplyFilters = () => {
-      setShowStats(true);
+    setShowStats(true);
   };
-  
-  // ** CHANGE **: Centralized function to clear all filters
+
   const clearAllFilters = async () => {
     if (roadLayer) {
-        roadLayer.definitionExpression = '1=1';
-        roadLayer.visible = false;
+      roadLayer.definitionExpression = '1=1';
+      roadLayer.visible = false;
     }
     if (initialExtent && mapView) {
-        await mapView.goTo(initialExtent);
+      await mapView.goTo(initialExtent);
     }
     setCurrentFilters({});
     setShowStats(false);
-    // This is the key part: changing the key unmounts the old panel and mounts a new one with fresh state
     setFilterPanelKey(Date.now());
     message.info('All filters have been cleared.');
   };
 
-  // ** CHANGE **: New handler for the filter toggle switch
   const handleFilterToggle = (checked) => {
     if (!checked && hasActiveFilters) {
-        // If turning the switch off while filters are active, clear everything
-        clearAllFilters();
+      clearAllFilters();
     }
     setShowFilters(checked);
   };
@@ -143,18 +139,40 @@ function App() {
           <Space>
             <Space size="small">
               <span>Panels:</span>
+              <Tooltip title={isSwipeActive ? 'Disable layer comparison to use filters' : ''}>
+                <Switch
+                  size="small"
+                  checked={showFilters}
+                  onChange={handleFilterToggle}
+                  checkedChildren="Filter"
+                  unCheckedChildren="Filter"
+                  disabled={isSwipeActive} /* ** CHANGE **: Disable when swipe is active */
+                />
+              </Tooltip>
+              <Tooltip title={!hasActiveFilters ? 'Apply filters to view statistics' : isSwipeActive ? 'Disable layer comparison to use stats' : ''}>
+                <Switch
+                  size="small"
+                  checked={showStats}
+                  onChange={setShowStats}
+                  checkedChildren="Stats"
+                  unCheckedChildren="Stats"
+                  disabled={!hasActiveFilters || isSwipeActive} /* ** CHANGE **: Disable when swipe is active */
+                />
+              </Tooltip>
               <Switch
                 size="small"
-                checked={showFilters}
-                onChange={handleFilterToggle} /* ** CHANGE **: Use new handler */
-                checkedChildren="Filter"
-                unCheckedChildren="Filter"
+                checked={showChart}
+                onChange={setShowChart}
+                checkedChildren="Chart"
+                unCheckedChildren="Chart"
               />
-              <Tooltip title={!hasActiveFilters ? 'Please select filters to view statistics' : ''}>
-                <Switch size="small" checked={showStats} onChange={setShowStats} checkedChildren="Stats" unCheckedChildren="Stats" disabled={!hasActiveFilters} />
-              </Tooltip>
-              <Switch size="small" checked={showChart} onChange={setShowChart} checkedChildren="Chart" unCheckedChildren="Chart" />
-              <Switch size="small" checked={showSwipe} onChange={(checked) => { setShowSwipe(checked); if (!checked) { message.info('Swipe panel hidden - comparison still active if running'); } }} checkedChildren="Swipe" unCheckedChildren="Swipe" />
+              <Switch
+                size="small"
+                checked={showSwipe}
+                onChange={setShowSwipe}
+                checkedChildren="Swipe"
+                unCheckedChildren="Swipe"
+              />
             </Space>
             <Button type="primary" icon={<DownloadOutlined />} onClick={() => setShowReportModal(true)}>
               Generate Report
@@ -169,22 +187,19 @@ function App() {
         
           {showReportModal && mapView && ( <SimpleReportGenerator view={mapView} roadLayer={roadLayer} activeFilters={currentFilters} statistics={currentStats} onClose={() => setShowReportModal(false)} /> )}
           
-          {showFilters && roadLayer && mapView && (
-            <EnhancedFilterPanel
-              key={filterPanelKey} /* ** CHANGE **: Add key for re-mounting */
-              view={mapView}
-              webmap={webmap}
-              roadLayer={roadLayer}
-              onFiltersChange={handleFiltersChange}
-              initialExtent={initialExtent}
-              onApplyFilters={handleApplyFilters}
-              onClearAll={clearAllFilters} /* ** CHANGE **: Pass down the clear function */
-            />
-          )}
+          {showFilters && roadLayer && mapView && ( <EnhancedFilterPanel key={filterPanelKey} view={mapView} webmap={webmap} roadLayer={roadLayer} onFiltersChange={handleFiltersChange} initialExtent={initialExtent} onApplyFilters={handleApplyFilters} onClearAll={clearAllFilters} /> )}
           
           {showChart && roadLayer && !loading && ( <EnhancedChartPanel roadLayer={roadLayer} /> )}
           
-          {showSwipe && mapView && webmap && !loading && ( <SimpleSwipePanel view={mapView} webmap={webmap} /> )}
+          {/* ** CHANGE **: Pass new props to SimpleSwipePanel */}
+          {showSwipe && mapView && webmap && !loading && (
+            <SimpleSwipePanel
+              view={mapView}
+              webmap={webmap}
+              isSwipeActive={isSwipeActive}
+              setIsSwipeActive={setIsSwipeActive}
+            />
+          )}
           
           {showStats && hasActiveFilters && roadLayer && !loading && ( <EnhancedStatsPanel roadLayer={roadLayer} onStatsChange={setCurrentStats} /> )}
           
