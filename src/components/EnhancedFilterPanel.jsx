@@ -1,5 +1,7 @@
+// src/components/EnhancedFilterPanel.jsx
+
 import React, { useState, useEffect } from 'react';
-import { Card, Select, Button, Space, Divider, Tag, Badge, Tooltip, message, Spin, Collapse } from 'antd';
+import { Card, Select, Button, Space, Divider, Tag, Badge, Tooltip, message, Spin, Collapse, Row, Col } from 'antd';
 import {
   FilterOutlined,
   ClearOutlined,
@@ -94,7 +96,7 @@ const getInitialFilterState = () => {
 
 const { Panel } = Collapse;
 
-const EnhancedFilterPanel = ({ view, webmap, roadLayer, onFiltersChange, initialExtent }) => {
+const EnhancedFilterPanel = ({ view, webmap, roadLayer, onFiltersChange, initialExtent, onApplyFilters, isShown }) => {
   const [loading, setLoading] = useState(false);
   const [applyingFilters, setApplyingFilters] = useState(false);
   const [dynamicOptions, setDynamicOptions] = useState({ county: [] });
@@ -109,6 +111,17 @@ const EnhancedFilterPanel = ({ view, webmap, roadLayer, onFiltersChange, initial
       loadDynamicOptions();
     }
   }, [roadLayer]);
+
+  // When the panel is hidden via the toggle, clear filters if any are active
+  useEffect(() => {
+      if (isShown === false) {
+          const hasActiveFilters = Object.values(filterValues).some(v => v.length > 0);
+          if (hasActiveFilters) {
+              clearAllFilters();
+              message.info('Filters cleared as the panel was closed.');
+          }
+      }
+  }, [isShown]);
   
   const loadDynamicOptions = async () => {
     try {
@@ -177,6 +190,11 @@ const EnhancedFilterPanel = ({ view, webmap, roadLayer, onFiltersChange, initial
         roadLayer.visible = true;
         
         message.success(`Filters applied successfully`);
+
+        // ** CHANGE **: Call the handler to open the stats panel
+        if (onApplyFilters) {
+            onApplyFilters();
+        }
         
         // Zoom to filtered extent
         const Query = (await import('@arcgis/core/rest/support/Query.js')).default;
@@ -264,25 +282,30 @@ const EnhancedFilterPanel = ({ view, webmap, roadLayer, onFiltersChange, initial
                 header={<Space>{icons[filter.id]}<span>{filter.label}</span>{selected.length > 0 && <Badge count={selected.length} />}</Space>}
                 extra={selected.length > 0 && <Button type="link" size="small" onClick={(e) => { e.stopPropagation(); clearFilterGroup(filter.id); }}>Clear</Button>}
               >
-                <Space direction="vertical" style={{width: '100%'}}>
-                   <Tooltip title={filter.description}>
-                      <InfoCircleOutlined style={{ color: '#8c8c8c' }} />
-                   </Tooltip>
-                   <Select
-                      mode="multiple"
-                      style={{ width: '100%' }}
-                      placeholder={`Select ${filter.label.toLowerCase()}...`}
-                      value={selected}
-                      onChange={(value) => handleFilterChange(filter.id, value)}
-                      options={options.map(opt => ({
-                        label: opt.label,
-                        value: opt[valueProp]
-                      }))}
-                      showSearch={filter.id === 'county'}
-                      maxTagCount={3}
-                      maxTagPlaceholder={omitted => `+${omitted.length} more`}
-                    />
-                </Space>
+                {/* ** CHANGE **: Switched to Row/Col layout */}
+                <Row gutter={8} align="middle">
+                    <Col>
+                        <Tooltip title={filter.description}>
+                            <InfoCircleOutlined style={{ color: '#8c8c8c' }} />
+                        </Tooltip>
+                    </Col>
+                    <Col flex="auto">
+                       <Select
+                          mode="multiple"
+                          style={{ width: '100%' }}
+                          placeholder={`Select ${filter.label.toLowerCase()}...`}
+                          value={selected}
+                          onChange={(value) => handleFilterChange(filter.id, value)}
+                          options={options.map(opt => ({
+                            label: opt.label,
+                            value: opt[valueProp]
+                          }))}
+                          showSearch={filter.id === 'county'}
+                          maxTagCount={3}
+                          maxTagPlaceholder={omitted => `+${omitted.length} more`}
+                        />
+                    </Col>
+                </Row>
               </Panel>
              )
           })}
