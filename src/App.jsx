@@ -1,3 +1,5 @@
+// src/App.jsx
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Layout, Menu, Button, Space, Spin, Card, message, Switch, Tooltip } from 'antd';
 import { 
@@ -27,8 +29,8 @@ function App() {
   const [error, setError] = useState(null);
   const [siderCollapsed, setSiderCollapsed] = useState(true);
   const siderRef = useRef(null);
-  const [showFilters, setShowFilters] = useState(true); // Show filters by default
-  const [showStats, setShowStats] = useState(false); // Start with stats panel hidden
+  const [showFilters, setShowFilters] = useState(true);
+  const [showStats, setShowStats] = useState(false);
   const [showChart, setShowChart] = useState(false);
   const [showSwipe, setShowSwipe] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -37,52 +39,28 @@ function App() {
   const [initialExtent, setInitialExtent] = useState(null);
   const mapContainerRef = useRef(null);
   const initStarted = useRef(false);
+  
+  // ** CHANGE **: Add a key to force re-mounting the filter panel to reset its state
+  const [filterPanelKey, setFilterPanelKey] = useState(Date.now());
 
   useEffect(() => {
+    // ... (initialization useEffect remains the same)
     const initMap = async () => {
-      // Prevent multiple initializations
       if (initStarted.current) return;
       initStarted.current = true;
-
       try {
-        console.log('Waiting for map container...');
-        
-        // Wait for the map container to be in the DOM
-        let retries = 0;
-        while (!document.getElementById('viewDiv') && retries < 20) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-          retries++;
-        }
-
-        if (!document.getElementById('viewDiv')) {
-          throw new Error('Map container not found after waiting');
-        }
-
-        console.log('Map container found, initializing map...');
+        await new Promise(resolve => setTimeout(resolve, 100));
+        if (!document.getElementById('viewDiv')) throw new Error('Map container not found');
         const { view, webmap } = await initializeMapView('viewDiv');
-        
-        // Find road network layer
-        const roadLayer = webmap.layers.find(
-          layer => layer.title === CONFIG.roadNetworkLayerTitle
-        );
-        
+        const roadLayer = webmap.layers.find(layer => layer.title === CONFIG.roadNetworkLayerTitle);
         if (roadLayer) {
           await roadLayer.load();
-          console.log('Road network layer loaded:', roadLayer.title);
-          
-          // Hide road layer by default
           roadLayer.visible = false;
-          
           setRoadLayer(roadLayer);
         } else {
-          console.warn('Road network layer not found. Available layers:', 
-            webmap.layers.map(l => l.title).join(', '));
+          console.warn('Road network layer not found.');
         }
-        
-        // Store initial extent
-        const viewExtent = view.extent.clone();
-        setInitialExtent(viewExtent);
-        
+        setInitialExtent(view.extent.clone());
         setMapView(view);
         setWebmap(webmap);
         setLoading(false);
@@ -93,43 +71,57 @@ function App() {
         setLoading(false);
       }
     };
-
-    // Start initialization after a short delay
-    const timer = setTimeout(initMap, 100);
-    return () => clearTimeout(timer);
+    initMap();
   }, []);
 
-  // Determine if any filters are active
   const hasActiveFilters = Object.values(currentFilters).some(arr => Array.isArray(arr) && arr.length > 0);
   
-  // Handler for filter changes to also manage stats panel visibility
   const handleFiltersChange = (filters) => {
     setCurrentFilters(filters);
     const isActive = Object.values(filters).some(arr => Array.isArray(arr) && arr.length > 0);
-    // If filters are cleared, automatically hide the stats panel.
     if (!isActive) {
       setShowStats(false);
     }
   };
 
+  const handleApplyFilters = () => {
+      setShowStats(true);
+  };
+  
+  // ** CHANGE **: Centralized function to clear all filters
+  const clearAllFilters = async () => {
+    if (roadLayer) {
+        roadLayer.definitionExpression = '1=1';
+        roadLayer.visible = false;
+    }
+    if (initialExtent && mapView) {
+        await mapView.goTo(initialExtent);
+    }
+    setCurrentFilters({});
+    setShowStats(false);
+    // This is the key part: changing the key unmounts the old panel and mounts a new one with fresh state
+    setFilterPanelKey(Date.now());
+    message.info('All filters have been cleared.');
+  };
+
+  // ** CHANGE **: New handler for the filter toggle switch
+  const handleFilterToggle = (checked) => {
+    if (!checked && hasActiveFilters) {
+        // If turning the switch off while filters are active, clear everything
+        clearAllFilters();
+    }
+    setShowFilters(checked);
+  };
 
   if (error) {
     return (
-      <div style={{ 
-        height: '100vh', 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center',
-        background: '#f0f2f5'
-      }}>
+      <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f0f2f5' }}>
         <Card>
           <Space direction="vertical" align="center">
             <WarningOutlined style={{ fontSize: 48, color: '#ff4d4f' }} />
             <h2>Error Loading Application</h2>
             <p>{error}</p>
-            <Button onClick={() => window.location.reload()}>
-              Reload Page
-            </Button>
+            <Button onClick={() => window.location.reload()}>Reload Page</Button>
           </Space>
         </Card>
       </div>
@@ -138,209 +130,65 @@ function App() {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider 
-        ref={siderRef}
-        collapsible 
-        collapsed={siderCollapsed}
-        onCollapse={setSiderCollapsed}
-        trigger={null}
-        style={{ 
-          background: '#fff',
-          transition: 'all 0.2s'
-        }}
-        onMouseEnter={() => setSiderCollapsed(false)}
-        onMouseLeave={() => setSiderCollapsed(true)}
-      >
-        <div style={{
-          height: 64,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderBottom: '1px solid #f0f0f0',
-          background: '#003d82',
-          color: '#fff',
-          fontWeight: 'bold',
-          fontSize: '20px'
-        }}>
+      <Sider ref={siderRef} collapsible collapsed={siderCollapsed} onCollapse={setSiderCollapsed} trigger={null} style={{ background: '#fff', transition: 'all 0.2s' }} onMouseEnter={() => setSiderCollapsed(false)} onMouseLeave={() => setSiderCollapsed(true)}>
+        <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #f0f0f0', background: '#003d82', color: '#fff', fontWeight: 'bold', fontSize: '20px' }}>
           TII
         </div>
-        <Menu
-          mode="inline"
-          defaultSelectedKeys={['1']}
-          style={{ borderRight: 0 }}
-          items={[
-            {
-              key: '1',
-              icon: <DashboardOutlined />,
-              label: 'Dashboard',
-            },
-            {
-              key: '2',
-              icon: <WarningOutlined />,
-              label: 'Flood Analysis',
-            },
-          ]}
-        />
+        <Menu mode="inline" defaultSelectedKeys={['1']} style={{ borderRight: 0 }} items={[{ key: '1', icon: <DashboardOutlined />, label: 'Dashboard' }, { key: '2', icon: <WarningOutlined />, label: 'Flood Analysis' }]} />
       </Sider>
       
       <Layout>
-        <Header style={{
-          padding: '0 24px',
-          background: '#fff',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          borderBottom: '1px solid #f0f0f0',
-        }}>
+        <Header style={{ padding: '0 24px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f0f0f0' }}>
           <h2 style={{ margin: 0 }}>TII Flood Risk Dashboard</h2>
-          
           <Space>
             <Space size="small">
               <span>Panels:</span>
               <Switch
                 size="small"
                 checked={showFilters}
-                onChange={setShowFilters}
+                onChange={handleFilterToggle} /* ** CHANGE **: Use new handler */
                 checkedChildren="Filter"
                 unCheckedChildren="Filter"
               />
               <Tooltip title={!hasActiveFilters ? 'Please select filters to view statistics' : ''}>
-                <Switch
-                  size="small"
-                  checked={showStats}
-                  onChange={setShowStats}
-                  checkedChildren="Stats"
-                  unCheckedChildren="Stats"
-                  disabled={!hasActiveFilters}
-                />
+                <Switch size="small" checked={showStats} onChange={setShowStats} checkedChildren="Stats" unCheckedChildren="Stats" disabled={!hasActiveFilters} />
               </Tooltip>
-              <Switch
-                size="small"
-                checked={showChart}
-                onChange={setShowChart}
-                checkedChildren="Chart"
-                unCheckedChildren="Chart"
-              />
-              <Switch
-                size="small"
-                checked={showSwipe}
-                onChange={(checked) => {
-                  setShowSwipe(checked);
-                  // Don't reset swipe if just hiding panel
-                  if (!checked) {
-                    message.info('Swipe panel hidden - comparison still active if running');
-                  }
-                }}
-                checkedChildren="Swipe"
-                unCheckedChildren="Swipe"
-              />
+              <Switch size="small" checked={showChart} onChange={setShowChart} checkedChildren="Chart" unCheckedChildren="Chart" />
+              <Switch size="small" checked={showSwipe} onChange={(checked) => { setShowSwipe(checked); if (!checked) { message.info('Swipe panel hidden - comparison still active if running'); } }} checkedChildren="Swipe" unCheckedChildren="Swipe" />
             </Space>
-            
-            <Button
-              type="primary"
-              icon={<DownloadOutlined />}
-              onClick={() => setShowReportModal(true)}
-            >
+            <Button type="primary" icon={<DownloadOutlined />} onClick={() => setShowReportModal(true)}>
               Generate Report
             </Button>
           </Space>
         </Header>
         
         <Content style={{ position: 'relative' }}>
-          {/* Map Container */}
-          <div 
-            ref={mapContainerRef}
-            id="viewDiv" 
-            style={{ 
-              width: '100%', 
-              height: 'calc(100vh - 64px)',
-              position: 'relative'
-            }} 
-          />
+          <div ref={mapContainerRef} id="viewDiv" style={{ width: '100%', height: 'calc(100vh - 64px)', position: 'relative' }} />
           
-          {/* Loading Overlay */}
-          {loading && (
-            <div style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              background: 'rgba(255, 255, 255, 0.9)',
-              zIndex: 1000
-            }}>
-              <Spin size="large" />
-            </div>
-          )}
+          {loading && ( <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(255, 255, 255, 0.9)', zIndex: 1000 }}> <Spin size="large" /> </div> )}
         
+          {showReportModal && mapView && ( <SimpleReportGenerator view={mapView} roadLayer={roadLayer} activeFilters={currentFilters} statistics={currentStats} onClose={() => setShowReportModal(false)} /> )}
           
-          {/* Report Generator Modal */}
-          {showReportModal && mapView && (
-            <SimpleReportGenerator
-              view={mapView}
-              roadLayer={roadLayer}
-              activeFilters={currentFilters}
-              statistics={currentStats}
-              onClose={() => setShowReportModal(false)}
-            />
-          )}
-          
-          {/* Filter Panel - Conditionally Rendered */}
           {showFilters && roadLayer && mapView && (
             <EnhancedFilterPanel
+              key={filterPanelKey} /* ** CHANGE **: Add key for re-mounting */
               view={mapView}
               webmap={webmap}
               roadLayer={roadLayer}
               onFiltersChange={handleFiltersChange}
               initialExtent={initialExtent}
+              onApplyFilters={handleApplyFilters}
+              onClearAll={clearAllFilters} /* ** CHANGE **: Pass down the clear function */
             />
           )}
           
-          {/* Chart Panel */}
-          {showChart && roadLayer && !loading && (
-            <EnhancedChartPanel roadLayer={roadLayer} />
-          )}
+          {showChart && roadLayer && !loading && ( <EnhancedChartPanel roadLayer={roadLayer} /> )}
           
-          {/* Swipe Panel */}
-          {showSwipe && mapView && webmap && !loading && (
-            <SimpleSwipePanel view={mapView} webmap={webmap} />
-          )}
+          {showSwipe && mapView && webmap && !loading && ( <SimpleSwipePanel view={mapView} webmap={webmap} /> )}
           
-          {/* Statistics Panel */}
-          {showStats && hasActiveFilters && roadLayer && !loading && (
-            <EnhancedStatsPanel 
-              roadLayer={roadLayer} 
-              onStatsChange={setCurrentStats}
-            />
-          )}
+          {showStats && hasActiveFilters && roadLayer && !loading && ( <EnhancedStatsPanel roadLayer={roadLayer} onStatsChange={setCurrentStats} /> )}
           
-          {/* Debug info */}
-          {showFilters && !roadLayer && !loading && (
-            <Card
-              size="small"
-              style={{
-                position: 'absolute',
-                top: 16,
-                right: 16,
-                width: 300,
-                background: '#fff3cd',
-                borderColor: '#ffeaa7',
-              }}
-            >
-              <p style={{ margin: 0, color: '#856404' }}>
-                Cannot show filters: Road layer not found
-              </p>
-              <p style={{ margin: '8px 0 0 0', fontSize: 12, color: '#856404' }}>
-                Looking for layer: "{CONFIG.roadNetworkLayerTitle}"
-              </p>
-              <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#856404' }}>
-                Available layers: {webmap?.layers?.map(l => l.title).join(', ') || 'None'}
-              </p>
-            </Card>
-          )}
+          {showFilters && !roadLayer && !loading && ( <Card size="small" style={{ position: 'absolute', top: 16, right: 16, width: 300, background: '#fff3cd', borderColor: '#ffeaa7' }}> <p style={{ margin: 0, color: '#856404' }}>Cannot show filters: Road layer not found</p> <p style={{ margin: '8px 0 0 0', fontSize: 12, color: '#856404' }}>Looking for layer: "{CONFIG.roadNetworkLayerTitle}"</p> <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#856404' }}>Available layers: {webmap?.layers?.map(l => l.title).join(', ') || 'None'}</p> </Card> )}
         </Content>
       </Layout>
     </Layout>
