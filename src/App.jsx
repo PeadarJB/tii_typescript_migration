@@ -40,8 +40,6 @@ function App() {
   const mapContainerRef = useRef(null);
   const initStarted = useRef(false);
   const [filterPanelKey, setFilterPanelKey] = useState(Date.now());
-  
-  // ** CHANGE **: State to track if swipe tool is active is now in the parent
   const [isSwipeActive, setIsSwipeActive] = useState(false);
 
   useEffect(() => {
@@ -109,6 +107,21 @@ function App() {
     setShowFilters(checked);
   };
 
+  // ** CHANGE **: New handler for the swipe toggle
+  const handleSwipeToggle = (checked) => {
+    setShowSwipe(checked);
+    // If turning swipe ON, turn the other panels OFF
+    if (checked) {
+        if (showFilters) {
+            // Reuse the filter toggle logic to ensure filters are cleared
+            handleFilterToggle(false);
+        }
+        if (showStats) {
+            setShowStats(false);
+        }
+    }
+  };
+
   if (error) {
     return (
       <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f0f2f5' }}>
@@ -146,7 +159,7 @@ function App() {
                   onChange={handleFilterToggle}
                   checkedChildren="Filter"
                   unCheckedChildren="Filter"
-                  disabled={isSwipeActive} /* ** CHANGE **: Disable when swipe is active */
+                  disabled={isSwipeActive}
                 />
               </Tooltip>
               <Tooltip title={!hasActiveFilters ? 'Apply filters to view statistics' : isSwipeActive ? 'Disable layer comparison to use stats' : ''}>
@@ -156,7 +169,7 @@ function App() {
                   onChange={setShowStats}
                   checkedChildren="Stats"
                   unCheckedChildren="Stats"
-                  disabled={!hasActiveFilters || isSwipeActive} /* ** CHANGE **: Disable when swipe is active */
+                  disabled={!hasActiveFilters || isSwipeActive}
                 />
               </Tooltip>
               <Switch
@@ -169,7 +182,7 @@ function App() {
               <Switch
                 size="small"
                 checked={showSwipe}
-                onChange={setShowSwipe}
+                onChange={handleSwipeToggle} /* ** CHANGE **: Use new handler */
                 checkedChildren="Swipe"
                 unCheckedChildren="Swipe"
               />
@@ -191,7 +204,6 @@ function App() {
           
           {showChart && roadLayer && !loading && ( <EnhancedChartPanel roadLayer={roadLayer} /> )}
           
-          {/* ** CHANGE **: Pass new props to SimpleSwipePanel */}
           {showSwipe && mapView && webmap && !loading && (
             <SimpleSwipePanel
               view={mapView}
