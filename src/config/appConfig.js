@@ -1,5 +1,5 @@
 export const CONFIG = {
-    // --- Core Application Settings ---
+    
     // The webMapId is the primary source for the map and its layers. 
     // The FilterManager and other components will get the layer directly from the loaded WebMap.
     webMapId: "bb27815620254e69819e7ce6b56f14b8", 
