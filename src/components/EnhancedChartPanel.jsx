@@ -76,7 +76,7 @@ const EnhancedChartPanel = ({ roadLayer }) => {
     if (chartData) {
       renderChart();
     }
-  }, [chartData, chartConfig.chartType]);
+  }, [chartData, chartConfig.chartType, expandedView]);
 
   const loadDynamicGroupByOptions = async () => {
     try {
@@ -141,6 +141,9 @@ const EnhancedChartPanel = ({ roadLayer }) => {
       setChartData(processedData);
       
       message.success('Chart generated successfully');
+      // ** CHANGE: Automatically open the modal **
+      setExpandedView(true);
+
     } catch (error) {
       console.error('Failed to generate chart:', error);
       message.error('Failed to generate chart');
@@ -239,7 +242,7 @@ const EnhancedChartPanel = ({ roadLayer }) => {
     const ctx = chartRef.current?.getContext('2d');
     const expandedCtx = expandedChartRef.current?.getContext('2d');
     
-    if (!ctx || !chartData) return;
+    if (!chartData) return;
     
     // Destroy existing charts
     if (chartInstance.current) {
@@ -380,7 +383,9 @@ const EnhancedChartPanel = ({ roadLayer }) => {
     const config = createChartConfig();
     
     // Create main chart
-    chartInstance.current = new Chart(ctx, config);
+    if (ctx) {
+      chartInstance.current = new Chart(ctx, config);
+    }
     
     // Create expanded chart if modal is open
     if (expandedCtx && expandedView) {
