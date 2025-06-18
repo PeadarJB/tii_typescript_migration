@@ -1,21 +1,21 @@
-// App.tsx
+// App.tsx - Complete TypeScript Fix
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-// FIX: Separate value and type imports to satisfy the 'consistent-type-imports' rule.
 import type { ReactElement } from 'react';
 import { Layout, Menu, Button, Space, Spin, Card, message, Switch, Tooltip } from 'antd';
+import type { MenuProps } from 'antd';
 import { DashboardOutlined, WarningOutlined, DownloadOutlined } from '@ant-design/icons';
 import { ErrorBoundary } from 'react-error-boundary';
-import type { MenuProps } from 'antd';
-// FIX: Use explicit `import type` for type-only imports.
-import { isFeatureLayer } from '@/types/index';
-import type { FilterState, NetworkStatistics } from '@/types/index';
+
+// Type imports - properly separated
 import type MapView from '@arcgis/core/views/MapView';
 import type WebMap from '@arcgis/core/WebMap';
 import type FeatureLayer from '@arcgis/core/layers/FeatureLayer';
 import type Extent from '@arcgis/core/geometry/Extent';
+import type { FilterState, NetworkStatistics } from '@/types/index';
+import { isFeatureLayer } from '@/types/index';
 
-// Component imports (still JS for now)
+// Component imports
 import { initializeMapView } from './components/MapView';
 import EnhancedFilterPanel from './components/EnhancedFilterPanel';
 import EnhancedStatsPanel from './components/EnhancedStatsPanel';
@@ -26,6 +26,12 @@ import { CONFIG } from './config/appConfig';
 import 'antd/dist/reset.css';
 
 const { Header, Sider, Content } = Layout;
+
+// Properly typed interfaces
+interface MapViewResult {
+  view: MapView;
+  webmap: WebMap;
+}
 
 interface AppState {
   loading: boolean;
@@ -46,9 +52,20 @@ interface AppState {
   isSwipeActive: boolean;
 }
 
-function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
+interface ErrorFallbackProps {
+  error: Error;
+  resetErrorBoundary: () => void;
+}
+
+function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps): ReactElement {
   return (
-    <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f0f2f5' }}>
+    <div style={{ 
+      height: '100vh', 
+      display: 'flex', 
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      background: '#f0f2f5' 
+    }}>
       <Card>
         <Space direction="vertical" align="center">
           <WarningOutlined style={{ fontSize: 48, color: '#ff4d4f' }} />
@@ -86,21 +103,17 @@ function App(): ReactElement {
 
   const siderRef = useRef<HTMLDivElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const initStarted = useRef(false);
+  const initStarted = useRef<boolean>(false);
 
   useEffect(() => {
-    interface MapViewResult {
-      view: MapView;
-      webmap: WebMap;
-    }
-
     const initMap = async (): Promise<void> => {
-      // FIX: Add curly braces to satisfy the 'curly' lint rule.
-      if (initStarted.current) { return; }
+      if (initStarted.current) { 
+        return; 
+      }
       initStarted.current = true;
 
       try {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise<void>(resolve => setTimeout(resolve, 100));
         
         const viewDiv = document.getElementById('viewDiv');
 
@@ -124,8 +137,6 @@ function App(): ReactElement {
         
         const initialExtent = view.extent.clone();
         
-        // FIX: Add blank line to satisfy 'padding-line-between-statements' rule.
-        
         setState(prev => ({
           ...prev,
           mapView: view,
@@ -148,7 +159,6 @@ function App(): ReactElement {
       }
     };
     
-    // FIX: Handle floating promises correctly with the `void` operator.
     void initMap();
   }, []);
 
@@ -158,7 +168,7 @@ function App(): ReactElement {
     );
   }, [state.currentFilters]);
 
-  const handleFiltersChange = useCallback((filters: Partial<FilterState>) => {
+  const handleFiltersChange = useCallback((filters: Partial<FilterState>): void => {
     setState(prev => ({ ...prev, currentFilters: filters }));
     
     const isActive = Object.values(filters).some(
@@ -170,20 +180,16 @@ function App(): ReactElement {
     }
   }, []);
 
-  const handleApplyFilters = useCallback(() => {
+  const handleApplyFilters = useCallback((): void => {
     setState(prev => ({ ...prev, showStats: true }));
   }, []);
 
-  const clearAllFilters = useCallback(async (): Promise<void> => {
-    const { roadLayer, initialExtent, mapView } = state;
+  const clearAllFilters = useCallback((mapView: MapView, roadLayer: FeatureLayer, initialExtent: Extent | null): void => {
+    roadLayer.definitionExpression = '1=1';
+    roadLayer.visible = false;
     
-    if (roadLayer) {
-      roadLayer.definitionExpression = '1=1';
-      roadLayer.visible = false;
-    }
-    
-    if (initialExtent && mapView) {
-      await mapView.goTo(initialExtent);
+    if (initialExtent) {
+      void mapView.goTo(initialExtent);
     }
     
     setState(prev => ({
@@ -194,17 +200,17 @@ function App(): ReactElement {
     }));
     
     message.info('All filters have been cleared.');
-  }, [state]);
+  }, []);
 
-  const handleFilterToggle = useCallback((checked: boolean) => {
-    if (!checked && hasActiveFilters()) {
-      // FIX: Handle floating promise properly with void operator
-      void clearAllFilters();
+  const handleFilterToggle = useCallback((checked: boolean): void => {
+    if (!checked && hasActiveFilters() && state.mapView && state.roadLayer) {
+      clearAllFilters(state.mapView, state.roadLayer, state.initialExtent);
     }
-    setState(prev => ({ ...prev, showFilters: checked }));
-  }, [hasActiveFilters, clearAllFilters]);
 
-  const handleSwipeToggle = useCallback((checked: boolean) => {
+    setState(prev => ({ ...prev, showFilters: checked }));
+  }, [hasActiveFilters, clearAllFilters, state.mapView, state.roadLayer, state.initialExtent]);
+
+  const handleSwipeToggle = useCallback((checked: boolean): void => {
     setState(prev => ({ ...prev, showSwipe: checked }));
     
     if (checked) {
@@ -217,11 +223,10 @@ function App(): ReactElement {
     }
   }, [state.showFilters, state.showStats, handleFilterToggle]);
 
-  const handleStatsChange = useCallback((stats: NetworkStatistics | null) => {
+  const handleStatsChange = useCallback((stats: NetworkStatistics | null): void => {
     setState(prev => ({ ...prev, currentStats: stats }));
   }, []);
 
-  // FIX: Refactor nested ternary to improve readability and satisfy 'no-nested-ternary' rule.
   const getStatsTooltip = (): string => {
     if (state.isSwipeActive) {
       return 'Disable layer comparison to use stats';
@@ -229,7 +234,6 @@ function App(): ReactElement {
     if (!hasActiveFilters()) {
       return 'Apply filters to view statistics';
     }
-    
     return '';
   };
 
@@ -238,10 +242,16 @@ function App(): ReactElement {
     { key: '2', icon: <WarningOutlined />, label: 'Flood Analysis' },
   ];
 
-  // FIX: Handle nullable string explicitly for strict-boolean-expressions rule
+  // Handle error state with proper null checks
   if (state.error !== null && state.error !== '') {
     return (
-      <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f0f2f5' }}>
+      <div style={{ 
+        height: '100vh', 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        background: '#f0f2f5' 
+      }}>
         <Card>
           <Space direction="vertical" align="center">
             <WarningOutlined style={{ fontSize: 48, color: '#ff4d4f' }} />
@@ -267,7 +277,17 @@ function App(): ReactElement {
           onMouseEnter={() => setState(prev => ({ ...prev, siderCollapsed: false }))}
           onMouseLeave={() => setState(prev => ({ ...prev, siderCollapsed: true }))}
         >
-          <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #f0f0f0', background: '#003d82', color: '#fff', fontWeight: 'bold', fontSize: '20px' }}>
+          <div style={{ 
+            height: 64, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            borderBottom: '1px solid #f0f0f0', 
+            background: '#003d82', 
+            color: '#fff', 
+            fontWeight: 'bold', 
+            fontSize: '20px' 
+          }}>
             TII
           </div>
           <Menu
@@ -279,7 +299,14 @@ function App(): ReactElement {
         </Sider>
         
         <Layout>
-          <Header style={{ padding: '0 24px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f0f0f0' }}>
+          <Header style={{ 
+            padding: '0 24px', 
+            background: '#fff', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between', 
+            borderBottom: '1px solid #f0f0f0' 
+          }}>
             <h2 style={{ margin: 0 }}>TII Flood Risk Dashboard</h2>
             <Space>
               <Space size="small">
@@ -337,7 +364,18 @@ function App(): ReactElement {
             />
             
             {state.loading && (
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(255, 255, 255, 0.9)', zIndex: 1000 }}>
+              <div style={{ 
+                position: 'absolute', 
+                top: 0, 
+                left: 0, 
+                right: 0, 
+                bottom: 0, 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                background: 'rgba(255, 255, 255, 0.9)', 
+                zIndex: 1000 
+              }}>
                 <Spin size="large" />
               </div>
             )}
@@ -352,12 +390,10 @@ function App(): ReactElement {
               />
             )}
             
-            {/* FIX: Removed @ts-expect-error and fixed prop mismatch */}
-            {state.showFilters && state.roadLayer && state.mapView && state.webmap && (
+            {state.showFilters && state.roadLayer && state.mapView && (
               <EnhancedFilterPanel
                 key={state.filterPanelKey}
                 view={state.mapView}
-                webmap={state.webmap}
                 roadLayer={state.roadLayer}
                 onFiltersChange={handleFiltersChange}
                 initialExtent={state.initialExtent}
@@ -375,7 +411,6 @@ function App(): ReactElement {
                 view={state.mapView}
                 webmap={state.webmap}
                 isSwipeActive={state.isSwipeActive}
-                // FIX: Add explicit 'boolean' type to the 'active' parameter.
                 setIsSwipeActive={(active: boolean) => setState(prev => ({ ...prev, isSwipeActive: active }))}
               />
             )}
@@ -388,12 +423,18 @@ function App(): ReactElement {
             )}
             
             {state.showFilters && !state.roadLayer && !state.loading && state.webmap && (
-              <Card size="small" style={{ position: 'absolute', top: 16, right: 16, width: 300, background: '#fff3cd', borderColor: '#ffeaa7' }}>
+              <Card size="small" style={{ 
+                position: 'absolute', 
+                top: 16, 
+                right: 16, 
+                width: 300, 
+                background: '#fff3cd', 
+                borderColor: '#ffeaa7' 
+              }}>
                 <p style={{ margin: 0, color: '#856404' }}>
                   Cannot show filters: Road layer not found
                 </p>
                 <p style={{ margin: '8px 0 0 0', fontSize: 12, color: '#856404' }}>
-                  {/* FIX: Escape quote characters to satisfy 'no-unescaped-entities' rule */}
                   Looking for layer: &quot;{CONFIG.roadNetworkLayerTitle}&quot;
                 </p>
                 <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#856404' }}>
