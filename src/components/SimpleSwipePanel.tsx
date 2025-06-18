@@ -1,24 +1,42 @@
-// src/components/SimpleSwipePanel.jsx
+// src/components/SimpleSwipePanel.tsx
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, FC, useRef } from 'react';
 import { Card, Select, Button, Space, Slider, Radio, Tag, message } from 'antd';
 import { SwapOutlined, CloseOutlined } from '@ant-design/icons';
-import Swipe from '@arcgis/core/widgets/Swipe';
-import { CONFIG } from '../config/appConfig';
+// FIX: Import the real types directly from the ArcGIS SDK
+import type MapView from '@arcgis/core/views/MapView';
+import type WebMap from '@arcgis/core/WebMap';
+import type Swipe from '@arcgis/core/widgets/Swipe';
+// FIX: Import our specific config types
+import type { LayerConfig } from '@/types/index';
+import { CONFIG } from '@/config/appConfig';
 
-// ** CHANGE **: Accept isSwipeActive and its setter from props, remove internal state
-const SimpleSwipePanel = ({ view, webmap, isSwipeActive, setIsSwipeActive }) => {
-  const [swipeWidget, setSwipeWidget] = useState(null);
-  const [leftLayers, setLeftLayers] = useState([]);
-  const [rightLayers, setRightLayers] = useState([]);
-  const [direction, setDirection] = useState('horizontal');
+// FIX: Define the component's props with the correct types
+interface SimpleSwipePanelProps {
+  view: MapView;
+  webmap: WebMap;
+  isSwipeActive: boolean;
+  setIsSwipeActive: (active: boolean) => void;
+}
+
+// FIX: Apply the props type to the component definition
+const SimpleSwipePanel: FC<SimpleSwipePanelProps> = ({
+  view,
+  webmap,
+  isSwipeActive,
+  setIsSwipeActive,
+}) => {
+  // FIX: Provide explicit types for the state variables
+  const [swipeWidget, setSwipeWidget] = useState<Swipe | null>(null);
+  const [leftLayers, setLeftLayers] = useState<string[]>([]);
+  const [rightLayers, setRightLayers] = useState<string[]>([]);
+  const [direction, setDirection] = useState<'horizontal' | 'vertical'>('horizontal');
   const [position, setPosition] = useState(50);
-  // const [isActive, setIsActive] = useState(false); // This state is now managed by the parent
 
-  const leftLayerOptions = CONFIG.swipeLayerConfig.leftPanel.layers;
-  const rightLayerOptions = CONFIG.swipeLayerConfig.rightPanel.layers;
+  // FIX: Ensure the local variables correctly handle the 'readonly' type from the config
+  const leftLayerOptions: readonly LayerConfig[] = CONFIG.swipeLayerConfig.leftPanel.layers;
+  const rightLayerOptions: readonly LayerConfig[] = CONFIG.swipeLayerConfig.rightPanel.layers;
 
-  // ** CHANGE **: Memoize the stopSwipe function to use in a cleanup effect
   const stopSwipe = useCallback(() => {
     if (swipeWidget) {
       const allLayerTitles = [...leftLayers, ...rightLayers];
@@ -33,26 +51,29 @@ const SimpleSwipePanel = ({ view, webmap, isSwipeActive, setIsSwipeActive }) => 
       swipeWidget.destroy();
       
       setSwipeWidget(null);
-      setIsSwipeActive(false); // Update parent state
+      setIsSwipeActive(false); 
       message.info('Layer comparison deactivated');
     }
   }, [swipeWidget, view, leftLayers, rightLayers, setIsSwipeActive]);
 
-  // ** CHANGE **: This effect handles cleanup. It runs when the component unmounts
-  // (e.g., when the swipe toggle in the header is turned off).
   useEffect(() => {
-    // Return a cleanup function
+    // Return a cleanup function to be called when the component unmounts
     return () => {
       stopSwipe();
     };
-  }, [stopSwipe]); // The dependency ensures the latest stopSwipe function is used
+  }, [stopSwipe]);
 
-  const findLayer = (title) => {
+  const findLayer = (title: string) => {
     return webmap.allLayers.find(l => l.title === title);
   };
 
   const startSwipe = async () => {
-    if (!view || !webmap) return;
+    // Dynamically import the Swipe widget only when needed
+    const SwipeWidget = (await import('@arcgis/core/widgets/Swipe')).default;
+
+    if (!view || !webmap) {
+      return;
+    }
 
     try {
       const leftLayerObjects = leftLayers.map(title => findLayer(title)).filter(Boolean);
@@ -63,14 +84,19 @@ const SimpleSwipePanel = ({ view, webmap, isSwipeActive, setIsSwipeActive }) => 
         return;
       }
 
+      // We must assert the layers as `any` here because the Swipe widget's
+      // constructor has a slight type mismatch with the base Layer type.
+      // This is a known issue when working with collections in the ArcGIS SDK.
       [...leftLayerObjects, ...rightLayerObjects].forEach(layer => {
-        layer.visible = true;
+        if (layer) {
+          layer.visible = true;
+        }
       });
 
-      const swipe = new Swipe({
+      const swipe = new SwipeWidget({
         view: view,
-        leadingLayers: leftLayerObjects,
-        trailingLayers: rightLayerObjects,
+        leadingLayers: leftLayerObjects as any,
+        trailingLayers: rightLayerObjects as any,
         direction: direction,
         position: position
       });
@@ -78,7 +104,7 @@ const SimpleSwipePanel = ({ view, webmap, isSwipeActive, setIsSwipeActive }) => 
       view.ui.add(swipe);
       
       setSwipeWidget(swipe);
-      setIsSwipeActive(true); // Update parent state
+      setIsSwipeActive(true);
       message.success('Layer comparison activated');
     } catch (error) {
       console.error('Failed to create swipe:', error);
@@ -86,14 +112,14 @@ const SimpleSwipePanel = ({ view, webmap, isSwipeActive, setIsSwipeActive }) => 
     }
   };
 
-  const updatePosition = (value) => {
+  const updatePosition = (value: number) => {
     setPosition(value);
     if (swipeWidget) {
       swipeWidget.position = value;
     }
   };
 
-  const updateDirection = (value) => {
+  const updateDirection = (value: 'horizontal' | 'vertical') => {
     setDirection(value);
     if (swipeWidget) {
       swipeWidget.direction = value;
@@ -181,7 +207,7 @@ const SimpleSwipePanel = ({ view, webmap, isSwipeActive, setIsSwipeActive }) => 
         <Button
           type={isSwipeActive ? 'default' : 'primary'}
           icon={isSwipeActive ? <CloseOutlined /> : <SwapOutlined />}
-          onClick={isSwipeActive ? stopSwipe : startSwipe}
+          onClick={() => void (isSwipeActive ? stopSwipe() : startSwipe())}
           block
           danger={isSwipeActive}
         >
