@@ -340,7 +340,7 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = ({
     const selected = filterValues[filter.id] ?? [];
     
     // Determine options based on filter type and id
-    let options: (FilterOption | ScenarioItem)[];
+    let options: readonly (FilterOption | ScenarioItem)[];
     if (filter.id === 'county') {
       options = dynamicOptions.county;
     } else if (filter.type === 'multi-select') {
