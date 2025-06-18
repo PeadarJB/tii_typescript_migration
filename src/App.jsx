@@ -107,13 +107,11 @@ function App() {
     setShowFilters(checked);
   };
 
-  // ** CHANGE **: New handler for the swipe toggle
   const handleSwipeToggle = (checked) => {
     setShowSwipe(checked);
-    // If turning swipe ON, turn the other panels OFF
+    // If turning swipe ON, turn the other panels OFF to prevent conflicts
     if (checked) {
         if (showFilters) {
-            // Reuse the filter toggle logic to ensure filters are cleared
             handleFilterToggle(false);
         }
         if (showStats) {
@@ -152,24 +150,24 @@ function App() {
           <Space>
             <Space size="small">
               <span>Panels:</span>
-              <Tooltip title={isSwipeActive ? 'Disable layer comparison to use filters' : ''}>
+              <Tooltip title={showSwipe ? 'Filter panel cannot be open at the same time as the swipe panel' : ''}>
                 <Switch
                   size="small"
                   checked={showFilters}
                   onChange={handleFilterToggle}
                   checkedChildren="Filter"
                   unCheckedChildren="Filter"
-                  disabled={isSwipeActive}
+                  disabled={showSwipe}
                 />
               </Tooltip>
-              <Tooltip title={!hasActiveFilters ? 'Apply filters to view statistics' : isSwipeActive ? 'Disable layer comparison to use stats' : ''}>
+              <Tooltip title={!hasActiveFilters ? 'Apply filters to view statistics' : showSwipe ? 'Stats panel cannot be open at the same time as the swipe panel' : ''}>
                 <Switch
                   size="small"
                   checked={showStats}
                   onChange={setShowStats}
                   checkedChildren="Stats"
                   unCheckedChildren="Stats"
-                  disabled={!hasActiveFilters || isSwipeActive}
+                  disabled={!hasActiveFilters || showSwipe}
                 />
               </Tooltip>
               <Switch
@@ -182,7 +180,7 @@ function App() {
               <Switch
                 size="small"
                 checked={showSwipe}
-                onChange={handleSwipeToggle} /* ** CHANGE **: Use new handler */
+                onChange={handleSwipeToggle}
                 checkedChildren="Swipe"
                 unCheckedChildren="Swipe"
               />
