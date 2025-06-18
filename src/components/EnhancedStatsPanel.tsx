@@ -84,6 +84,7 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = ({
       
       return () => handle.remove();
     }
+    return undefined;
   }, [roadLayer, onStatsChange]);
 
   const calculateStatistics = async (): Promise<void> => {

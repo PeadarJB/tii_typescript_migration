@@ -1,13 +1,14 @@
 // src/components/SimpleSwipePanel.tsx
 
-import React, { useState, useEffect, useCallback, FC, useRef } from 'react';
+import { useState, useEffect, useCallback, FC } from 'react';
 import { Card, Select, Button, Space, Slider, Radio, Tag, message } from 'antd';
 import { SwapOutlined, CloseOutlined } from '@ant-design/icons';
-// FIX: Import the real types directly from the ArcGIS SDK
+
+// FIX: Import the real types directly from the ArcGIS SDK and our types file
 import type MapView from '@arcgis/core/views/MapView';
 import type WebMap from '@arcgis/core/WebMap';
 import type Swipe from '@arcgis/core/widgets/Swipe';
-// FIX: Import our specific config types
+import type Layer from '@arcgis/core/layers/Layer';
 import type { LayerConfig } from '@/types/index';
 import { CONFIG } from '@/config/appConfig';
 
@@ -19,7 +20,6 @@ interface SimpleSwipePanelProps {
   setIsSwipeActive: (active: boolean) => void;
 }
 
-// FIX: Apply the props type to the component definition
 const SimpleSwipePanel: FC<SimpleSwipePanelProps> = ({
   view,
   webmap,
@@ -51,7 +51,7 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = ({
       swipeWidget.destroy();
       
       setSwipeWidget(null);
-      setIsSwipeActive(false); 
+      setIsSwipeActive(false);
       message.info('Layer comparison deactivated');
     }
   }, [swipeWidget, view, leftLayers, rightLayers, setIsSwipeActive]);
@@ -63,12 +63,11 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = ({
     };
   }, [stopSwipe]);
 
-  const findLayer = (title: string) => {
-    return webmap.allLayers.find(l => l.title === title);
+  const findLayer = (title: string): Layer | undefined => {
+    return webmap.allLayers.find((l: Layer) => l.title === title);
   };
 
   const startSwipe = async () => {
-    // Dynamically import the Swipe widget only when needed
     const SwipeWidget = (await import('@arcgis/core/widgets/Swipe')).default;
 
     if (!view || !webmap) {
@@ -76,29 +75,24 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = ({
     }
 
     try {
-      const leftLayerObjects = leftLayers.map(title => findLayer(title)).filter(Boolean);
-      const rightLayerObjects = rightLayers.map(title => findLayer(title)).filter(Boolean);
+      const leftLayerObjects = leftLayers.map(title => findLayer(title)).filter((l): l is Layer => l !== undefined);
+      const rightLayerObjects = rightLayers.map(title => findLayer(title)).filter((l): l is Layer => l !== undefined);
 
       if (leftLayerObjects.length === 0 || rightLayerObjects.length === 0) {
         message.warning('Please select at least one layer for each side');
         return;
       }
-
-      // We must assert the layers as `any` here because the Swipe widget's
-      // constructor has a slight type mismatch with the base Layer type.
-      // This is a known issue when working with collections in the ArcGIS SDK.
+      
       [...leftLayerObjects, ...rightLayerObjects].forEach(layer => {
-        if (layer) {
-          layer.visible = true;
-        }
+        layer.visible = true;
       });
-
+      
       const swipe = new SwipeWidget({
         view: view,
-        leadingLayers: leftLayerObjects as any,
-        trailingLayers: rightLayerObjects as any,
+        leadingLayers: leftLayerObjects,
+        trailingLayers: rightLayerObjects,
         direction: direction,
-        position: position
+        position: position,
       });
 
       view.ui.add(swipe);
@@ -158,7 +152,7 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = ({
             disabled={isSwipeActive}
             options={leftLayerOptions.map(layer => ({
               label: layer.label,
-              value: layer.title
+              value: layer.title,
             }))}
           />
         </div>
@@ -175,7 +169,7 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = ({
             disabled={isSwipeActive}
             options={rightLayerOptions.map(layer => ({
               label: layer.label,
-              value: layer.title
+              value: layer.title,
             }))}
           />
         </div>
@@ -183,9 +177,9 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = ({
           <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
             Swipe Direction:
           </label>
-          <Radio.Group 
-            value={direction} 
-            onChange={(e) => updateDirection(e.target.value)}
+          <Radio.Group
+            value={direction}
+            onChange={(e) => updateDirection(e.target.value as 'horizontal' | 'vertical')}
             disabled={!isSwipeActive}
           >
             <Radio.Button value="horizontal">Horizontal</Radio.Button>
