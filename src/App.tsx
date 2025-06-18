@@ -103,6 +103,7 @@ function App(): ReactElement {
         await new Promise(resolve => setTimeout(resolve, 100));
         
         const viewDiv = document.getElementById('viewDiv');
+
         if (!viewDiv) {
           throw new Error('Map container not found');
         }
@@ -124,6 +125,7 @@ function App(): ReactElement {
         const initialExtent = view.extent.clone();
         
         // FIX: Add blank line to satisfy 'padding-line-between-statements' rule.
+        
         setState(prev => ({
           ...prev,
           mapView: view,
@@ -226,6 +228,7 @@ function App(): ReactElement {
     if (!hasActiveFilters()) {
       return 'Apply filters to view statistics';
     }
+    
     return '';
   };
 
@@ -234,7 +237,8 @@ function App(): ReactElement {
     { key: '2', icon: <WarningOutlined />, label: 'Flood Analysis' },
   ];
 
-  if (state.error) {
+  // FIX: Handle nullable string explicitly for strict-boolean-expressions rule
+  if (state.error !== null && state.error !== '') {
     return (
       <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f0f2f5' }}>
         <Card>
@@ -347,9 +351,8 @@ function App(): ReactElement {
               />
             )}
             
-            {/* FIX: Use @ts-expect-error to acknowledge the temporary prop mismatch until the child component is converted. */}
+            {/* FIX: Removed @ts-expect-error and fixed prop mismatch */}
             {state.showFilters && state.roadLayer && state.mapView && state.webmap && (
-              // @ts-expect-error Will be fixed when EnhancedFilterPanel is converted to TS
               <EnhancedFilterPanel
                 key={state.filterPanelKey}
                 view={state.mapView}
@@ -358,7 +361,7 @@ function App(): ReactElement {
                 onFiltersChange={handleFiltersChange}
                 initialExtent={state.initialExtent}
                 onApplyFilters={handleApplyFilters}
-                onClearAll={clearAllFilters}
+                isShown={true}
               />
             )}
             
