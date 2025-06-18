@@ -135,23 +135,23 @@ const SimpleReportGenerator = ({
       pdf.setFontSize(10);
       if (statistics) {
         // Total Network
-        pdf.text(`Total Road Network: ${statistics.total.length.toFixed(1)} km (${statistics.total.segments.toLocaleString()} segments)`, margin + 5, yPosition);
+        pdf.text(`Total Road Network: ${(statistics.total?.length || 0).toFixed(1)} km (${(statistics.total?.segments || 0).toLocaleString()} segments)`, margin + 5, yPosition);
         yPosition += 8;
 
         // RCP 4.5
         pdf.text('RCP 4.5 Scenario (10-20 year return period):', margin + 5, yPosition);
         yPosition += 6;
-        pdf.text(`  - Affected Length: ${statistics.rcp45.length.toFixed(1)} km`, margin + 10, yPosition);
+        pdf.text(`  - Affected Length: ${(statistics.rcp45?.any?.lengthKm || 0).toFixed(1)} km`, margin + 10, yPosition);
         yPosition += 5;
-        pdf.text(`  - Percentage: ${statistics.rcp45.percent.toFixed(1)}%`, margin + 10, yPosition);
+        pdf.text(`  - Percentage: ${(statistics.rcp45?.any?.percentage || 0).toFixed(1)}%`, margin + 10, yPosition);
         yPosition += 8;
 
         // RCP 8.5
         pdf.text('RCP 8.5 Scenario (100-200 year return period):', margin + 5, yPosition);
         yPosition += 6;
-        pdf.text(`  - Affected Length: ${statistics.rcp85.length.toFixed(1)} km`, margin + 10, yPosition);
+        pdf.text(`  - Affected Length: ${(statistics.rcp85?.any?.lengthKm || 0).toFixed(1)} km`, margin + 10, yPosition);
         yPosition += 5;
-        pdf.text(`  - Percentage: ${statistics.rcp85.percent.toFixed(1)}%`, margin + 10, yPosition);
+        pdf.text(`  - Percentage: ${(statistics.rcp85?.any?.percentage || 0).toFixed(1)}%`, margin + 10, yPosition);
         yPosition += 10;
       }
 
@@ -172,6 +172,11 @@ const SimpleReportGenerator = ({
       setCaptureStep('');
     }
   };
+  
+  const rcp45Length = statistics?.rcp45?.any?.lengthKm ?? 0;
+  const rcp45Percent = statistics?.rcp45?.any?.percentage ?? 0;
+  const rcp85Length = statistics?.rcp85?.any?.lengthKm ?? 0;
+  const rcp85Percent = statistics?.rcp85?.any?.percentage ?? 0;
 
   return (
     <Modal
@@ -253,12 +258,13 @@ const SimpleReportGenerator = ({
         <div style={{ fontSize: 12 }}>
           <strong>Active Filters:</strong>
           <ul style={{ margin: '4px 0', paddingLeft: 20 }}>
-            {activeFilters && Object.entries(activeFilters).map(([key, values]) => (
-              values && values.length > 0 && (
-                <li key={key}>{key}: {values.join(', ')}</li>
-              )
-            ))}
-            {(!activeFilters || Object.keys(activeFilters).length === 0) && (
+            {activeFilters && Object.values(activeFilters).some(v => v.length > 0) ? (
+              Object.entries(activeFilters).map(([key, values]) => (
+                values && values.length > 0 && (
+                  <li key={key}>{key}: {values.join(', ')}</li>
+                )
+              ))
+            ) : (
               <li>No filters applied</li>
             )}
           </ul>
@@ -266,9 +272,9 @@ const SimpleReportGenerator = ({
           <strong>Statistics Summary:</strong>
           {statistics ? (
             <ul style={{ margin: '4px 0', paddingLeft: 20 }}>
-              <li>Total Network: {statistics.total.length.toFixed(1)} km</li>
-              <li>RCP 4.5 Impact: {statistics.rcp45.length.toFixed(1)} km ({statistics.rcp45.percent.toFixed(1)}%)</li>
-              <li>RCP 8.5 Impact: {statistics.rcp85.length.toFixed(1)} km ({statistics.rcp85.percent.toFixed(1)}%)</li>
+              <li>Total Network: {(statistics.total?.length || 0).toFixed(1)} km</li>
+              <li>RCP 4.5 Impact: {rcp45Length.toFixed(1)} km ({rcp45Percent.toFixed(1)}%)</li>
+              <li>RCP 8.5 Impact: {rcp85Length.toFixed(1)} km ({rcp85Percent.toFixed(1)}%)</li>
             </ul>
           ) : (
             <p style={{ margin: '4px 0 0 20px', color: '#999' }}>No statistics available</p>
