@@ -1,5 +1,3 @@
-// src/App.jsx
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Layout, Menu, Button, Space, Spin, Card, message, Switch, Tooltip } from 'antd';
 import { 
@@ -107,11 +105,13 @@ function App() {
     setShowFilters(checked);
   };
 
+  // ** CHANGE **: New handler for the swipe toggle
   const handleSwipeToggle = (checked) => {
     setShowSwipe(checked);
-    // If turning swipe ON, turn the other panels OFF to prevent conflicts
+    // If turning swipe ON, turn the other panels OFF
     if (checked) {
         if (showFilters) {
+            // Reuse the filter toggle logic to ensure filters are cleared
             handleFilterToggle(false);
         }
         if (showStats) {
@@ -150,24 +150,24 @@ function App() {
           <Space>
             <Space size="small">
               <span>Panels:</span>
-              <Tooltip title={showSwipe ? 'Filter panel cannot be open at the same time as the swipe panel' : ''}>
+              <Tooltip title={isSwipeActive ? 'Disable layer comparison to use filters' : ''}>
                 <Switch
                   size="small"
                   checked={showFilters}
                   onChange={handleFilterToggle}
                   checkedChildren="Filter"
                   unCheckedChildren="Filter"
-                  disabled={showSwipe}
+                  disabled={isSwipeActive}
                 />
               </Tooltip>
-              <Tooltip title={!hasActiveFilters ? 'Apply filters to view statistics' : showSwipe ? 'Stats panel cannot be open at the same time as the swipe panel' : ''}>
+              <Tooltip title={!hasActiveFilters ? 'Apply filters to view statistics' : isSwipeActive ? 'Disable layer comparison to use stats' : ''}>
                 <Switch
                   size="small"
                   checked={showStats}
                   onChange={setShowStats}
                   checkedChildren="Stats"
                   unCheckedChildren="Stats"
-                  disabled={!hasActiveFilters || showSwipe}
+                  disabled={!hasActiveFilters || isSwipeActive}
                 />
               </Tooltip>
               <Switch
@@ -180,7 +180,7 @@ function App() {
               <Switch
                 size="small"
                 checked={showSwipe}
-                onChange={handleSwipeToggle}
+                onChange={handleSwipeToggle} /* ** CHANGE **: Use new handler */
                 checkedChildren="Swipe"
                 unCheckedChildren="Swipe"
               />
@@ -206,7 +206,6 @@ function App() {
             <SimpleSwipePanel
               view={mapView}
               webmap={webmap}
-              roadLayer={roadLayer}
               isSwipeActive={isSwipeActive}
               setIsSwipeActive={setIsSwipeActive}
             />
