@@ -1,35 +1,51 @@
 /**
  * Core type definitions for TII Flood Risk Dashboard
- * Enterprise-level TypeScript patterns with strict typing
+ * Consolidated single source of truth for all application types.
  */
 
-// By importing 'React' itself, we can safely access all of its types (like React.ReactNode)
 import type * as React from 'react';
 import type { ChartConfiguration } from 'chart.js';
 
-// By importing types directly, we solve module resolution issues with @arcgis/core
+// Direct, consistent imports for all ArcGIS types
 import type Extent from '@arcgis/core/geometry/Extent';
+import type Point from '@arcgis/core/geometry/Point';
+import type Graphic from '@arcgis/core/Graphic';
 import type FeatureLayer from '@arcgis/core/layers/FeatureLayer';
+import type Layer from '@arcgis/core/layers/Layer';
 import type MapView from '@arcgis/core/views/MapView';
+import type View from '@arcgis/core/views/View';
 import type WebMap from '@arcgis/core/WebMap';
+import type Widget from '@arcgis/core/widgets/Widget';
+import type Legend from '@arcgis/core/widgets/Legend';
+import type Swipe from '@arcgis/core/widgets/Swipe';
+import type Query from '@arcgis/core/rest/support/Query';
+import type FeatureSet from '@arcgis/core/rest/support/FeatureSet';
+import type LayerList from '@arcgis/core/widgets/LayerList';
+import type Basemap from '@arcgis/core/Basemap';
+import type * as esriConfig from "@arcgis/core/config";
+
+// Corrected imports for Popup and Action types
+import type Content from '@arcgis/core/popup/content/Content';
+import type ActionButton from '@arcgis/core/support/actions/ActionButton';
+
+
+// Augment window for ArcGIS globals if needed
+declare global {
+  interface Window {
+    __esriConfig?: typeof esriConfig;
+  }
+}
 
 // ====================================
 // Domain Types - Business Logic
 // ====================================
 
-/**
- * Climate scenarios for flood risk assessment
- */
 export const ClimateScenario = {
   RCP45: 'rcp45',
   RCP85: 'rcp85',
 } as const;
-
 export type ClimateScenarioType = typeof ClimateScenario[keyof typeof ClimateScenario];
 
-/**
- * Flood risk levels based on percentage thresholds
- */
 export const RiskLevel = {
   NONE: 'none',
   LOW: 'low',
@@ -37,12 +53,8 @@ export const RiskLevel = {
   HIGH: 'high',
   EXTREME: 'extreme',
 } as const;
-
 export type RiskLevelType = typeof RiskLevel[keyof typeof RiskLevel];
 
-/**
- * Road infrastructure criticality ratings
- */
 export const CriticalityRating = {
   VERY_LOW: 1,
   LOW: 2,
@@ -50,12 +62,8 @@ export const CriticalityRating = {
   HIGH: 4,
   VERY_HIGH: 5,
 } as const;
-
 export type CriticalityRatingType = typeof CriticalityRating[keyof typeof CriticalityRating];
 
-/**
- * Road subnet classifications
- */
 export const RoadSubnet = {
   MOTORWAY: 0,
   ENGINEERED: 1,
@@ -63,8 +71,8 @@ export const RoadSubnet = {
   LEGACY_HIGH: 3,
   LEGACY_LOW: 4,
 } as const;
-
 export type RoadSubnetType = typeof RoadSubnet[keyof typeof RoadSubnet];
+
 
 // ====================================
 // Filter Types
@@ -177,6 +185,43 @@ export interface ChartConfig {
 // Map & GIS Types
 // ====================================
 
+export interface RoadSegmentAttributes {
+  OBJECTID: number;
+  Route: string;
+  COUNTY: string;
+  Shape__Length: number;
+  Criticality_Rating_Num1: number;
+  Lifeline: 0 | 1;
+  Subnet: number;
+  
+  future_flood_intersection_m: 0 | 1;
+  future_flood_intersection_h: 0 | 1;
+  historic_intersection_m: 0 | 1;
+  historic_intersection_h: 0 | 1;
+  hist_no_future_m: 0 | 1;
+  hist_no_future_h: 0 | 1;
+  
+  cfram_f_m_0010: 0 | 1;
+  cfram_c_m_0010: 0 | 1;
+  nifm_f_m_0020: 0 | 1;
+  ncfhm_c_m_0010: 0 | 1;
+  cfram_f_h_0100: 0 | 1;
+  cfram_c_h_0200: 0 | 1;
+  nifm_f_h_0100: 0 | 1;
+  ncfhm_c_c_0200: 0 | 1;
+  
+  [key: string]: any;
+}
+
+export type RoadSegmentGraphic = Graphic & {
+  attributes: RoadSegmentAttributes;
+};
+
+export interface RoadQueryResult extends FeatureSet {
+  features: RoadSegmentGraphic[];
+}
+
+
 export interface MapViewState {
   center: [number, number];
   zoom: number;
@@ -192,13 +237,14 @@ export interface LayerConfig {
   maxScale?: number;
 }
 
-export interface SwipeConfig {
-  leftLayers: string[];
-  rightLayers: string[];
-  position: number;
+export interface SwipeWidgetConfig {
+  view: MapView;
+  leadingLayers: Layer[];
+  trailingLayers: Layer[];
   direction: 'horizontal' | 'vertical';
-  active: boolean;
+  position: number;
 }
+
 
 // ====================================
 // Report Types
@@ -289,13 +335,19 @@ export interface ChartPanelProps extends PanelProps {
 export interface SwipePanelProps extends PanelProps {
   view: MapView;
   webmap: WebMap;
-  config: SwipeConfig;
-  onConfigChange: (config: Partial<SwipeConfig>) => void;
+  config: SwipeWidgetConfig;
+  onConfigChange: (config: Partial<SwipeWidgetConfig>) => void;
 }
 
 // ====================================
 // Service Types
 // ====================================
+
+export interface StatisticDefinition {
+  statisticType: 'count' | 'sum' | 'min' | 'max' | 'avg' | 'stddev' | 'var';
+  onStatisticField: string;
+  outStatisticFieldName: string;
+}
 
 export interface QueryOptions {
   where?: string;
@@ -304,11 +356,17 @@ export interface QueryOptions {
   returnDistinctValues?: boolean;
   orderByFields?: string[];
   groupByFieldsForStatistics?: string[];
-  outStatistics?: Array<{
-    statisticType: 'count' | 'sum' | 'min' | 'max' | 'avg' | 'stddev' | 'var';
-    onStatisticField: string;
-    outStatisticFieldName: string;
-  }>;
+  outStatistics?: StatisticDefinition[];
+}
+
+export interface QueryBuilder {
+  where(clause: string): QueryBuilder;
+  outFields(...fields: string[]): QueryBuilder;
+  returnGeometry(value: boolean): QueryBuilder;
+  orderBy(...fields: string[]): QueryBuilder;
+  groupBy(...fields: string[]): QueryBuilder;
+  statistics(...stats: StatisticDefinition[]): QueryBuilder;
+  build(): Query;
 }
 
 export interface ServiceResponse<T> {
@@ -360,14 +418,19 @@ export type DeepPartial<T> = {
 };
 
 export type Nullable<T> = T | null;
-
 export type Optional<T> = T | undefined;
-
 export type ValueOf<T> = T[keyof T];
-
 export type PromiseType<T extends Promise<any>> = T extends Promise<infer U> ? U : never;
 
 // Type guard utilities
 export const isNotNull = <T>(value: T | null): value is T => value !== null;
 export const isNotUndefined = <T>(value: T | undefined): value is T => value !== undefined;
 export const isDefined = <T>(value: T | null | undefined): value is T => value !== null && value !== undefined;
+
+export const isFeatureLayer = (layer: Layer): layer is FeatureLayer => {
+  return layer.type === 'feature';
+};
+
+export const isMapView = (view: View): view is MapView => {
+  return view.type === '2d';
+};
