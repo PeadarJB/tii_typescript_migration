@@ -198,6 +198,7 @@ function App(): ReactElement {
 
   const handleFilterToggle = useCallback((checked: boolean) => {
     if (!checked && hasActiveFilters()) {
+      // FIX: Handle floating promise properly with void operator
       void clearAllFilters();
     }
     setState(prev => ({ ...prev, showFilters: checked }));
