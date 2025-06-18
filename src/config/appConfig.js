@@ -1,5 +1,5 @@
 export const CONFIG = {
-    
+    // --- Core Application Settings ---
     // The webMapId is the primary source for the map and its layers. 
     // The FilterManager and other components will get the layer directly from the loaded WebMap.
     webMapId: "bb27815620254e69819e7ce6b56f14b8", 
@@ -159,19 +159,19 @@ export const CONFIG = {
         leftPanel: {
             label: 'Left/Top Layer(s) (RCP 4.5)',
             layers: [
-                { title: "CFRAM f m 0010",   label: "CFRAM Fluvial (10yr, RCP 4.5)" },
-                { title: "CFRAM c m 0010",   label: "CFRAM Coastal (10yr, RCP 4.5)" },
-                { title: "NIFM f m 0020",    label: "NIFM Fluvial (20yr, RCP 4.5)" },
-                { title: "NCFHM c m 0010",   label: "NCFHM Coastal (10yr, RCP 4.5)" }
+                { title: "CFRAM f m 0010",   label: "CFRAM Fluvial (10yr, RCP 4.5)", roadAttribute: "cfram_f_m_0010" },
+                { title: "CFRAM c m 0010",   label: "CFRAM Coastal (10yr, RCP 4.5)", roadAttribute: "cfram_c_m_0010" },
+                { title: "NIFM f m 0020",    label: "NIFM Fluvial (20yr, RCP 4.5)", roadAttribute: "nifm_f_m_0020" },
+                { title: "NCFHM c m 0010",   label: "NCFHM Coastal (10yr, RCP 4.5)", roadAttribute: "ncfhm_c_m_0010" }
             ]
         },
         rightPanel: {
             label: 'Right/Bottom Layer(s) (RCP 8.5)',
             layers: [
-                { title: "CFRAM f h 0100",   label: "CFRAM Fluvial (100yr, RCP 8.5)" },
-                { title: "CFRAM c h 0200",   label: "CFRAM Coastal (200yr, RCP 8.5)" },
-                { title: "NIFM f h 0100",    label: "NIFM Fluvial (100yr, RCP 8.5)" },
-                { title: "NCFHM c c 0200",   label: "NCFHM Coastal (200yr, RCP 8.5)" }
+                { title: "CFRAM f h 0100",   label: "CFRAM Fluvial (100yr, RCP 8.5)", roadAttribute: "cfram_f_h_0100" },
+                { title: "CFRAM c h 0200",   label: "CFRAM Coastal (200yr, RCP 8.5)", roadAttribute: "cfram_c_h_0200" },
+                { title: "NIFM f h 0100",    label: "NIFM Fluvial (100yr, RCP 8.5)", roadAttribute: "nifm_f_h_0100" },
+                { title: "NCFHM c c 0200",   label: "NCFHM Coastal (200yr, RCP 8.5)", roadAttribute: "ncfhm_c_c_0200" }
             ]
         }
     }

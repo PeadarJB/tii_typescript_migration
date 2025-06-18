@@ -206,6 +206,7 @@ function App() {
             <SimpleSwipePanel
               view={mapView}
               webmap={webmap}
+              roadLayer={roadLayer}
               isSwipeActive={isSwipeActive}
               setIsSwipeActive={setIsSwipeActive}
             />
