@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+// src/components/EnhancedStatsPanel.tsx - Connected to Zustand Store
+
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Card, 
   Statistic, 
@@ -24,6 +26,11 @@ import {
   RightOutlined
 } from '@ant-design/icons';
 import type { CarouselRef } from 'antd/lib/carousel';
+
+// Store imports
+import { useAppStore, useMapState, useStatisticsState } from '@/store/useAppStore';
+
+// Type imports
 import type { 
   NetworkStatistics, 
   ScenarioStatistics,
@@ -31,16 +38,13 @@ import type {
   RiskLevelType,
   ClimateScenarioType
 } from '@/types';
-import type FeatureLayer from '@arcgis/core/layers/FeatureLayer';
 import { CONFIG } from '@/config/appConfig';
 import Query from '@arcgis/core/rest/support/Query';
 
 const { Title, Text } = Typography;
 
-interface EnhancedStatsPanelProps {
-  roadLayer: FeatureLayer;
-  onStatsChange?: (stats: NetworkStatistics | null) => void;
-}
+// No props needed anymore!
+interface EnhancedStatsPanelProps {}
 
 interface RiskInfo {
   level: string;
@@ -52,171 +56,46 @@ interface ModelStats {
   [key: string]: SegmentStatistic;
 }
 
-const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = ({ 
-  roadLayer, 
-  onStatsChange 
-}) => {
+const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
+  // Store hooks
+  const { roadLayer } = useMapState();
+  const { currentStats } = useStatisticsState();
+  const updateStatistics = useAppStore((state) => state.updateStatistics);
+  const calculateStatistics = useAppStore((state) => state.calculateStatistics);
+
+  // Local state
   const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState<NetworkStatistics | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const carouselRef = useRef<CarouselRef>(null);
 
+  // Watch for filter changes on the road layer
   useEffect(() => {
-    if (roadLayer) {
-      const handleFilterChange = (): void => {
-        const isFiltered = roadLayer.definitionExpression && 
-                          roadLayer.definitionExpression !== '1=1';
-        
-        if (isFiltered) {
-          void calculateStatistics();
-        } else {
-          setStats(null);
-          setLoading(false);
-          if (onStatsChange) {
-            onStatsChange(null);
-          }
-        }
-      };
-
-      handleFilterChange();
-      
-      const handle = roadLayer.watch('definitionExpression', handleFilterChange);
-      
-      return () => handle.remove();
-    }
-    return undefined;
-  }, [roadLayer, onStatsChange]);
-
-  const calculateStatistics = async (): Promise<void> => {
     if (!roadLayer) return;
-    
-    try {
-      setLoading(true);
+
+    const handleFilterChange = async (): Promise<void> => {
+      const isFiltered = roadLayer.definitionExpression && 
+                        roadLayer.definitionExpression !== '1=1';
       
-      const baseWhere = roadLayer.definitionExpression || '1=1';
-
-      // Get total count in current filter
-      const queryTotal = new Query({
-        where: baseWhere,
-        outStatistics: [{
-          statisticType: 'count',
-          onStatisticField: CONFIG.fields.object_id,
-          outStatisticFieldName: 'total_count'
-        }]
-      });
-
-      const totalResult = await roadLayer.queryFeatures(queryTotal);
-      const totalSegments = totalResult.features[0]?.attributes.total_count || 0;
-      const totalLength = totalSegments * CONFIG.defaultSettings.segmentLengthKm;
-
-      // Define field sets for each scenario
-      const rcp45Fields: Record<string, string | undefined> = {
-        any: CONFIG.fields.floodAffected,
-        cfram_f: CONFIG.fields.cfram_f_m_0010,
-        cfram_c: CONFIG.fields.cfram_c_m_0010,
-        nifm_f: CONFIG.fields.nifm_f_m_0020,
-        ncfhm_c: CONFIG.fields.ncfhm_c_m_0010
-      };
-
-      const rcp85Fields: Record<string, string | undefined> = {
-        any: CONFIG.fields.floodAffected_h,
-        cfram_f: CONFIG.fields.cfram_f_h_0100,
-        cfram_c: CONFIG.fields.cfram_c_h_0200,
-        nifm_f: CONFIG.fields.nifm_f_h_0100,
-        ncfhm_c: CONFIG.fields.ncfhm_c_c_0200
-      };
-      
-      // Helper to run queries for a set of fields
-      const getStatsForScenario = async (
-        fields: Record<string, string | undefined>
-      ): Promise<ModelStats> => {
-        const scenarioStats: ModelStats = {};
-        
-        for (const [key, field] of Object.entries(fields)) {
-          if (!field) continue;
-          
-          const query = new Query({
-            where: `(${baseWhere}) AND (${field} = 1)`,
-            outStatistics: [{
-              statisticType: 'count',
-              onStatisticField: CONFIG.fields.object_id,
-              outStatisticFieldName: 'affected_count'
-            }]
-          });
-          
-          const result = await roadLayer.queryFeatures(query);
-          const count = result.features[0]?.attributes.affected_count || 0;
-          
-          scenarioStats[key] = {
-            count: count,
-            lengthKm: count * CONFIG.defaultSettings.segmentLengthKm,
-            percentage: totalSegments > 0 ? (count / totalSegments) * 100 : 0,
-            label: formatModelName(key),
-            modelType: key.includes('c') ? 'coastal' : 'fluvial'
-          };
+      if (isFiltered) {
+        setLoading(true);
+        try {
+          await calculateStatistics();
+        } finally {
+          setLoading(false);
         }
-        
-        return scenarioStats;
-      };
-
-      const [rcp45Stats, rcp85Stats] = await Promise.all([
-        getStatsForScenario(rcp45Fields),
-        getStatsForScenario(rcp85Fields)
-      ]);
-      
-      // Create scenario statistics
-      const scenarios: ScenarioStatistics[] = [
-        {
-          scenario: 'rcp45' as ClimateScenarioType,
-          title: 'RCP 4.5 Flood Scenario',
-          returnPeriod: '10-20 year return period',
-          totalAffected: rcp45Stats.any || createEmptyStatistic(),
-          modelBreakdown: Object.entries(rcp45Stats)
-            .filter(([key]) => key !== 'any')
-            .map(([_, stat]) => stat)
-            .filter(stat => stat.count > 0),
-          riskLevel: getRiskLevel(rcp45Stats.any?.percentage || 0).level as RiskLevelType
-        },
-        {
-          scenario: 'rcp85' as ClimateScenarioType,
-          title: 'RCP 8.5 Flood Scenario',
-          returnPeriod: '100-200 year return period',
-          totalAffected: rcp85Stats.any || createEmptyStatistic(),
-          modelBreakdown: Object.entries(rcp85Stats)
-            .filter(([key]) => key !== 'any')
-            .map(([_, stat]) => stat)
-            .filter(stat => stat.count > 0),
-          riskLevel: getRiskLevel(rcp85Stats.any?.percentage || 0).level as RiskLevelType
-        }
-      ];
-
-      const finalStats: NetworkStatistics = {
-        totalSegments,
-        totalLengthKm: totalLength,
-        scenarios,
-        lastUpdated: new Date()
-      };
-
-      setStats(finalStats);
-      
-      if (onStatsChange) {
-        onStatsChange(finalStats);
+      } else {
+        updateStatistics(null);
       }
+    };
 
-    } catch (error) {
-      console.error('Failed to calculate statistics:', error);
-      setStats(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const createEmptyStatistic = (): SegmentStatistic => ({
-    count: 0,
-    lengthKm: 0,
-    percentage: 0,
-    label: 'No data'
-  });
+    // Initial calculation
+    void handleFilterChange();
+    
+    // Watch for changes
+    const handle = roadLayer.watch('definitionExpression', handleFilterChange);
+    
+    return () => handle.remove();
+  }, [roadLayer, calculateStatistics, updateStatistics]);
 
   const getRiskLevel = (percent: number): RiskInfo => {
     if (percent < 5) return { level: 'low', color: 'success', icon: '✓' };
@@ -228,17 +107,6 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = ({
   const getModelIcon = (modelType?: string): React.ReactNode => {
     if (modelType === 'coastal') return <EnvironmentOutlined />;
     return <ThunderboltOutlined />;
-  };
-
-  const formatModelName = (key: string): string => {
-    const names: Record<string, string> = {
-      any: 'Any Future Flood Intersection',
-      cfram_f: 'CFRAM Fluvial Model',
-      cfram_c: 'CFRAM Coastal Model',
-      nifm_f: 'NIFM Fluvial Model',
-      ncfhm_c: 'NCFHM Coastal Model'
-    };
-    return names[key] || key;
   };
 
   const renderScenarioSlide = (scenario: ScenarioStatistics): React.ReactNode => {
@@ -352,8 +220,8 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = ({
             textAlign: 'center' 
           }}>
             <Text type="secondary" style={{ fontSize: 12 }}>
-              Total Network Analyzed: {stats?.totalLengthKm.toFixed(1)} km 
-              ({stats?.totalSegments.toLocaleString()} segments)
+              Total Network Analyzed: {currentStats?.totalLengthKm.toFixed(1)} km 
+              ({currentStats?.totalSegments.toLocaleString()} segments)
             </Text>
           </div>
         </Space>
@@ -381,7 +249,7 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = ({
     );
   }
 
-  if (!stats || stats.scenarios.length === 0) {
+  if (!currentStats || currentStats.scenarios.length === 0) {
     return (
       <Card
         size="small"
@@ -437,7 +305,7 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = ({
         afterChange={setCurrentSlide}
         adaptiveHeight
       >
-        {stats.scenarios.map((scenario, index) => (
+        {currentStats.scenarios.map((scenario, index) => (
           <div key={index}>{renderScenarioSlide(scenario)}</div>
         ))}
       </Carousel>
@@ -469,7 +337,7 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = ({
           transform: 'translateY(-50%)', 
           zIndex: 10 
         }}
-        disabled={currentSlide === stats.scenarios.length - 1}
+        disabled={currentSlide === currentStats.scenarios.length - 1}
       />
       
       {/* Slide Indicator */}
@@ -481,7 +349,7 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = ({
         textAlign: 'center' 
       }}>
         <Space size="small">
-          {stats.scenarios.map((scenario, index) => (
+          {currentStats.scenarios.map((scenario, index) => (
             <Tag 
               key={index}
               color={currentSlide === index ? 
