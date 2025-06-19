@@ -1,44 +1,40 @@
-// src/components/SimpleSwipePanel.tsx
+// src/components/SimpleSwipePanel.tsx - Connected to Zustand Store
 
 import { useState, useEffect, useCallback, FC } from 'react';
 import { Card, Select, Button, Space, Slider, Radio, Tag, message } from 'antd';
 import { SwapOutlined, CloseOutlined } from '@ant-design/icons';
 
-// FIX: Import the real types directly from the ArcGIS SDK and our types file
-import type MapView from '@arcgis/core/views/MapView';
-import type WebMap from '@arcgis/core/WebMap';
+// Store imports
+import { useAppStore, useMapState, useUIState } from '@/store/useAppStore';
+
+// Type imports
 import type Swipe from '@arcgis/core/widgets/Swipe';
 import type Layer from '@arcgis/core/layers/Layer';
 import type { LayerConfig } from '@/types/index';
 import { CONFIG } from '@/config/appConfig';
 
-// FIX: Define the component's props with the correct types
-interface SimpleSwipePanelProps {
-  view: MapView;
-  webmap: WebMap;
-  isSwipeActive: boolean;
-  setIsSwipeActive: (active: boolean) => void;
-}
+// No props needed anymore!
+interface SimpleSwipePanelProps {}
 
-const SimpleSwipePanel: FC<SimpleSwipePanelProps> = ({
-  view,
-  webmap,
-  isSwipeActive,
-  setIsSwipeActive,
-}) => {
-  // FIX: Provide explicit types for the state variables
+const SimpleSwipePanel: FC<SimpleSwipePanelProps> = () => {
+  // Store hooks
+  const { mapView: view, webmap } = useMapState();
+  const { isSwipeActive } = useUIState();
+  const setIsSwipeActive = useAppStore((state) => state.setIsSwipeActive);
+
+  // Local state
   const [swipeWidget, setSwipeWidget] = useState<Swipe | null>(null);
   const [leftLayers, setLeftLayers] = useState<string[]>([]);
   const [rightLayers, setRightLayers] = useState<string[]>([]);
   const [direction, setDirection] = useState<'horizontal' | 'vertical'>('horizontal');
   const [position, setPosition] = useState(50);
 
-  // FIX: Ensure the local variables correctly handle the 'readonly' type from the config
+  // Config
   const leftLayerOptions: readonly LayerConfig[] = CONFIG.swipeLayerConfig.leftPanel.layers;
   const rightLayerOptions: readonly LayerConfig[] = CONFIG.swipeLayerConfig.rightPanel.layers;
 
   const stopSwipe = useCallback(() => {
-    if (swipeWidget) {
+    if (swipeWidget && view) {
       const allLayerTitles = [...leftLayers, ...rightLayers];
       allLayerTitles.forEach(title => {
         const layer = view.map.allLayers.find(l => l.title === title);
@@ -64,6 +60,7 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = ({
   }, [stopSwipe]);
 
   const findLayer = (title: string): Layer | undefined => {
+    if (!webmap) return undefined;
     return webmap.allLayers.find((l: Layer) => l.title === title);
   };
 
@@ -119,6 +116,8 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = ({
       swipeWidget.direction = value;
     }
   };
+
+  if (!view || !webmap) return null;
 
   return (
     <Card

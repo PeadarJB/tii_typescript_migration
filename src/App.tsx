@@ -1,22 +1,16 @@
-// App.tsx - Complete TypeScript Fix
+// App.tsx - Refactored with Zustand Store
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import type { ReactElement } from 'react';
-import { Layout, Menu, Button, Space, Spin, Card, message, Switch, Tooltip } from 'antd';
+import { Layout, Menu, Button, Space, Spin, Card, Switch, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
 import { DashboardOutlined, WarningOutlined, DownloadOutlined } from '@ant-design/icons';
 import { ErrorBoundary } from 'react-error-boundary';
 
-// Type imports - properly separated
-import type MapView from '@arcgis/core/views/MapView';
-import type WebMap from '@arcgis/core/WebMap';
-import type FeatureLayer from '@arcgis/core/layers/FeatureLayer';
-import type Extent from '@arcgis/core/geometry/Extent';
-import type { FilterState, NetworkStatistics } from '@/types/index';
-import { isFeatureLayer } from '@/types/index';
+// Store imports
+import { useAppStore, useMapState, useUIState, useFilterState, useStatisticsState } from '@/store/useAppStore';
 
 // Component imports
-import { initializeMapView } from './components/MapView';
 import EnhancedFilterPanel from './components/EnhancedFilterPanel';
 import EnhancedStatsPanel from './components/EnhancedStatsPanel';
 import EnhancedChartPanel from './components/EnhancedChartPanel';
@@ -26,31 +20,6 @@ import { CONFIG } from './config/appConfig';
 import 'antd/dist/reset.css';
 
 const { Header, Sider, Content } = Layout;
-
-// Properly typed interfaces
-interface MapViewResult {
-  view: MapView;
-  webmap: WebMap;
-}
-
-interface AppState {
-  loading: boolean;
-  mapView: MapView | null;
-  webmap: WebMap | null;
-  roadLayer: FeatureLayer | null;
-  error: string | null;
-  siderCollapsed: boolean;
-  showFilters: boolean;
-  showStats: boolean;
-  showChart: boolean;
-  showSwipe: boolean;
-  showReportModal: boolean;
-  currentFilters: Partial<FilterState>;
-  currentStats: NetworkStatistics | null;
-  initialExtent: Extent | null;
-  filterPanelKey: number;
-  isSwipeActive: boolean;
-}
 
 interface ErrorFallbackProps {
   error: Error;
@@ -82,168 +51,93 @@ function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps): React
 }
 
 function App(): ReactElement {
-  const [state, setState] = useState<AppState>({
-    loading: true,
-    mapView: null,
-    webmap: null,
-    roadLayer: null,
-    error: null,
-    siderCollapsed: true,
-    showFilters: true,
-    showStats: false,
-    showChart: false,
-    showSwipe: false,
-    showReportModal: false,
-    currentFilters: {},
-    currentStats: null,
-    initialExtent: null,
-    filterPanelKey: Date.now(),
-    isSwipeActive: false,
-  });
+  // Store hooks
+  const { mapView, webmap, roadLayer, loading, error } = useMapState();
+  const { 
+    siderCollapsed, 
+    showFilters, 
+    showStats, 
+    showChart, 
+    showSwipe, 
+    showReportModal,
+    isSwipeActive 
+  } = useUIState();
+  const { currentFilters, hasActiveFilters, filterPanelKey } = useFilterState();
+  const { currentStats } = useStatisticsState();
+  
+  // Store actions
+  const initializeMap = useAppStore((state) => state.initializeMap);
+  const setSiderCollapsed = useAppStore((state) => state.setSiderCollapsed);
+  const setShowFilters = useAppStore((state) => state.setShowFilters);
+  const setShowStats = useAppStore((state) => state.setShowStats);
+  const setShowChart = useAppStore((state) => state.setShowChart);
+  const setShowSwipe = useAppStore((state) => state.setShowSwipe);
+  const setShowReportModal = useAppStore((state) => state.setShowReportModal);
+  const setIsSwipeActive = useAppStore((state) => state.setIsSwipeActive);
+  const setFilters = useAppStore((state) => state.setFilters);
+  const applyFilters = useAppStore((state) => state.applyFilters);
+  const clearAllFilters = useAppStore((state) => state.clearAllFilters);
+  const updateStatistics = useAppStore((state) => state.updateStatistics);
 
+  // Refs
   const siderRef = useRef<HTMLDivElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const initStarted = useRef<boolean>(false);
 
+  // Initialize map on mount
   useEffect(() => {
-    const initMap = async (): Promise<void> => {
-      if (initStarted.current) { 
-        return; 
-      }
+    const init = async (): Promise<void> => {
+      if (initStarted.current) return;
       initStarted.current = true;
 
-      try {
-        await new Promise<void>(resolve => setTimeout(resolve, 100));
-        
-        const viewDiv = document.getElementById('viewDiv');
-
-        if (!viewDiv) {
-          throw new Error('Map container not found');
-        }
-        
-        const { view, webmap } = (await initializeMapView('viewDiv')) as MapViewResult;
-        
-        const foundLayer = webmap.layers.find(
-          (layer) => layer.title === CONFIG.roadNetworkLayerTitle
-        );
-        const roadLayer = foundLayer && isFeatureLayer(foundLayer) ? foundLayer : undefined;
-        
-        if (roadLayer) {
-          await roadLayer.load();
-          roadLayer.visible = false;
-        } else {
-          console.warn('Road network layer not found.');
-        }
-        
-        const initialExtent = view.extent.clone();
-        
-        setState(prev => ({
-          ...prev,
-          mapView: view,
-          webmap,
-          roadLayer: roadLayer ?? null,
-          initialExtent,
-          loading: false,
-        }));
-        
-        message.success('Application loaded successfully');
-      } catch (err) {
-        console.error('Failed to initialize:', err);
-        const errorMessage = err instanceof Error ? err.message : 'Failed to initialize map';
-        
-        setState(prev => ({
-          ...prev,
-          error: errorMessage,
-          loading: false,
-        }));
-      }
+      await new Promise<void>(resolve => setTimeout(resolve, 100));
+      await initializeMap('viewDiv');
     };
     
-    void initMap();
-  }, []);
+    void init();
+  }, [initializeMap]);
 
-  const hasActiveFilters = useCallback((): boolean => {
-    return Object.values(state.currentFilters).some(
-      (value) => Array.isArray(value) && value.length > 0
-    );
-  }, [state.currentFilters]);
-
-  const handleFiltersChange = useCallback((filters: Partial<FilterState>): void => {
-    setState(prev => ({ ...prev, currentFilters: filters }));
-    
-    const isActive = Object.values(filters).some(
-      (value) => Array.isArray(value) && value.length > 0
-    );
-    
-    if (!isActive) {
-      setState(prev => ({ ...prev, showStats: false }));
+  // Handle filter toggle
+  const handleFilterToggle = (checked: boolean): void => {
+    if (!checked && hasActiveFilters) {
+      clearAllFilters();
     }
-  }, []);
+    setShowFilters(checked);
+  };
 
-  const handleApplyFilters = useCallback((): void => {
-    setState(prev => ({ ...prev, showStats: true }));
-  }, []);
-
-  const clearAllFilters = useCallback((mapView: MapView, roadLayer: FeatureLayer, initialExtent: Extent | null): void => {
-    roadLayer.definitionExpression = '1=1';
-    roadLayer.visible = false;
-    
-    if (initialExtent) {
-      void mapView.goTo(initialExtent);
-    }
-    
-    setState(prev => ({
-      ...prev,
-      currentFilters: {},
-      showStats: false,
-      filterPanelKey: Date.now(),
-    }));
-    
-    message.info('All filters have been cleared.');
-  }, []);
-
-  const handleFilterToggle = useCallback((checked: boolean): void => {
-    if (!checked && hasActiveFilters() && state.mapView && state.roadLayer) {
-      clearAllFilters(state.mapView, state.roadLayer, state.initialExtent);
-    }
-
-    setState(prev => ({ ...prev, showFilters: checked }));
-  }, [hasActiveFilters, clearAllFilters, state.mapView, state.roadLayer, state.initialExtent]);
-
-  const handleSwipeToggle = useCallback((checked: boolean): void => {
-    setState(prev => ({ ...prev, showSwipe: checked }));
+  // Handle swipe toggle
+  const handleSwipeToggle = (checked: boolean): void => {
+    setShowSwipe(checked);
     
     if (checked) {
-      if (state.showFilters) {
+      if (showFilters) {
         handleFilterToggle(false);
       }
-      if (state.showStats) {
-        setState(prev => ({ ...prev, showStats: false }));
+      if (showStats) {
+        setShowStats(false);
       }
     }
-  }, [state.showFilters, state.showStats, handleFilterToggle]);
+  };
 
-  const handleStatsChange = useCallback((stats: NetworkStatistics | null): void => {
-    setState(prev => ({ ...prev, currentStats: stats }));
-  }, []);
-
+  // Get stats tooltip
   const getStatsTooltip = (): string => {
-    if (state.isSwipeActive) {
+    if (isSwipeActive) {
       return 'Disable layer comparison to use stats';
     }
-    if (!hasActiveFilters()) {
+    if (!hasActiveFilters) {
       return 'Apply filters to view statistics';
     }
     return '';
   };
 
+  // Menu items
   const menuItems: MenuProps['items'] = [
     { key: '1', icon: <DashboardOutlined />, label: 'Dashboard' },
     { key: '2', icon: <WarningOutlined />, label: 'Flood Analysis' },
   ];
 
-  // Handle error state with proper null checks
-  if (state.error !== null && state.error !== '') {
+  // Handle error state
+  if (error) {
     return (
       <div style={{ 
         height: '100vh', 
@@ -256,7 +150,7 @@ function App(): ReactElement {
           <Space direction="vertical" align="center">
             <WarningOutlined style={{ fontSize: 48, color: '#ff4d4f' }} />
             <h2>Error Loading Application</h2>
-            <p>{state.error}</p>
+            <p>{error}</p>
             <Button onClick={() => window.location.reload()}>Reload Page</Button>
           </Space>
         </Card>
@@ -270,12 +164,12 @@ function App(): ReactElement {
         <Sider
           ref={siderRef}
           collapsible
-          collapsed={state.siderCollapsed}
-          onCollapse={(collapsed) => setState(prev => ({ ...prev, siderCollapsed: collapsed }))}
+          collapsed={siderCollapsed}
+          onCollapse={setSiderCollapsed}
           trigger={null}
           style={{ background: '#fff', transition: 'all 0.2s' }}
-          onMouseEnter={() => setState(prev => ({ ...prev, siderCollapsed: false }))}
-          onMouseLeave={() => setState(prev => ({ ...prev, siderCollapsed: true }))}
+          onMouseEnter={() => setSiderCollapsed(false)}
+          onMouseLeave={() => setSiderCollapsed(true)}
         >
           <div style={{ 
             height: 64, 
@@ -311,36 +205,36 @@ function App(): ReactElement {
             <Space>
               <Space size="small">
                 <span>Panels:</span>
-                <Tooltip title={state.isSwipeActive ? 'Disable layer comparison to use filters' : ''}>
+                <Tooltip title={isSwipeActive ? 'Disable layer comparison to use filters' : ''}>
                   <Switch
                     size="small"
-                    checked={state.showFilters}
+                    checked={showFilters}
                     onChange={handleFilterToggle}
                     checkedChildren="Filter"
                     unCheckedChildren="Filter"
-                    disabled={state.isSwipeActive}
+                    disabled={isSwipeActive}
                   />
                 </Tooltip>
                 <Tooltip title={getStatsTooltip()}>
                   <Switch
                     size="small"
-                    checked={state.showStats}
-                    onChange={(checked) => setState(prev => ({ ...prev, showStats: checked }))}
+                    checked={showStats}
+                    onChange={setShowStats}
                     checkedChildren="Stats"
                     unCheckedChildren="Stats"
-                    disabled={!hasActiveFilters() || state.isSwipeActive}
+                    disabled={!hasActiveFilters || isSwipeActive}
                   />
                 </Tooltip>
                 <Switch
                   size="small"
-                  checked={state.showChart}
-                  onChange={(checked) => setState(prev => ({ ...prev, showChart: checked }))}
+                  checked={showChart}
+                  onChange={setShowChart}
                   checkedChildren="Chart"
                   unCheckedChildren="Chart"
                 />
                 <Switch
                   size="small"
-                  checked={state.showSwipe}
+                  checked={showSwipe}
                   onChange={handleSwipeToggle}
                   checkedChildren="Swipe"
                   unCheckedChildren="Swipe"
@@ -349,7 +243,7 @@ function App(): ReactElement {
               <Button
                 type="primary"
                 icon={<DownloadOutlined />}
-                onClick={() => setState(prev => ({ ...prev, showReportModal: true }))}
+                onClick={() => setShowReportModal(true)}
               >
                 Generate Report
               </Button>
@@ -363,7 +257,7 @@ function App(): ReactElement {
               style={{ width: '100%', height: 'calc(100vh - 64px)', position: 'relative' }}
             />
             
-            {state.loading && (
+            {loading && (
               <div style={{ 
                 position: 'absolute', 
                 top: 0, 
@@ -380,49 +274,49 @@ function App(): ReactElement {
               </div>
             )}
             
-            {state.showReportModal && state.mapView && (
+            {showReportModal && mapView && (
               <SimpleReportGenerator
-                view={state.mapView}
-                roadLayer={state.roadLayer}
-                activeFilters={state.currentFilters}
-                statistics={state.currentStats}
-                onClose={() => setState(prev => ({ ...prev, showReportModal: false }))}
+                view={mapView}
+                roadLayer={roadLayer}
+                activeFilters={currentFilters}
+                statistics={currentStats}
+                onClose={() => setShowReportModal(false)}
               />
             )}
             
-            {state.showFilters && state.roadLayer && state.mapView && (
+            {showFilters && roadLayer && mapView && (
               <EnhancedFilterPanel
-                key={state.filterPanelKey}
-                view={state.mapView}
-                roadLayer={state.roadLayer}
-                onFiltersChange={handleFiltersChange}
-                initialExtent={state.initialExtent}
-                onApplyFilters={handleApplyFilters}
-                isShown={true}
+                key={filterPanelKey}
+                view={mapView}
+                roadLayer={roadLayer}
+                onFiltersChange={setFilters}
+                initialExtent={mapView.extent}
+                onApplyFilters={applyFilters}
+                isShown={showFilters}
               />
             )}
             
-            {state.showChart && state.roadLayer && !state.loading && (
-              <EnhancedChartPanel roadLayer={state.roadLayer} />
+            {showChart && roadLayer && !loading && (
+              <EnhancedChartPanel roadLayer={roadLayer} />
             )}
             
-            {state.showSwipe && state.mapView && state.webmap && !state.loading && (
+            {showSwipe && mapView && webmap && !loading && (
               <SimpleSwipePanel
-                view={state.mapView}
-                webmap={state.webmap}
-                isSwipeActive={state.isSwipeActive}
-                setIsSwipeActive={(active: boolean) => setState(prev => ({ ...prev, isSwipeActive: active }))}
+                view={mapView}
+                webmap={webmap}
+                isSwipeActive={isSwipeActive}
+                setIsSwipeActive={setIsSwipeActive}
               />
             )}
             
-            {state.showStats && hasActiveFilters() && state.roadLayer && !state.loading && (
+            {showStats && hasActiveFilters && roadLayer && !loading && (
               <EnhancedStatsPanel
-                roadLayer={state.roadLayer}
-                onStatsChange={handleStatsChange}
+                roadLayer={roadLayer}
+                onStatsChange={updateStatistics}
               />
             )}
             
-            {state.showFilters && !state.roadLayer && !state.loading && state.webmap && (
+            {showFilters && !roadLayer && !loading && webmap && (
               <Card size="small" style={{ 
                 position: 'absolute', 
                 top: 16, 
@@ -438,7 +332,7 @@ function App(): ReactElement {
                   Looking for layer: &quot;{CONFIG.roadNetworkLayerTitle}&quot;
                 </p>
                 <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#856404' }}>
-                  Available layers: {state.webmap.layers.map(l => l.title).join(', ') || 'None'}
+                  Available layers: {webmap.layers.map(l => l.title).join(', ') || 'None'}
                 </p>
               </Card>
             )}

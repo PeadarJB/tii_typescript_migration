@@ -1,4 +1,4 @@
-// src/components/EnhancedFilterPanel.tsx
+// src/components/EnhancedFilterPanel.tsx - Connected to Zustand Store
 
 import { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
@@ -15,21 +15,16 @@ import {
   HeartOutlined
 } from '@ant-design/icons';
 
+// Store imports
+import { useAppStore, useMapState, useFilterState } from '@/store/useAppStore';
+
 // Type imports
-import type MapView from '@arcgis/core/views/MapView';
-import type FeatureLayer from '@arcgis/core/layers/FeatureLayer';
-import type Extent from '@arcgis/core/geometry/Extent';
 import type FeatureSet from '@arcgis/core/rest/support/FeatureSet';
 import type { FilterState } from '@/types';
 
-// Component Props Interface
+// Component Props Interface - Much simpler now!
 interface EnhancedFilterPanelProps {
-  view: MapView;
-  roadLayer: FeatureLayer;
-  onFiltersChange: (filters: Partial<FilterState>) => void;
-  initialExtent: Extent | null;
-  onApplyFilters?: () => void;
-  isShown: boolean;
+  key?: string | number;
 }
 
 // Filter Option Interface
@@ -154,23 +149,25 @@ const getInitialFilterState = (): Record<string, string[]> => {
   return initialState;
 };
 
-const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = ({ 
-  view, 
-  roadLayer, 
-  onFiltersChange, 
-  initialExtent, 
-  onApplyFilters, 
-  isShown 
-}) => {
+const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
+  // Store hooks
+  const { roadLayer } = useMapState();
+  const { currentFilters, hasActiveFilters } = useFilterState();
+  const showFilters = useAppStore((state) => state.showFilters);
+  const setFilters = useAppStore((state) => state.setFilters);
+  const applyFilters = useAppStore((state) => state.applyFilters);
+  const clearAllFilters = useAppStore((state) => state.clearAllFilters);
+
+  // Local state
   const [loading, setLoading] = useState<boolean>(false);
   const [applyingFilters, setApplyingFilters] = useState<boolean>(false);
   const [dynamicOptions, setDynamicOptions] = useState<DynamicOptions>({ county: [] });
-  
-  // A single state object to hold all filter values, keyed by filter ID.
   const [filterValues, setFilterValues] = useState<Record<string, string[]>>(getInitialFilterState());
   const [expandedPanels, setExpandedPanels] = useState<string[]>(['flood-scenario']);
   
   const loadDynamicOptions = useCallback(async (): Promise<void> => {
+    if (!roadLayer) return;
+    
     try {
       setLoading(true);
       const Query = (await import('@arcgis/core/rest/support/Query.js')).default;
@@ -209,113 +206,32 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = ({
     void loadDynamicOptions();
   }, [loadDynamicOptions]);
 
-  const clearAllFilters = useCallback((): void => {
-    setFilterValues(getInitialFilterState());
-    
-    roadLayer.definitionExpression = '1=1';
-    roadLayer.visible = false;
-    
-    message.info('All filters cleared');
-
-    if (initialExtent !== null) {
-      void view.goTo(initialExtent);
-    }
-
-    if (onFiltersChange) {
-      onFiltersChange({});
-    }
-  }, [roadLayer, initialExtent, view, onFiltersChange]);
-
-  // When the panel is hidden via the toggle, clear filters if any are active
+  // Sync local filter state with store
   useEffect(() => {
-    if (isShown === false) {
-      const hasActiveFilters = Object.values(filterValues).some(v => v.length > 0);
-      
-      if (hasActiveFilters) {
-        clearAllFilters();
-        message.info('Filters cleared as the panel was closed.');
-      }
+    setFilterValues(currentFilters as Record<string, string[]>);
+  }, [currentFilters]);
+
+  // Clear filters when panel is hidden
+  useEffect(() => {
+    if (!showFilters && hasActiveFilters) {
+      clearAllFilters();
+      message.info('Filters cleared as the panel was closed.');
     }
-  }, [isShown, filterValues, clearAllFilters]);
+  }, [showFilters, hasActiveFilters, clearAllFilters]);
   
   const handleFilterChange = (id: string, value: string[]): void => {
-    setFilterValues(prev => ({
-      ...prev,
+    const newFilterValues = {
+      ...filterValues,
       [id]: value,
-    }));
+    };
+    setFilterValues(newFilterValues);
+    setFilters(newFilterValues);
   };
   
-  const applyFilters = async (): Promise<void> => {
+  const handleApplyFilters = async (): Promise<void> => {
+    setApplyingFilters(true);
     try {
-      setApplyingFilters(true);
-      const whereClauses: string[] = [];
-
-      // Loop through the config to build the WHERE clause dynamically
-      CONFIG.filterConfig.forEach(config => {
-        const selectedValues = filterValues[config.id];
-        
-        if (!selectedValues || selectedValues.length === 0) {
-          return;
-        }
-
-        if (config.type === 'scenario-select') {
-          // Special OR logic for scenarios
-          const scenarioClauses = selectedValues.map(field => `${field} = 1`);
-          
-          whereClauses.push(`(${scenarioClauses.join(' OR ')})`);
-        } else if (config.field.length > 0) {
-          // Standard IN logic for other filters
-          const formattedValues = selectedValues.map(val => 
-            config.dataType === 'string' ? `'${val}'` : val
-          ).join(',');
-          
-          whereClauses.push(`${config.field} IN (${formattedValues})`);
-        }
-      });
-      
-      const finalWhereClause = whereClauses.length > 0 ? whereClauses.join(' AND ') : '1=1';
-      
-      roadLayer.definitionExpression = finalWhereClause;
-      
-      if (whereClauses.length > 0) {
-        // Show layer when filters are applied
-        roadLayer.visible = true;
-        
-        message.success('Filters applied successfully');
-
-        // Call the handler to open the stats panel
-        if (onApplyFilters) {
-          onApplyFilters();
-        }
-        
-        // Zoom to filtered extent
-        const Query = (await import('@arcgis/core/rest/support/Query.js')).default;
-        const query = new Query({ where: finalWhereClause });
-        
-        const extentResult = await roadLayer.queryExtent(query);
-        
-        if (extentResult !== null && 'extent' in extentResult && extentResult.extent !== null) {
-          void view.goTo(extentResult.extent.expand(1.2));
-        }
-      } else {
-        // Hide layer when no filters
-        roadLayer.visible = false;
-        message.info('No filters applied - road layer hidden');
-        
-        // Return to initial extent
-        if (initialExtent !== null) {
-          void view.goTo(initialExtent);
-        }
-      }
-      
-      // Notify parent component about filter changes
-      if (onFiltersChange) {
-        onFiltersChange(filterValues);
-      }
-
-    } catch (error) {
-      console.error('Failed to apply filters:', error);
-      message.error('Failed to apply filters');
+      await applyFilters();
     } finally {
       setApplyingFilters(false);
     }
@@ -326,7 +242,6 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = ({
   };
 
   const activeFilterCount = Object.values(filterValues).filter(v => v.length > 0).length;
-  const hasActiveFilters = activeFilterCount > 0;
   
   const icons: Record<string, React.ReactNode> = {
     'flood-scenario': <WarningOutlined />,
@@ -400,6 +315,8 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = ({
     };
   });
   
+  if (!roadLayer || !showFilters) return null;
+  
   return (
     <Card
       title={
@@ -449,7 +366,7 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = ({
         <Button
           type="primary"
           icon={<FilterOutlined />}
-          onClick={() => void applyFilters()}
+          onClick={() => void handleApplyFilters()}
           loading={applyingFilters}
           disabled={loading}
           block
