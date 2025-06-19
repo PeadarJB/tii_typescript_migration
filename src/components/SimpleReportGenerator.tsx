@@ -1,54 +1,60 @@
-import React, { useState } from 'react';
+// src/components/SimpleReportGenerator.tsx
+
+import { useState, FC } from 'react';
 import { Modal, Button, Space, Spin, message, Card, Divider } from 'antd';
 import { DownloadOutlined, FileTextOutlined, CameraOutlined } from '@ant-design/icons';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { CONFIG } from '../config/appConfig';
 
-const SimpleReportGenerator = ({ 
-  view, 
-  roadLayer, 
-  activeFilters, 
+// FIX: Import all necessary types from our central types file and the ArcGIS SDK
+import type { FilterState, NetworkStatistics, ScenarioStatistics } from '@/types/index';
+import type MapView from '@arcgis/core/views/MapView';
+import type FeatureLayer from '@arcgis/core/layers/FeatureLayer';
+// Removed invalid import of TakeScreenshotOptions
+
+// FIX: Ensure the component props use the correctly imported types
+interface SimpleReportGeneratorProps {
+  view: MapView;
+  roadLayer: FeatureLayer | null;
+  activeFilters: Partial<FilterState>;
+  statistics: NetworkStatistics | null;
+  onClose: () => void;
+}
+
+const SimpleReportGenerator: FC<SimpleReportGeneratorProps> = ({
+  view,
+  roadLayer,
+  activeFilters,
   statistics,
-  onClose 
+  onClose,
 }) => {
   const [generating, setGenerating] = useState(false);
-  const [mapScreenshot, setMapScreenshot] = useState(null);
+  const [mapScreenshot, setMapScreenshot] = useState<string | null>(null);
   const [captureStep, setCaptureStep] = useState('');
 
-  // Capture map screenshot
-  const captureMap = async () => {
+  const captureMap = async (): Promise<string | null> => {
     try {
       setCaptureStep('Capturing map view...');
       
-      // Hide UI elements temporarily
-      const elementsToHide = [
-        '.esri-ui-corner',
-        '.ant-card',
-        '.ant-layout-sider'
-      ];
-      
+      const elementsToHide = ['.esri-ui-corner', '.ant-card'];
       elementsToHide.forEach(selector => {
         document.querySelectorAll(selector).forEach(el => {
-          el.style.visibility = 'hidden';
+          (el as HTMLElement).style.visibility = 'hidden';
         });
       });
 
-      // Wait a bit for UI to update
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Take screenshot using ArcGIS API
-      const screenshot = await view.takeScreenshot({
-        format: 'png',
-        quality: 1,
+      // Use inferred type for screenshot options
+      const screenshotOptions = {
         width: 800,
-        height: 600
-      });
-
-      // Restore UI elements
+        height: 600,
+      };
+      const screenshot = await view.takeScreenshot(screenshotOptions);
+      
       elementsToHide.forEach(selector => {
         document.querySelectorAll(selector).forEach(el => {
-          el.style.visibility = 'visible';
+          (el as HTMLElement).style.visibility = 'visible';
         });
       });
 
@@ -61,58 +67,50 @@ const SimpleReportGenerator = ({
     }
   };
 
-  // Generate PDF
-  const generatePDF = async () => {
+  const generatePDF = async (): Promise<void> => {
     try {
       setGenerating(true);
 
-      // Capture map if not already done
       let mapImage = mapScreenshot;
-      if (!mapImage) {
+      if (mapImage === null) {
         mapImage = await captureMap();
-        if (!mapImage) {
+        if (mapImage === null) {
           throw new Error('Failed to capture map');
         }
       }
 
       setCaptureStep('Generating PDF document...');
 
-      // Create PDF
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const margin = 20;
-      const contentWidth = pageWidth - (margin * 2);
       let yPosition = margin;
 
-      // Title
       pdf.setFontSize(20);
       pdf.text('TII Flood Risk Assessment Report', pageWidth / 2, yPosition, { align: 'center' });
       yPosition += 15;
 
-      // Date
       pdf.setFontSize(10);
       pdf.text(`Generated: ${new Date().toLocaleString()}`, pageWidth / 2, yPosition, { align: 'center' });
       yPosition += 15;
 
-      // Map Image
       if (mapImage) {
+        const contentWidth = pageWidth - (margin * 2);
         pdf.addImage(mapImage, 'PNG', margin, yPosition, contentWidth, contentWidth * 0.75);
         yPosition += contentWidth * 0.75 + 10;
       }
 
-      // Active Filters Section
       pdf.setFontSize(14);
       pdf.text('Active Filters', margin, yPosition);
       yPosition += 8;
-
       pdf.setFontSize(10);
-      if (activeFilters && Object.keys(activeFilters).length > 0) {
-        Object.entries(activeFilters).forEach(([key, values]) => {
-          if (values && values.length > 0) {
-            pdf.text(`• ${key}: ${values.join(', ')}`, margin + 5, yPosition);
-            yPosition += 6;
-          }
+
+      const activeFilterEntries = Object.entries(activeFilters).filter(([, values]) => Array.isArray(values) && values.length > 0);
+      if (activeFilterEntries.length > 0) {
+        activeFilterEntries.forEach(([key, values]) => {
+          pdf.text(`• ${key}: ${(values as string[]).join(', ')}`, margin + 5, yPosition);
+          yPosition += 6;
         });
       } else {
         pdf.text('No filters applied - showing all roads', margin + 5, yPosition);
@@ -121,45 +119,38 @@ const SimpleReportGenerator = ({
 
       yPosition += 5;
 
-      // Check if we need a new page
       if (yPosition > pageHeight - 80) {
         pdf.addPage();
         yPosition = margin;
       }
 
-      // Statistics Section
       pdf.setFontSize(14);
       pdf.text('Flood Risk Statistics', margin, yPosition);
       yPosition += 8;
-
       pdf.setFontSize(10);
-      if (statistics) {
-        // Total Network
-        pdf.text(`Total Road Network: ${(statistics.total?.length || 0).toFixed(1)} km (${(statistics.total?.segments || 0).toLocaleString()} segments)`, margin + 5, yPosition);
-        yPosition += 8;
-
-        // RCP 4.5
-        pdf.text('RCP 4.5 Scenario (10-20 year return period):', margin + 5, yPosition);
-        yPosition += 6;
-        pdf.text(`  - Affected Length: ${(statistics.rcp45?.any?.lengthKm || 0).toFixed(1)} km`, margin + 10, yPosition);
-        yPosition += 5;
-        pdf.text(`  - Percentage: ${(statistics.rcp45?.any?.percentage || 0).toFixed(1)}%`, margin + 10, yPosition);
-        yPosition += 8;
-
-        // RCP 8.5
-        pdf.text('RCP 8.5 Scenario (100-200 year return period):', margin + 5, yPosition);
-        yPosition += 6;
-        pdf.text(`  - Affected Length: ${(statistics.rcp85?.any?.lengthKm || 0).toFixed(1)} km`, margin + 10, yPosition);
-        yPosition += 5;
-        pdf.text(`  - Percentage: ${(statistics.rcp85?.any?.percentage || 0).toFixed(1)}%`, margin + 10, yPosition);
-        yPosition += 10;
+      
+      if (statistics?.scenarios) {
+        // FIX: Provide an explicit type for the 'scenario' parameter.
+        statistics.scenarios.forEach((scenario: ScenarioStatistics) => {
+          if (scenario.scenario === 'rcp45') {
+            pdf.text('RCP 4.5 Scenario (10-20 year return period):', margin + 5, yPosition);
+          } else {
+            pdf.text('RCP 8.5 Scenario (100-200 year return period):', margin + 5, yPosition);
+          }
+          yPosition += 6;
+          
+          pdf.text(`  - Affected Length: ${scenario.totalAffected.lengthKm.toFixed(1)} km`, margin + 10, yPosition);
+          yPosition += 5;
+          pdf.text(`  - Percentage: ${scenario.totalAffected.percentage.toFixed(1)}%`, margin + 10, yPosition);
+          yPosition += 5;
+          pdf.text(`  - Risk Level: ${scenario.riskLevel.toUpperCase()}`, margin + 10, yPosition);
+          yPosition += 8;
+        });
       }
 
-      // Footer
       pdf.setFontSize(8);
       pdf.text('This report was automatically generated by the TII Flood Risk Dashboard', pageWidth / 2, pageHeight - 10, { align: 'center' });
 
-      // Save PDF
       pdf.save(`TII_Flood_Report_${new Date().toISOString().split('T')[0]}.pdf`);
       
       message.success('Report generated successfully!');
@@ -173,52 +164,26 @@ const SimpleReportGenerator = ({
     }
   };
   
-  const rcp45Length = statistics?.rcp45?.any?.lengthKm ?? 0;
-  const rcp45Percent = statistics?.rcp45?.any?.percentage ?? 0;
-  const rcp85Length = statistics?.rcp85?.any?.lengthKm ?? 0;
-  const rcp85Percent = statistics?.rcp85?.any?.percentage ?? 0;
+  const getStatValue = (scenarioType: 'rcp45' | 'rcp85', metric: 'lengthKm' | 'percentage'): number => {
+      const scenario = statistics?.scenarios.find(s => s.scenario === scenarioType);
+      return scenario?.totalAffected[metric] ?? 0;
+  };
 
   return (
     <Modal
-      title={
-        <Space>
-          <FileTextOutlined />
-          <span>Generate Report</span>
-        </Space>
-      }
+      title={<Space><FileTextOutlined /><span>Generate Report</span></Space>}
       open={true}
       onCancel={onClose}
       width={600}
       footer={[
-        <Button key="cancel" onClick={onClose} disabled={generating}>
-          Cancel
-        </Button>,
-        <Button 
-          key="capture" 
-          icon={<CameraOutlined />}
-          onClick={captureMap}
-          disabled={generating || mapScreenshot}
-        >
-          Capture Map
-        </Button>,
-        <Button
-          key="generate"
-          type="primary"
-          icon={<DownloadOutlined />}
-          onClick={generatePDF}
-          loading={generating}
-          disabled={!mapScreenshot && !generating}
-        >
-          Generate PDF
-        </Button>
+        <Button key="cancel" onClick={onClose} disabled={generating}>Cancel</Button>,
+        <Button key="capture" icon={<CameraOutlined />} onClick={() => void captureMap()} disabled={generating || mapScreenshot !== null}>Capture Map</Button>,
+        <Button key="generate" type="primary" icon={<DownloadOutlined />} onClick={() => void generatePDF()} loading={generating} disabled={mapScreenshot === null || generating}>Generate PDF</Button>
       ]}
     >
       <Space direction="vertical" style={{ width: '100%' }}>
-        {/* Instructions */}
         <Card size="small" style={{ backgroundColor: '#f0f8ff' }}>
-          <p style={{ margin: 0 }}>
-            This will generate a PDF report containing:
-          </p>
+          <p style={{ margin: 0 }}>This will generate a PDF report containing:</p>
           <ul style={{ margin: '8px 0 0 0', paddingLeft: 20 }}>
             <li>Current map view screenshot</li>
             <li>Active filters summary</li>
@@ -226,25 +191,15 @@ const SimpleReportGenerator = ({
           </ul>
         </Card>
 
-        {/* Map Preview */}
         {mapScreenshot && (
           <>
             <Divider>Map Preview</Divider>
             <div style={{ textAlign: 'center' }}>
-              <img 
-                src={mapScreenshot} 
-                alt="Map preview" 
-                style={{ 
-                  maxWidth: '100%', 
-                  border: '1px solid #d9d9d9',
-                  borderRadius: 4
-                }} 
-              />
+              <img src={mapScreenshot} alt="Map preview" style={{ maxWidth: '100%', border: '1px solid #d9d9d9', borderRadius: 4 }} />
             </div>
           </>
         )}
 
-        {/* Generation Progress */}
         {generating && (
           <div style={{ textAlign: 'center', padding: '20px' }}>
             <Spin size="large" />
@@ -252,17 +207,14 @@ const SimpleReportGenerator = ({
           </div>
         )}
 
-        {/* Current Settings Preview */}
         <Divider>Report Content Preview</Divider>
         
         <div style={{ fontSize: 12 }}>
           <strong>Active Filters:</strong>
           <ul style={{ margin: '4px 0', paddingLeft: 20 }}>
-            {activeFilters && Object.values(activeFilters).some(v => v.length > 0) ? (
+            {Object.values(activeFilters).some(v => Array.isArray(v) && v.length > 0) ? (
               Object.entries(activeFilters).map(([key, values]) => (
-                values && values.length > 0 && (
-                  <li key={key}>{key}: {values.join(', ')}</li>
-                )
+                (Array.isArray(values) && values.length > 0) && <li key={key}>{key}: {values.join(', ')}</li>
               ))
             ) : (
               <li>No filters applied</li>
@@ -272,9 +224,9 @@ const SimpleReportGenerator = ({
           <strong>Statistics Summary:</strong>
           {statistics ? (
             <ul style={{ margin: '4px 0', paddingLeft: 20 }}>
-              <li>Total Network: {(statistics.total?.length || 0).toFixed(1)} km</li>
-              <li>RCP 4.5 Impact: {rcp45Length.toFixed(1)} km ({rcp45Percent.toFixed(1)}%)</li>
-              <li>RCP 8.5 Impact: {rcp85Length.toFixed(1)} km ({rcp85Percent.toFixed(1)}%)</li>
+              <li>Total Network: {(statistics.totalLengthKm).toFixed(1)} km</li>
+              <li>RCP 4.5 Impact: {getStatValue('rcp45', 'lengthKm').toFixed(1)} km ({getStatValue('rcp45', 'percentage').toFixed(1)}%)</li>
+              <li>RCP 8.5 Impact: {getStatValue('rcp85', 'lengthKm').toFixed(1)} km ({getStatValue('rcp85', 'percentage').toFixed(1)}%)</li>
             </ul>
           ) : (
             <p style={{ margin: '4px 0 0 20px', color: '#999' }}>No statistics available</p>

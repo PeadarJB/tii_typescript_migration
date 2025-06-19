@@ -33,16 +33,24 @@
     "sourceMap": true,
     "removeComments": false,
     
-    // Type Checking
+    // ============================================
+    // TYPE CHECKING - RELAXED FOR MIGRATION
+    // ============================================
+    
+    // Keep essential strict checks
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": true,
-    "noImplicitOverride": true,
-    "noPropertyAccessFromIndexSignature": true,
-    "exactOptionalPropertyTypes": true,
+    
+    // RELAXED DURING MIGRATION - Change to false or remove
+    "noUnusedLocals": false,                    // Disable during migration
+    "noUnusedParameters": false,                // Disable during migration  
+    "noUncheckedIndexedAccess": false,          // Very strict - disable during migration
+    "noImplicitOverride": false,                // Disable during migration
+    "noPropertyAccessFromIndexSignature": false, // Very strict - disable during migration
+    "exactOptionalPropertyTypes": false,        // Very strict - disable during migration
+    
+    // Keep this for import consistency
     "forceConsistentCasingInFileNames": true,
     
     // Interop Constraints
@@ -50,7 +58,7 @@
     "allowSyntheticDefaultImports": true,
     "isolatedModules": true,
     
-    // Skip Lib Check
+    // Skip Lib Check - Important for faster builds during migration
     "skipLibCheck": true,
     
     // Advanced
@@ -58,9 +66,6 @@
   },
   "include": [
     "src/**/*",
-    "src/**/*.tsx",
-    "src/**/*.ts",
-    "vite.config.ts"
   ],
   "exclude": [
     "node_modules",

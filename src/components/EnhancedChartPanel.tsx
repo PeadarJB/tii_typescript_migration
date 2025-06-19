@@ -1,5 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Card, Select, Button, Space, Spin, Empty, Radio, InputNumber, Tag, Tooltip, Modal, message } from 'antd';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { 
+  Card, 
+  Select, 
+  Button, 
+  Space, 
+  Spin, 
+  Empty, 
+  Radio, 
+  InputNumber, 
+  Tag, 
+  Tooltip, 
+  Modal, 
+  message 
+} from 'antd';
 import { 
   BarChartOutlined, 
   ReloadOutlined, 
@@ -9,37 +22,61 @@ import {
   ExpandOutlined,
   InfoCircleOutlined 
 } from '@ant-design/icons';
+import type { RadioChangeEvent } from 'antd';
 import Chart from 'chart.js/auto';
-import { CONFIG } from '../config/appConfig';
+import type { ChartConfiguration, ChartType, ChartData } from 'chart.js';
+import type {  
+  ChartConfig, 
+  ChartDataPoint,
+  ChartFeature,
+  FilterOption 
+} from '@/types';
+import type FeatureLayer from '@arcgis/core/layers/FeatureLayer';
+import { CONFIG } from '@/config/appConfig';
+import Query from '@arcgis/core/rest/support/Query';
 
-const EnhancedChartPanel = ({ roadLayer }) => {
+interface EnhancedChartPanelProps {
+  roadLayer: FeatureLayer;
+}
+
+interface ProcessedChartData {
+  categories: string[];
+  data: ChartDataPoint[];
+  features: string[];
+}
+
+interface GroupByOption extends FilterOption {
+  icon: string;
+}
+
+const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = ({ roadLayer }) => {
   const [loading, setLoading] = useState(false);
-  const [chartConfig, setChartConfig] = useState({
+  const [chartConfig, setChartConfig] = useState<ChartConfig>({
     features: [],
     groupBy: '',
-    measure: 'count',
+    metric: 'segmentCount',
     maxCategories: 10,
-    chartType: 'bar'
+    type: 'bar'
   });
-  const [groupByOptions, setGroupByOptions] = useState([]);
-  const [chartData, setChartData] = useState(null);
+  const [groupByOptions, setGroupByOptions] = useState<GroupByOption[]>([]);
+  const [chartData, setChartData] = useState<ProcessedChartData | null>(null);
   const [expandedView, setExpandedView] = useState(false);
   
-  const chartRef = useRef(null);
-  const expandedChartRef = useRef(null);
-  const chartInstance = useRef(null);
-  const expandedChartInstance = useRef(null);
+  const chartRef = useRef<HTMLCanvasElement>(null);
+  const expandedChartRef = useRef<HTMLCanvasElement>(null);
+  const chartInstance = useRef<Chart | null>(null);
+  const expandedChartInstance = useRef<Chart | null>(null);
 
   // Feature options from config
   const featureOptions = CONFIG.chartingFeatures.map(feature => ({
     label: feature.label,
     value: feature.field,
     description: feature.description,
-    scenario: feature.field.includes('_h') ? 'rcp85' : 'rcp45'
+    scenario: feature.scenario
   }));
 
   // Predefined group by options
-  const staticGroupByOptions = [
+  const staticGroupByOptions: GroupByOption[] = [
     { label: 'County', value: 'COUNTY', icon: '🏛️' },
     { label: 'Criticality Rating', value: 'Criticality_Rating_Num1', icon: '⚠️' },
     { label: 'Road Subnet', value: 'Subnet', icon: '🛣️' },
@@ -48,7 +85,7 @@ const EnhancedChartPanel = ({ roadLayer }) => {
   ];
 
   // Max categories options
-  const maxCategoriesOptions = [
+  const maxCategoriesOptions: FilterOption<number>[] = [
     { label: 'Top 10', value: 10 },
     { label: 'Top 20', value: 20 },
     { label: 'Top 50', value: 50 },
@@ -76,9 +113,9 @@ const EnhancedChartPanel = ({ roadLayer }) => {
     if (chartData) {
       renderChart();
     }
-  }, [chartData, chartConfig.chartType, expandedView]);
+  }, [chartData, chartConfig.type]);
 
-  const loadDynamicGroupByOptions = async () => {
+  const loadDynamicGroupByOptions = (): void => {
     try {
       // For now, use static options. In future, could dynamically load field list
       setGroupByOptions(staticGroupByOptions);
@@ -88,8 +125,8 @@ const EnhancedChartPanel = ({ roadLayer }) => {
     }
   };
 
-  const generateChart = async () => {
-    const { features, groupBy, measure, maxCategories } = chartConfig;
+  const generateChart = async (): Promise<void> => {
+    const { features, groupBy, metric, maxCategories } = chartConfig;
     
     if (!roadLayer || features.length === 0 || !groupBy) {
       message.warning('Please select features and group by field');
@@ -98,14 +135,15 @@ const EnhancedChartPanel = ({ roadLayer }) => {
 
     try {
       setLoading(true);
-      const Query = (await import('@arcgis/core/rest/support/Query.js')).default;
       
       const baseWhere = roadLayer.definitionExpression || '1=1';
-      const allData = [];
+      const allData: ChartDataPoint[] = [];
       
       // Query for each selected feature
       for (const featureField of features) {
         const feature = CONFIG.chartingFeatures.find(f => f.field === featureField);
+        if (!feature) continue;
+
         const whereClause = `(${baseWhere}) AND (${featureField} = 1)`;
         
         const query = new Query({
@@ -129,9 +167,9 @@ const EnhancedChartPanel = ({ roadLayer }) => {
             category: String(groupValue),
             feature: feature.label,
             featureField: featureField,
-            scenario: feature.field.includes('_h') ? 'RCP 8.5' : 'RCP 4.5',
-            count: count,
-            length: count * 0.1 // km
+            scenario: feature.scenario,
+            value: metric === 'totalLength' ? count * CONFIG.defaultSettings.segmentLengthKm : count,
+            type: feature.scenario === 'rcp85' ? 'RCP 8.5' : 'RCP 4.5'
           });
         });
       }
@@ -141,9 +179,6 @@ const EnhancedChartPanel = ({ roadLayer }) => {
       setChartData(processedData);
       
       message.success('Chart generated successfully');
-      // ** CHANGE: Automatically open the modal **
-      setExpandedView(true);
-
     } catch (error) {
       console.error('Failed to generate chart:', error);
       message.error('Failed to generate chart');
@@ -153,12 +188,14 @@ const EnhancedChartPanel = ({ roadLayer }) => {
     }
   };
 
-  const processChartData = (rawData, maxCategories) => {
+  const processChartData = (
+    rawData: ChartDataPoint[], 
+    maxCategories: number
+  ): ProcessedChartData => {
     // Calculate totals by category
-    const categoryTotals = {};
+    const categoryTotals: Record<string, number> = {};
     rawData.forEach(item => {
-      const value = chartConfig.measure === 'length' ? item.length : item.count;
-      categoryTotals[item.category] = (categoryTotals[item.category] || 0) + value;
+      categoryTotals[item.category] = (categoryTotals[item.category] || 0) + item.value;
     });
     
     // Sort and get top categories
@@ -190,6 +227,8 @@ const EnhancedChartPanel = ({ roadLayer }) => {
       const otherData = sortedCategories.slice(maxCategories);
       chartConfig.features.forEach(featureField => {
         const feature = CONFIG.chartingFeatures.find(f => f.field === featureField);
+        if (!feature) return;
+
         let otherValue = 0;
         
         otherData.forEach(([category]) => {
@@ -197,7 +236,7 @@ const EnhancedChartPanel = ({ roadLayer }) => {
             d.category === category && d.featureField === featureField
           );
           if (item) {
-            otherValue += chartConfig.measure === 'length' ? item.length : item.count;
+            otherValue += item.value;
           }
         });
         
@@ -206,9 +245,9 @@ const EnhancedChartPanel = ({ roadLayer }) => {
             category: 'Other',
             feature: feature.label,
             featureField: featureField,
-            scenario: feature.field.includes('_h') ? 'RCP 8.5' : 'RCP 4.5',
-            count: chartConfig.measure === 'count' ? otherValue : otherValue / 0.1,
-            length: chartConfig.measure === 'length' ? otherValue : otherValue * 0.1
+            scenario: feature.scenario,
+            value: otherValue,
+            type: feature.scenario === 'rcp85' ? 'RCP 8.5' : 'RCP 4.5'
           });
         }
       });
@@ -224,7 +263,7 @@ const EnhancedChartPanel = ({ roadLayer }) => {
     };
   };
 
-  const getChartColor = (index, opacity = 1) => {
+  const getChartColor = (index: number, opacity: number = 1): string => {
     const colors = [
       `rgba(0, 61, 130, ${opacity})`,    // TII Blue
       `rgba(250, 173, 20, ${opacity})`,  // Warning Orange
@@ -238,29 +277,30 @@ const EnhancedChartPanel = ({ roadLayer }) => {
     return colors[index % colors.length];
   };
 
-  const renderChart = () => {
+  const renderChart = (): void => {
     const ctx = chartRef.current?.getContext('2d');
     const expandedCtx = expandedChartRef.current?.getContext('2d');
     
-    if (!chartData) return;
+    if (!ctx || !chartData) return;
     
     // Destroy existing charts
     if (chartInstance.current) {
       chartInstance.current.destroy();
+      chartInstance.current = null;
     }
     if (expandedChartInstance.current) {
       expandedChartInstance.current.destroy();
+      expandedChartInstance.current = null;
     }
 
-    const createChartConfig = () => {
-      const { chartType, measure, groupBy } = chartConfig;
+    const createChartConfig = (): ChartConfiguration => {
+      const { type, metric, groupBy } = chartConfig;
       
-      if (chartType === 'pie') {
+      if (type === 'pie') {
         // For pie chart, aggregate all features
-        const aggregatedData = {};
+        const aggregatedData: Record<string, number> = {};
         chartData.data.forEach(item => {
-          const value = measure === 'length' ? item.length : item.count;
-          aggregatedData[item.category] = (aggregatedData[item.category] || 0) + value;
+          aggregatedData[item.category] = (aggregatedData[item.category] || 0) + item.value;
         });
         
         return {
@@ -287,17 +327,17 @@ const EnhancedChartPanel = ({ roadLayer }) => {
               },
               title: {
                 display: true,
-                text: `${measure === 'length' ? 'Road Length' : 'Segment Count'} by ${
+                text: `${metric === 'totalLength' ? 'Road Length' : 'Segment Count'} by ${
                   groupByOptions.find(o => o.value === groupBy)?.label || groupBy
                 }`
               },
               tooltip: {
                 callbacks: {
                   label: (context) => {
-                    const value = context.parsed;
-                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                    const value = context.parsed as number;
+                    const total = (context.dataset.data as number[]).reduce((a, b) => a + b, 0);
                     const percentage = ((value / total) * 100).toFixed(1);
-                    const suffix = measure === 'length' ? ' km' : ' segments';
+                    const suffix = metric === 'totalLength' ? ' km' : ' segments';
                     return `${context.label}: ${value.toFixed(1)}${suffix} (${percentage}%)`;
                   }
                 }
@@ -312,7 +352,7 @@ const EnhancedChartPanel = ({ roadLayer }) => {
             const item = chartData.data.find(d => 
               d.category === category && d.feature === featureLabel
             );
-            return item ? (measure === 'length' ? item.length : item.count) : 0;
+            return item ? item.value : 0;
           });
           
           return {
@@ -325,7 +365,7 @@ const EnhancedChartPanel = ({ roadLayer }) => {
         });
 
         return {
-          type: 'bar',
+          type: 'bar' as ChartType,
           data: {
             labels: chartData.categories,
             datasets: datasets
@@ -344,7 +384,7 @@ const EnhancedChartPanel = ({ roadLayer }) => {
               },
               title: {
                 display: true,
-                text: `${measure === 'length' ? 'Road Length' : 'Segment Count'} by ${
+                text: `${metric === 'totalLength' ? 'Road Length' : 'Segment Count'} by ${
                   groupByOptions.find(o => o.value === groupBy)?.label || groupBy
                 }`
               },
@@ -352,8 +392,8 @@ const EnhancedChartPanel = ({ roadLayer }) => {
                 callbacks: {
                   label: (context) => {
                     const label = context.dataset.label || '';
-                    const value = context.parsed.y;
-                    const suffix = measure === 'length' ? ' km' : ' segments';
+                    const value = context.parsed.y as number;
+                    const suffix = metric === 'totalLength' ? ' km' : ' segments';
                     return `${label}: ${value.toFixed(1)}${suffix}`;
                   }
                 }
@@ -364,7 +404,7 @@ const EnhancedChartPanel = ({ roadLayer }) => {
                 beginAtZero: true,
                 title: {
                   display: true,
-                  text: measure === 'length' ? 'Length (km)' : 'Segment Count'
+                  text: metric === 'totalLength' ? 'Length (km)' : 'Segment Count'
                 }
               },
               x: {
@@ -383,9 +423,7 @@ const EnhancedChartPanel = ({ roadLayer }) => {
     const config = createChartConfig();
     
     // Create main chart
-    if (ctx) {
-      chartInstance.current = new Chart(ctx, config);
-    }
+    chartInstance.current = new Chart(ctx, config);
     
     // Create expanded chart if modal is open
     if (expandedCtx && expandedView) {
@@ -393,7 +431,7 @@ const EnhancedChartPanel = ({ roadLayer }) => {
     }
   };
 
-  const downloadChart = () => {
+  const downloadChart = (): void => {
     const chart = expandedView && expandedChartInstance.current 
       ? expandedChartInstance.current 
       : chartInstance.current;
@@ -408,20 +446,29 @@ const EnhancedChartPanel = ({ roadLayer }) => {
     }
   };
 
-  const clearChart = () => {
+  const clearChart = (): void => {
     setChartData(null);
     setChartConfig({
       features: [],
       groupBy: '',
-      measure: 'count',
+      metric: 'segmentCount',
       maxCategories: 10,
-      chartType: 'bar'
+      type: 'bar'
     });
     if (chartInstance.current) {
       chartInstance.current.destroy();
       chartInstance.current = null;
     }
     message.info('Chart cleared');
+  };
+
+  type ChartType = 'bar' | 'pie' | 'line';
+  const handleChartTypeChange = (value: ChartType): void => {
+    setChartConfig(prev => ({ ...prev, type: value }));
+  };
+
+  const handleMetricChange = (e: RadioChangeEvent): void => {
+    setChartConfig(prev => ({ ...prev, metric: e.target.value }));
   };
 
   return (
@@ -481,7 +528,7 @@ const EnhancedChartPanel = ({ roadLayer }) => {
               size="small"
               type="primary"
               icon={<ReloadOutlined />}
-              onClick={generateChart}
+              onClick={() => void generateChart()}
               loading={loading}
               disabled={chartConfig.features.length === 0 || !chartConfig.groupBy}
             >
@@ -558,12 +605,12 @@ const EnhancedChartPanel = ({ roadLayer }) => {
                 Measure by:
               </label>
               <Radio.Group 
-                value={chartConfig.measure} 
-                onChange={(e) => setChartConfig({ ...chartConfig, measure: e.target.value })}
+                value={chartConfig.metric} 
+                onChange={handleMetricChange}
                 size="small"
               >
-                <Radio.Button value="count">Segments</Radio.Button>
-                <Radio.Button value="length">Length (km)</Radio.Button>
+                <Radio.Button value="segmentCount">Segments</Radio.Button>
+                <Radio.Button value="totalLength">Length (km)</Radio.Button>
               </Radio.Group>
             </div>
             
@@ -573,8 +620,8 @@ const EnhancedChartPanel = ({ roadLayer }) => {
                 Chart type:
               </label>
               <Radio.Group 
-                value={chartConfig.chartType} 
-                onChange={(e) => setChartConfig({ ...chartConfig, chartType: e.target.value })}
+                value={chartConfig.type} 
+                onChange={(e) => handleChartTypeChange(e.target.value as ChartType)}
                 size="small"
               >
                 <Radio.Button value="bar">
