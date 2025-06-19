@@ -1,3 +1,5 @@
+// src/components/EnhancedChartPanel.tsx - Connected to Zustand Store
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Card, 
@@ -25,19 +27,22 @@ import {
 import type { RadioChangeEvent } from 'antd';
 import Chart from 'chart.js/auto';
 import type { ChartConfiguration, ChartType, ChartData } from 'chart.js';
+
+// Store imports
+import { useMapState } from '@/store/useAppStore';
+
+// Type imports
 import type {  
   ChartConfig, 
   ChartDataPoint,
   ChartFeature,
   FilterOption 
 } from '@/types';
-import type FeatureLayer from '@arcgis/core/layers/FeatureLayer';
 import { CONFIG } from '@/config/appConfig';
 import Query from '@arcgis/core/rest/support/Query';
 
-interface EnhancedChartPanelProps {
-  roadLayer: FeatureLayer;
-}
+// No props needed anymore!
+interface EnhancedChartPanelProps {}
 
 interface ProcessedChartData {
   categories: string[];
@@ -49,7 +54,11 @@ interface GroupByOption extends FilterOption {
   icon: string;
 }
 
-const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = ({ roadLayer }) => {
+const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
+  // Store hooks
+  const { roadLayer } = useMapState();
+
+  // Local state
   const [loading, setLoading] = useState(false);
   const [chartConfig, setChartConfig] = useState<ChartConfig>({
     features: [],
@@ -470,6 +479,8 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = ({ roadLayer }) =>
   const handleMetricChange = (e: RadioChangeEvent): void => {
     setChartConfig(prev => ({ ...prev, metric: e.target.value }));
   };
+
+  if (!roadLayer) return null;
 
   return (
     <>
