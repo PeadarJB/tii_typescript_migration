@@ -1,4 +1,4 @@
-// src/components/SimpleReportGenerator.tsx
+// src/components/SimpleReportGenerator.tsx - Connected to Zustand Store
 
 import { useState, FC } from 'react';
 import { Modal, Button, Space, Spin, message, Card, Divider } from 'antd';
@@ -6,33 +6,31 @@ import { DownloadOutlined, FileTextOutlined, CameraOutlined } from '@ant-design/
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-// FIX: Import all necessary types from our central types file and the ArcGIS SDK
-import type { FilterState, NetworkStatistics, ScenarioStatistics } from '@/types/index';
-import type MapView from '@arcgis/core/views/MapView';
-import type FeatureLayer from '@arcgis/core/layers/FeatureLayer';
-// Removed invalid import of TakeScreenshotOptions
+// Store imports
+import { useAppStore, useMapState, useFilterState, useStatisticsState } from '@/store/useAppStore';
 
-// FIX: Ensure the component props use the correctly imported types
+// Type imports
+import type { ScenarioStatistics } from '@/types/index';
+
+// Minimal props - only what's truly needed
 interface SimpleReportGeneratorProps {
-  view: MapView;
-  roadLayer: FeatureLayer | null;
-  activeFilters: Partial<FilterState>;
-  statistics: NetworkStatistics | null;
   onClose: () => void;
 }
 
-const SimpleReportGenerator: FC<SimpleReportGeneratorProps> = ({
-  view,
-  roadLayer,
-  activeFilters,
-  statistics,
-  onClose,
-}) => {
+const SimpleReportGenerator: FC<SimpleReportGeneratorProps> = ({ onClose }) => {
+  // Store hooks
+  const { mapView: view, roadLayer } = useMapState();
+  const { currentFilters } = useFilterState();
+  const { currentStats: statistics } = useStatisticsState();
+
+  // Local state
   const [generating, setGenerating] = useState(false);
   const [mapScreenshot, setMapScreenshot] = useState<string | null>(null);
   const [captureStep, setCaptureStep] = useState('');
 
   const captureMap = async (): Promise<string | null> => {
+    if (!view) return null;
+    
     try {
       setCaptureStep('Capturing map view...');
       
@@ -45,7 +43,6 @@ const SimpleReportGenerator: FC<SimpleReportGeneratorProps> = ({
 
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Use inferred type for screenshot options
       const screenshotOptions = {
         width: 800,
         height: 600,
@@ -106,7 +103,7 @@ const SimpleReportGenerator: FC<SimpleReportGeneratorProps> = ({
       yPosition += 8;
       pdf.setFontSize(10);
 
-      const activeFilterEntries = Object.entries(activeFilters).filter(([, values]) => Array.isArray(values) && values.length > 0);
+      const activeFilterEntries = Object.entries(currentFilters).filter(([, values]) => Array.isArray(values) && values.length > 0);
       if (activeFilterEntries.length > 0) {
         activeFilterEntries.forEach(([key, values]) => {
           pdf.text(`• ${key}: ${(values as string[]).join(', ')}`, margin + 5, yPosition);
@@ -130,7 +127,6 @@ const SimpleReportGenerator: FC<SimpleReportGeneratorProps> = ({
       pdf.setFontSize(10);
       
       if (statistics?.scenarios) {
-        // FIX: Provide an explicit type for the 'scenario' parameter.
         statistics.scenarios.forEach((scenario: ScenarioStatistics) => {
           if (scenario.scenario === 'rcp45') {
             pdf.text('RCP 4.5 Scenario (10-20 year return period):', margin + 5, yPosition);
@@ -212,8 +208,8 @@ const SimpleReportGenerator: FC<SimpleReportGeneratorProps> = ({
         <div style={{ fontSize: 12 }}>
           <strong>Active Filters:</strong>
           <ul style={{ margin: '4px 0', paddingLeft: 20 }}>
-            {Object.values(activeFilters).some(v => Array.isArray(v) && v.length > 0) ? (
-              Object.entries(activeFilters).map(([key, values]) => (
+            {Object.values(currentFilters).some(v => Array.isArray(v) && v.length > 0) ? (
+              Object.entries(currentFilters).map(([key, values]) => (
                 (Array.isArray(values) && values.length > 0) && <li key={key}>{key}: {values.join(', ')}</li>
               ))
             ) : (
