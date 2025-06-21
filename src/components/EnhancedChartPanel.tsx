@@ -122,7 +122,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
     if (chartData) {
       renderChart();
     }
-  }, [chartData, chartConfig.type]);
+  }, [chartData, chartConfig.type, expandedView]);
 
   const loadDynamicGroupByOptions = (): void => {
     try {
@@ -188,6 +188,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
       setChartData(processedData);
       
       message.success('Chart generated successfully');
+      setExpandedView(true); // Automatically open the modal
     } catch (error) {
       console.error('Failed to generate chart:', error);
       message.error('Failed to generate chart');

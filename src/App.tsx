@@ -1,6 +1,6 @@
 // App.tsx - Refactored with Zustand Store
 
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, lazy, Suspense } from 'react';
 import type { ReactElement } from 'react';
 import { Layout, Menu, Button, Space, Spin, Card, Switch, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
@@ -10,12 +10,12 @@ import { ErrorBoundary } from 'react-error-boundary';
 // Store imports
 import { useAppStore, useMapState, useUIState, useFilterState, useStatisticsState } from '@/store/useAppStore';
 
-// Component imports
-import EnhancedFilterPanel from './components/EnhancedFilterPanel';
-import EnhancedStatsPanel from './components/EnhancedStatsPanel';
-import EnhancedChartPanel from './components/EnhancedChartPanel';
-import SimpleSwipePanel from './components/SimpleSwipePanel';
-import SimpleReportGenerator from './components/SimpleReportGenerator';
+
+const EnhancedFilterPanel = lazy(() => import('./components/EnhancedFilterPanel'));
+const EnhancedStatsPanel = lazy(() => import('./components/EnhancedStatsPanel'));
+const EnhancedChartPanel = lazy(() => import('./components/EnhancedChartPanel'));
+const SimpleSwipePanel = lazy(() => import('./components/SimpleSwipePanel'));
+const SimpleReportGenerator = lazy(() => import('./components/SimpleReportGenerator'));
 import { CONFIG } from './config/appConfig';
 import 'antd/dist/reset.css';
 
@@ -275,45 +275,33 @@ function App(): ReactElement {
             )}
             
             {showReportModal && mapView && (
-              <SimpleReportGenerator
-                view={mapView}
-                roadLayer={roadLayer}
-                activeFilters={currentFilters}
-                statistics={currentStats}
-                onClose={() => setShowReportModal(false)}
-              />
+              <Suspense fallback={<Spin />}>
+                <SimpleReportGenerator onClose={() => setShowReportModal(false)} />
+              </Suspense>
             )}
             
             {showFilters && roadLayer && mapView && (
-              <EnhancedFilterPanel
-                key={filterPanelKey}
-                view={mapView}
-                roadLayer={roadLayer}
-                onFiltersChange={setFilters}
-                initialExtent={mapView.extent}
-                onApplyFilters={applyFilters}
-                isShown={showFilters}
-              />
+              <Suspense fallback={<Card loading style={{ position: 'absolute', top: 16, right: 16, width: 360 }} />}>
+                <EnhancedFilterPanel key={filterPanelKey} />
+              </Suspense>
             )}
             
             {showChart && roadLayer && !loading && (
-              <EnhancedChartPanel roadLayer={roadLayer} />
+              <Suspense fallback={<Card loading style={{ position: 'absolute', top: 16, right: 16, width: 480 }} />}>
+                <EnhancedChartPanel />
+              </Suspense>
             )}
             
             {showSwipe && mapView && webmap && !loading && (
-              <SimpleSwipePanel
-                view={mapView}
-                webmap={webmap}
-                isSwipeActive={isSwipeActive}
-                setIsSwipeActive={setIsSwipeActive}
-              />
+              <Suspense fallback={<Card loading style={{ position: 'absolute', bottom: 16, right: 16, width: 350 }} />}>
+                <SimpleSwipePanel />
+              </Suspense>
             )}
             
             {showStats && hasActiveFilters && roadLayer && !loading && (
-              <EnhancedStatsPanel
-                roadLayer={roadLayer}
-                onStatsChange={updateStatistics}
-              />
+              <Suspense fallback={<Card loading style={{ position: 'absolute', bottom: 16, left: 16, width: 450 }} />}>
+                <EnhancedStatsPanel />
+              </Suspense>
             )}
             
             {showFilters && !roadLayer && !loading && webmap && (
