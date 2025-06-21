@@ -1,6 +1,6 @@
 // App.tsx - Refactored with Zustand Store
 
-import React, { useEffect, useRef, lazy, Suspense } from 'react';
+import { useEffect, useRef, lazy, Suspense } from 'react';
 import type { ReactElement } from 'react';
 import { Layout, Menu, Button, Space, Spin, Card, Switch, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
