@@ -4,8 +4,8 @@
  */
 
 export { useDebounce } from './useDebounce';
-/* export { useThrottle } from './useThrottle';
-export { useLocalStorage } from './useLocalStorage'; */
+export { useThrottle } from './useThrottle';
+export { useLocalStorage } from './useLocalStorage'; 
 export { useAsync } from './useAsync';
 /* export { useEventListener } from './useEventListener';
 export { useResizeObserver } from './useResizeObserver';
