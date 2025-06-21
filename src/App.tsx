@@ -1,6 +1,6 @@
 // App.tsx - Refactored with Zustand Store
 
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, lazy, Suspense } from 'react';
 import type { ReactElement } from 'react';
 import { Layout, Menu, Button, Space, Spin, Card, Switch, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
@@ -10,12 +10,12 @@ import { ErrorBoundary } from 'react-error-boundary';
 // Store imports
 import { useAppStore, useMapState, useUIState, useFilterState, useStatisticsState } from '@/store/useAppStore';
 
-// Component imports
-import EnhancedFilterPanel from './components/EnhancedFilterPanel';
-import EnhancedStatsPanel from './components/EnhancedStatsPanel';
-import EnhancedChartPanel from './components/EnhancedChartPanel';
-import SimpleSwipePanel from './components/SimpleSwipePanel';
-import SimpleReportGenerator from './components/SimpleReportGenerator';
+
+const EnhancedFilterPanel = lazy(() => import('./components/EnhancedFilterPanel'));
+const EnhancedStatsPanel = lazy(() => import('./components/EnhancedStatsPanel'));
+const EnhancedChartPanel = lazy(() => import('./components/EnhancedChartPanel'));
+const SimpleSwipePanel = lazy(() => import('./components/SimpleSwipePanel'));
+const SimpleReportGenerator = lazy(() => import('./components/SimpleReportGenerator'));
 import { CONFIG } from './config/appConfig';
 import 'antd/dist/reset.css';
 
@@ -62,7 +62,8 @@ function App(): ReactElement {
     showReportModal,
     isSwipeActive 
   } = useUIState();
-  const { hasActiveFilters, filterPanelKey } = useFilterState();
+  const { currentFilters, hasActiveFilters, filterPanelKey } = useFilterState();
+  const { currentStats } = useStatisticsState();
   
   // Store actions
   const initializeMap = useAppStore((state) => state.initializeMap);
@@ -72,7 +73,11 @@ function App(): ReactElement {
   const setShowChart = useAppStore((state) => state.setShowChart);
   const setShowSwipe = useAppStore((state) => state.setShowSwipe);
   const setShowReportModal = useAppStore((state) => state.setShowReportModal);
+  const setIsSwipeActive = useAppStore((state) => state.setIsSwipeActive);
+  const setFilters = useAppStore((state) => state.setFilters);
+  const applyFilters = useAppStore((state) => state.applyFilters);
   const clearAllFilters = useAppStore((state) => state.clearAllFilters);
+  const updateStatistics = useAppStore((state) => state.updateStatistics);
 
   // Refs
   const siderRef = useRef<HTMLDivElement>(null);
@@ -270,27 +275,33 @@ function App(): ReactElement {
             )}
             
             {showReportModal && mapView && (
-              <SimpleReportGenerator
-                onClose={() => setShowReportModal(false)}
-              />
+              <Suspense fallback={<Spin />}>
+                <SimpleReportGenerator onClose={() => setShowReportModal(false)} />
+              </Suspense>
             )}
             
             {showFilters && roadLayer && mapView && (
-              <EnhancedFilterPanel
-                key={filterPanelKey}
-              />
+              <Suspense fallback={<Card loading style={{ position: 'absolute', top: 16, right: 16, width: 360 }} />}>
+                <EnhancedFilterPanel key={filterPanelKey} />
+              </Suspense>
             )}
             
             {showChart && roadLayer && !loading && (
-              <EnhancedChartPanel />
+              <Suspense fallback={<Card loading style={{ position: 'absolute', top: 16, right: 16, width: 480 }} />}>
+                <EnhancedChartPanel />
+              </Suspense>
             )}
             
             {showSwipe && mapView && webmap && !loading && (
-              <SimpleSwipePanel />
+              <Suspense fallback={<Card loading style={{ position: 'absolute', bottom: 16, right: 16, width: 350 }} />}>
+                <SimpleSwipePanel />
+              </Suspense>
             )}
             
             {showStats && hasActiveFilters && roadLayer && !loading && (
-              <EnhancedStatsPanel />
+              <Suspense fallback={<Card loading style={{ position: 'absolute', bottom: 16, left: 16, width: 450 }} />}>
+                <EnhancedStatsPanel />
+              </Suspense>
             )}
             
             {showFilters && !roadLayer && !loading && webmap && (
