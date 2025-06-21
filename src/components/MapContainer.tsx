@@ -1,7 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+// src/components/MapContainer.tsx - Updated to work with Zustand Store
+
+import React, { useEffect, useRef, FC } from 'react';
 import { Card, Spin } from 'antd';
 import { EnvironmentOutlined } from '@ant-design/icons';
-import type MapView from '@arcgis/core/views/MapView';
+
+// Store imports
+import { useMapState } from '@/store/useAppStore';
 
 /**
  * MapContainer - Wrapper component for the ArcGIS MapView
@@ -10,41 +14,36 @@ import type MapView from '@arcgis/core/views/MapView';
  */
 
 interface MapContainerProps {
-  appManager?: {
-    components?: {
-      view?: MapView;
-      [key: string]: any;
-    };
-    [key: string]: any;
-  };
   className?: string;
   style?: React.CSSProperties;
 }
 
-const MapContainer: React.FC<MapContainerProps> = ({ 
-  appManager,
+const MapContainer: FC<MapContainerProps> = ({ 
   className,
   style 
 }) => {
   const mapDivRef = useRef<HTMLDivElement>(null);
   const isInitialized = useRef(false);
+  
+  // Get map state from store
+  const { mapView, loading } = useMapState();
 
   useEffect(() => {
-    // The map should already be initialized by AppManager
+    // The map should already be initialized by the store
     // This component just provides the container
-    if (mapDivRef.current && !isInitialized.current) {
+    if (mapDivRef.current && !isInitialized.current && mapView) {
       isInitialized.current = true;
       
       // If the map view exists but isn't in the container, move it
-      if (appManager?.components?.view && mapDivRef.current.children.length === 0) {
+      if (mapDivRef.current.children.length === 0) {
         // Type assertion needed as container property might be HTMLDivElement or string
-        appManager.components.view.container = mapDivRef.current as any;
+        mapView.container = mapDivRef.current as any;
       }
     }
-  }, [appManager]);
+  }, [mapView]);
 
-  // Show loading state if app manager or view isn't ready
-  if (!appManager?.components?.view) {
+  // Show loading state if map isn't ready
+  if (loading || !mapView) {
     return (
       <Card
         style={{ 
