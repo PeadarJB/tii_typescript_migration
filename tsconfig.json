@@ -43,7 +43,7 @@
     "noFallthroughCasesInSwitch": true,
     
     // RELAXED DURING MIGRATION - Change to false or remove
-    "noUnusedLocals": false,                    // Disable during migration
+    "noUnusedLocals": true,                    // Disable during migration
     "noUnusedParameters": false,                // Disable during migration  
     "noUncheckedIndexedAccess": false,          // Very strict - disable during migration
     "noImplicitOverride": false,                // Disable during migration
