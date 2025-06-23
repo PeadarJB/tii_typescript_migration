@@ -1,4 +1,4 @@
-// src/components/EnhancedFilterPanel.tsx - Connected to Zustand Store
+// src/components/EnhancedFilterPanel.tsx - Refactored with consolidated styling
 
 import { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
@@ -18,10 +18,13 @@ import {
 // Store imports
 import { useAppStore, useMapState, useFilterState } from '@/store/useAppStore';
 
+// Style imports
+import { usePanelStyles, useCommonStyles } from '@/styles/styled';
+
 // Type imports
 import type FeatureSet from '@arcgis/core/rest/support/FeatureSet';
 
-// Component Props Interface - Much simpler now!
+// Component Props Interface
 interface EnhancedFilterPanelProps {
   key?: string | number;
 }
@@ -92,7 +95,7 @@ const CONFIG: { filterConfig: readonly FilterConfigItem[] } = {
       field: 'COUNTY',
       dataType: 'string',
       description: 'Filter by administrative county boundaries.',
-      options: [] // Populated dynamically
+      options: []
     } satisfies MultiSelectFilterConfig,
     {
       id: 'criticality',
@@ -149,6 +152,9 @@ const getInitialFilterState = (): Record<string, string[]> => {
 };
 
 const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
+  const { styles: panelStyles } = usePanelStyles();
+  const { styles: commonStyles, theme } = useCommonStyles();
+  
   // Store hooks
   const { roadLayer } = useMapState();
   const { currentFilters, hasActiveFilters } = useFilterState();
@@ -271,7 +277,7 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
         <Space>
           {icons[filter.id]}
           <span>{filter.label}</span>
-          {selected.length > 0 && <Badge count={selected.length} />}
+          {selected.length > 0 && <Badge count={selected.length} className="filter-badge" />}
         </Space>
       ),
       extra: selected.length > 0 ? (
@@ -287,10 +293,10 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
         </Button>
       ) : null,
       children: (
-        <Row gutter={8} align="middle">
+        <Row gutter={theme.marginXS} align="middle">
           <Col>
             <Tooltip title={filter.description}>
-              <InfoCircleOutlined style={{ color: '#8c8c8c' }} />
+              <InfoCircleOutlined style={{ color: theme.colorTextTertiary }} />
             </Tooltip>
           </Col>
           <Col flex="auto">
@@ -318,24 +324,15 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
   
   return (
     <Card
+      className={panelStyles.filterPanel}
       title={
-        <Space>
+        <div className={commonStyles.panelHeader}>
           <FilterOutlined />
           <span>Advanced Filters</span>
-          {hasActiveFilters && <Badge count={activeFilterCount} style={{ backgroundColor: '#52c41a' }} />}
-        </Space>
+          {hasActiveFilters && <Badge count={activeFilterCount} style={{ backgroundColor: theme.colorSuccess }} />}
+        </div>
       }
       size="small"
-      style={{ 
-        position: 'absolute', 
-        top: 16, 
-        right: 16, 
-        width: 360, 
-        maxHeight: 'calc(100vh - 100px)', 
-        display: 'flex', 
-        flexDirection: 'column' 
-      }}
-      bodyStyle={{ padding: '12px', overflow: 'auto', flex: 1 }}
       extra={
         <Tooltip title="Clear all filters">
           <Button 
@@ -353,6 +350,7 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
     >
       <Space direction="vertical" style={{ width: '100%' }} size="small">
         <Collapse 
+          className={commonStyles.filterSection}
           activeKey={expandedPanels} 
           onChange={(keys) => setExpandedPanels(Array.isArray(keys) ? keys : [keys].filter(Boolean))} 
           size="small" 
@@ -360,7 +358,7 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
           items={collapseItems}
         />
         
-        <Divider style={{ margin: '12px 0' }} />
+        <Divider style={{ margin: `${theme.marginSM}px 0` }} />
         
         <Button
           type="primary"
