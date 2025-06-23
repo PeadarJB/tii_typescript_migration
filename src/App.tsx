@@ -1,4 +1,4 @@
-// App.tsx - Refactored with Zustand Store
+// App.tsx - Refactored with consolidated styling
 
 import { useEffect, useRef, lazy, Suspense } from 'react';
 import type { ReactElement } from 'react';
@@ -6,17 +6,21 @@ import { Layout, Menu, Button, Space, Spin, Card, Switch, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
 import { DashboardOutlined, WarningOutlined, DownloadOutlined } from '@ant-design/icons';
 import { ErrorBoundary } from 'react-error-boundary';
+import { CONFIG } from './config/appConfig';
 
 // Store imports
-import { useAppStore, useMapState, useUIState, useFilterState, useStatisticsState } from '@/store/useAppStore';
+import { useAppStore, useMapState, useUIState, useFilterState } from '@/store/useAppStore';
 
+// Style imports
+import { useCommonStyles } from '@/styles/styled';
 
+// Lazy loaded components
 const EnhancedFilterPanel = lazy(() => import('./components/EnhancedFilterPanel'));
 const EnhancedStatsPanel = lazy(() => import('./components/EnhancedStatsPanel'));
 const EnhancedChartPanel = lazy(() => import('./components/EnhancedChartPanel'));
 const SimpleSwipePanel = lazy(() => import('./components/SimpleSwipePanel'));
 const SimpleReportGenerator = lazy(() => import('./components/SimpleReportGenerator'));
-import { CONFIG } from './config/appConfig';
+
 import 'antd/dist/reset.css';
 
 const { Header, Sider, Content } = Layout;
@@ -27,17 +31,13 @@ interface ErrorFallbackProps {
 }
 
 function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps): ReactElement {
+  const { styles } = useCommonStyles();
+  
   return (
-    <div style={{ 
-      height: '100vh', 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center', 
-      background: '#f0f2f5' 
-    }}>
+    <div className={styles.errorContainer}>
       <Card>
         <Space direction="vertical" align="center">
-          <WarningOutlined style={{ fontSize: 48, color: '#ff4d4f' }} />
+          <WarningOutlined className="error-icon" />
           <h2>Application Error</h2>
           <p>{error.message}</p>
           <Space>
@@ -51,6 +51,8 @@ function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps): React
 }
 
 function App(): ReactElement {
+  const { styles, theme } = useCommonStyles();
+  
   // Store hooks
   const { mapView, webmap, roadLayer, loading, error } = useMapState();
   const { 
@@ -62,8 +64,7 @@ function App(): ReactElement {
     showReportModal,
     isSwipeActive 
   } = useUIState();
-  const { currentFilters, hasActiveFilters, filterPanelKey } = useFilterState();
-  const { currentStats } = useStatisticsState();
+  const { hasActiveFilters, filterPanelKey } = useFilterState();
   
   // Store actions
   const initializeMap = useAppStore((state) => state.initializeMap);
@@ -73,11 +74,7 @@ function App(): ReactElement {
   const setShowChart = useAppStore((state) => state.setShowChart);
   const setShowSwipe = useAppStore((state) => state.setShowSwipe);
   const setShowReportModal = useAppStore((state) => state.setShowReportModal);
-  const setIsSwipeActive = useAppStore((state) => state.setIsSwipeActive);
-  const setFilters = useAppStore((state) => state.setFilters);
-  const applyFilters = useAppStore((state) => state.applyFilters);
   const clearAllFilters = useAppStore((state) => state.clearAllFilters);
-  const updateStatistics = useAppStore((state) => state.updateStatistics);
 
   // Refs
   const siderRef = useRef<HTMLDivElement>(null);
@@ -139,16 +136,10 @@ function App(): ReactElement {
   // Handle error state
   if (error) {
     return (
-      <div style={{ 
-        height: '100vh', 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        background: '#f0f2f5' 
-      }}>
+      <div className={styles.errorContainer}>
         <Card>
           <Space direction="vertical" align="center">
-            <WarningOutlined style={{ fontSize: 48, color: '#ff4d4f' }} />
+            <WarningOutlined className="error-icon" />
             <h2>Error Loading Application</h2>
             <p>{error}</p>
             <Button onClick={() => window.location.reload()}>Reload Page</Button>
@@ -167,21 +158,11 @@ function App(): ReactElement {
           collapsed={siderCollapsed}
           onCollapse={setSiderCollapsed}
           trigger={null}
-          style={{ background: '#fff', transition: 'all 0.2s' }}
+          style={{ background: theme.colorBgContainer, transition: `all ${theme.motionDurationFast}` }}
           onMouseEnter={() => setSiderCollapsed(false)}
           onMouseLeave={() => setSiderCollapsed(true)}
         >
-          <div style={{ 
-            height: 64, 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            borderBottom: '1px solid #f0f0f0', 
-            background: '#003d82', 
-            color: '#fff', 
-            fontWeight: 'bold', 
-            fontSize: '20px' 
-          }}>
+          <div className={styles.siderLogo}>
             TII
           </div>
           <Menu
@@ -194,12 +175,12 @@ function App(): ReactElement {
         
         <Layout>
           <Header style={{ 
-            padding: '0 24px', 
-            background: '#fff', 
+            padding: `0 ${theme.marginLG}px`, 
+            background: theme.colorBgContainer, 
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'space-between', 
-            borderBottom: '1px solid #f0f0f0' 
+            borderBottom: `1px solid ${theme.colorBorderSecondary}` 
           }}>
             <h2 style={{ margin: 0 }}>TII Flood Risk Dashboard</h2>
             <Space>
@@ -254,22 +235,11 @@ function App(): ReactElement {
             <div
               ref={mapContainerRef}
               id="viewDiv"
-              style={{ width: '100%', height: 'calc(100vh - 64px)', position: 'relative' }}
+              className={styles.mapContainer}
             />
             
             {loading && (
-              <div style={{ 
-                position: 'absolute', 
-                top: 0, 
-                left: 0, 
-                right: 0, 
-                bottom: 0, 
-                display: 'flex', 
-                justifyContent: 'center', 
-                alignItems: 'center', 
-                background: 'rgba(255, 255, 255, 0.9)', 
-                zIndex: 1000 
-              }}>
+              <div className={styles.loadingContainer}>
                 <Spin size="large" />
               </div>
             )}
@@ -281,25 +251,53 @@ function App(): ReactElement {
             )}
             
             {showFilters && roadLayer && mapView && (
-              <Suspense fallback={<Card loading style={{ position: 'absolute', top: 16, right: 16, width: 360 }} />}>
+              <Suspense fallback={
+                <Card loading style={{ 
+                  position: 'absolute', 
+                  top: theme.margin, 
+                  right: theme.margin, 
+                  width: 360 
+                }} />
+              }>
                 <EnhancedFilterPanel key={filterPanelKey} />
               </Suspense>
             )}
             
             {showChart && roadLayer && !loading && (
-              <Suspense fallback={<Card loading style={{ position: 'absolute', top: 16, right: 16, width: 480 }} />}>
+              <Suspense fallback={
+                <Card loading style={{ 
+                  position: 'absolute', 
+                  top: theme.margin, 
+                  right: theme.margin, 
+                  width: 480 
+                }} />
+              }>
                 <EnhancedChartPanel />
               </Suspense>
             )}
             
             {showSwipe && mapView && webmap && !loading && (
-              <Suspense fallback={<Card loading style={{ position: 'absolute', bottom: 16, right: 16, width: 350 }} />}>
+              <Suspense fallback={
+                <Card loading style={{ 
+                  position: 'absolute', 
+                  bottom: theme.margin, 
+                  right: theme.margin, 
+                  width: 350 
+                }} />
+              }>
                 <SimpleSwipePanel />
               </Suspense>
             )}
             
             {showStats && hasActiveFilters && roadLayer && !loading && (
-              <Suspense fallback={<Card loading style={{ position: 'absolute', bottom: 16, left: 16, width: 450 }} />}>
+              <Suspense fallback={
+                <Card loading style={{ 
+                  position: 'absolute', 
+                  bottom: theme.margin, 
+                  left: theme.margin, 
+                  width: 450 
+                }} />
+              }>
                 <EnhancedStatsPanel />
               </Suspense>
             )}
@@ -307,8 +305,8 @@ function App(): ReactElement {
             {showFilters && !roadLayer && !loading && webmap && (
               <Card size="small" style={{ 
                 position: 'absolute', 
-                top: 16, 
-                right: 16, 
+                top: theme.margin, 
+                right: theme.margin, 
                 width: 300, 
                 background: '#fff3cd', 
                 borderColor: '#ffeaa7' 
@@ -316,7 +314,7 @@ function App(): ReactElement {
                 <p style={{ margin: 0, color: '#856404' }}>
                   Cannot show filters: Road layer not found
                 </p>
-                <p style={{ margin: '8px 0 0 0', fontSize: 12, color: '#856404' }}>
+                <p style={{ margin: `${theme.marginXS}px 0 0 0`, fontSize: 12, color: '#856404' }}>
                   Looking for layer: &quot;{CONFIG.roadNetworkLayerTitle}&quot;
                 </p>
                 <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#856404' }}>

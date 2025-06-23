@@ -1,6 +1,6 @@
 // src/components/EnhancedChartPanel.tsx - Connected to Zustand Store
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, } from 'react';
 import { 
   Card, 
   Select, 
@@ -9,7 +9,6 @@ import {
   Spin, 
   Empty, 
   Radio, 
-  InputNumber, 
   Tag, 
   Tooltip, 
   Modal, 
@@ -26,7 +25,7 @@ import {
 } from '@ant-design/icons';
 import type { RadioChangeEvent } from 'antd';
 import Chart from 'chart.js/auto';
-import type { ChartConfiguration, ChartType, ChartData } from 'chart.js';
+import type { ChartConfiguration } from 'chart.js';
 
 // Store imports
 import { useMapState } from '@/store/useAppStore';
@@ -35,7 +34,6 @@ import { useMapState } from '@/store/useAppStore';
 import type {  
   ChartConfig, 
   ChartDataPoint,
-  ChartFeature,
   FilterOption 
 } from '@/types';
 import { CONFIG } from '@/config/appConfig';

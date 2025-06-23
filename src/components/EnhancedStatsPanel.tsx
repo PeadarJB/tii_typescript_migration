@@ -31,15 +31,9 @@ import type { CarouselRef } from 'antd/lib/carousel';
 import { useAppStore, useMapState, useStatisticsState } from '@/store/useAppStore';
 
 // Type imports
-import type { 
-  NetworkStatistics, 
+import type {  
   ScenarioStatistics,
-  SegmentStatistic,
-  RiskLevelType,
-  ClimateScenarioType
 } from '@/types';
-import { CONFIG } from '@/config/appConfig';
-import Query from '@arcgis/core/rest/support/Query';
 
 const { Title, Text } = Typography;
 
@@ -50,10 +44,6 @@ interface RiskInfo {
   level: string;
   color: 'success' | 'warning' | 'orange' | 'error';
   icon: string;
-}
-
-interface ModelStats {
-  [key: string]: SegmentStatistic;
 }
 
 const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {

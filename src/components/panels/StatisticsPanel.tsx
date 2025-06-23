@@ -1,6 +1,6 @@
 // src/components/panels/StatisticsPanel.tsx - Wrapper for EnhancedStatsPanel
 
-import React, { FC } from 'react';
+import { FC } from 'react';
 import EnhancedStatsPanel from '../EnhancedStatsPanel';
 
 interface StatisticsPanelProps {}

@@ -1,6 +1,6 @@
 // src/components/panels/SwipePanel.tsx - Wrapper for SimpleSwipePanel
 
-import React, { FC } from 'react';
+import { FC } from 'react';
 import SimpleSwipePanel from '../SimpleSwipePanel';
 
 interface SwipePanelProps {
