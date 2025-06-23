@@ -7,7 +7,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 // Store imports
-import { useAppStore, useMapState, useFilterState, useStatisticsState } from '@/store/useAppStore';
+import { useMapState, useFilterState, useStatisticsState } from '@/store/useAppStore';
 
 // Type imports
 import type { ScenarioStatistics } from '@/types/index';
@@ -19,7 +19,7 @@ interface SimpleReportGeneratorProps {
 
 const SimpleReportGenerator: FC<SimpleReportGeneratorProps> = ({ onClose }) => {
   // Store hooks
-  const { mapView: view, roadLayer } = useMapState();
+  const { mapView: view} = useMapState();
   const { currentFilters } = useFilterState();
   const { currentStats: statistics } = useStatisticsState();
 

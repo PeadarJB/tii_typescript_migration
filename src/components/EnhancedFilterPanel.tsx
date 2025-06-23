@@ -20,7 +20,6 @@ import { useAppStore, useMapState, useFilterState } from '@/store/useAppStore';
 
 // Type imports
 import type FeatureSet from '@arcgis/core/rest/support/FeatureSet';
-import type { FilterState } from '@/types';
 
 // Component Props Interface - Much simpler now!
 interface EnhancedFilterPanelProps {

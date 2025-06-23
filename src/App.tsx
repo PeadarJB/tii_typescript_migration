@@ -62,8 +62,7 @@ function App(): ReactElement {
     showReportModal,
     isSwipeActive 
   } = useUIState();
-  const { currentFilters, hasActiveFilters, filterPanelKey } = useFilterState();
-  const { currentStats } = useStatisticsState();
+  const { hasActiveFilters, filterPanelKey } = useFilterState();
   
   // Store actions
   const initializeMap = useAppStore((state) => state.initializeMap);
@@ -74,10 +73,7 @@ function App(): ReactElement {
   const setShowSwipe = useAppStore((state) => state.setShowSwipe);
   const setShowReportModal = useAppStore((state) => state.setShowReportModal);
   const setIsSwipeActive = useAppStore((state) => state.setIsSwipeActive);
-  const setFilters = useAppStore((state) => state.setFilters);
-  const applyFilters = useAppStore((state) => state.applyFilters);
   const clearAllFilters = useAppStore((state) => state.clearAllFilters);
-  const updateStatistics = useAppStore((state) => state.updateStatistics);
 
   // Refs
   const siderRef = useRef<HTMLDivElement>(null);
