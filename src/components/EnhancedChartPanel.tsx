@@ -1,6 +1,6 @@
-// src/components/EnhancedChartPanel.tsx - Connected to Zustand Store
+// src/components/EnhancedChartPanel.tsx - Refactored with consolidated styling
 
-import React, { useState, useEffect, useRef, } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Card, 
   Select, 
@@ -25,10 +25,13 @@ import {
 } from '@ant-design/icons';
 import type { RadioChangeEvent } from 'antd';
 import Chart from 'chart.js/auto';
-import type { ChartConfiguration } from 'chart.js';
+import type { ChartConfiguration, ChartType as ChartJSType } from 'chart.js';
 
 // Store imports
 import { useMapState } from '@/store/useAppStore';
+
+// Style imports
+import { usePanelStyles, useCommonStyles, styleUtils } from '@/styles/styled';
 
 // Type imports
 import type {  
@@ -53,6 +56,10 @@ interface GroupByOption extends FilterOption {
 }
 
 const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
+  // Style hooks
+  const { styles: panelStyles } = usePanelStyles();
+  const { theme } = useCommonStyles();
+
   // Store hooks
   const { roadLayer } = useMapState();
 
@@ -271,20 +278,6 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
     };
   };
 
-  const getChartColor = (index: number, opacity: number = 1): string => {
-    const colors = [
-      `rgba(0, 61, 130, ${opacity})`,    // TII Blue
-      `rgba(250, 173, 20, ${opacity})`,  // Warning Orange
-      `rgba(82, 196, 26, ${opacity})`,   // Success Green
-      `rgba(255, 77, 79, ${opacity})`,   // Danger Red
-      `rgba(24, 144, 255, ${opacity})`,  // Info Blue
-      `rgba(114, 46, 209, ${opacity})`,  // Purple
-      `rgba(250, 140, 22, ${opacity})`,  // Dark Orange
-      `rgba(19, 194, 194, ${opacity})`   // Cyan
-    ];
-    return colors[index % colors.length];
-  };
-
   const renderChart = (): void => {
     const ctx = chartRef.current?.getContext('2d');
     const expandedCtx = expandedChartRef.current?.getContext('2d');
@@ -317,8 +310,8 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
             labels: Object.keys(aggregatedData),
             datasets: [{
               data: Object.values(aggregatedData),
-              backgroundColor: Object.keys(aggregatedData).map((_, i) => getChartColor(i, 0.7)),
-              borderColor: Object.keys(aggregatedData).map((_, i) => getChartColor(i, 1)),
+              backgroundColor: Object.keys(aggregatedData).map((_, i) => styleUtils.getChartColor(i, 0.7)),
+              borderColor: Object.keys(aggregatedData).map((_, i) => styleUtils.getChartColor(i, 1)),
               borderWidth: 1
             }]
           },
@@ -366,14 +359,14 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
           return {
             label: featureLabel,
             data: data,
-            backgroundColor: getChartColor(index, 0.7),
-            borderColor: getChartColor(index, 1),
+            backgroundColor: styleUtils.getChartColor(index, 0.7),
+            borderColor: styleUtils.getChartColor(index, 1),
             borderWidth: 1
           };
         });
 
         return {
-          type: 'bar' as ChartType,
+          type: 'bar' as ChartJSType,
           data: {
             labels: chartData.categories,
             datasets: datasets
@@ -470,7 +463,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
     message.info('Chart cleared');
   };
 
-  type ChartType = 'bar' | 'pie' | 'line';
+  type ChartType = 'bar' | 'pie';
   const handleChartTypeChange = (value: ChartType): void => {
     setChartConfig(prev => ({ ...prev, type: value }));
   };
@@ -484,26 +477,17 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
   return (
     <>
       <Card
+        className={panelStyles.chartPanel}
         title={
           <Space>
             <BarChartOutlined />
             <span>Advanced Analysis</span>
             <Tooltip title="Create custom data visualizations">
-              <InfoCircleOutlined style={{ fontSize: 12, color: '#8c8c8c' }} />
+              <InfoCircleOutlined style={{ fontSize: theme.fontSizeSM, color: theme.colorTextTertiary }} />
             </Tooltip>
           </Space>
         }
         size="small"
-        style={{
-          position: 'absolute',
-          top: 16,
-          right: 16,
-          width: 480,
-          height: 550,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-          display: 'flex',
-          flexDirection: 'column'
-        }}
         extra={
           <Space size="small">
             {chartData && (
@@ -546,19 +530,12 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
             </Button>
           </Space>
         }
-        bodyStyle={{ 
-          padding: '12px',
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden'
-        }}
       >
-        <Space direction="vertical" style={{ width: '100%' }} size="small">
+        <Space direction="vertical" style={{ width: '100%' }} size="small" className="chart-config">
           {/* Feature Selection */}
           <div>
-            <label style={{ display: 'block', marginBottom: 4, fontSize: 12, fontWeight: 500 }}>
-              Feature(s) to Analyze: <span style={{ color: '#ff4d4f' }}>*</span>
+            <label style={{ display: 'block', marginBottom: theme.marginXXS, fontSize: theme.fontSizeSM, fontWeight: 500 }}>
+              Feature(s) to Analyze: <span style={{ color: theme.colorError }}>*</span>
             </label>
             <Select
               mode="multiple"
@@ -575,7 +552,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
                     >
                       {opt.scenario === 'rcp85' ? '8.5' : '4.5'}
                     </Tag>
-                    <span style={{ fontSize: 12 }}>{opt.label}</span>
+                    <span style={{ fontSize: theme.fontSizeSM }}>{opt.label}</span>
                   </Space>
                 ),
                 value: opt.value
@@ -587,8 +564,8 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
           
           {/* Group By */}
           <div>
-            <label style={{ display: 'block', marginBottom: 4, fontSize: 12, fontWeight: 500 }}>
-              Group by: <span style={{ color: '#ff4d4f' }}>*</span>
+            <label style={{ display: 'block', marginBottom: theme.marginXXS, fontSize: theme.fontSizeSM, fontWeight: 500 }}>
+              Group by: <span style={{ color: theme.colorError }}>*</span>
             </label>
             <Select
               style={{ width: '100%' }}
@@ -611,7 +588,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
           <Space style={{ width: '100%', justifyContent: 'space-between' }}>
             {/* Measure By */}
             <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', marginBottom: 4, fontSize: 12, fontWeight: 500 }}>
+              <label style={{ display: 'block', marginBottom: theme.marginXXS, fontSize: theme.fontSizeSM, fontWeight: 500 }}>
                 Measure by:
               </label>
               <Radio.Group 
@@ -626,7 +603,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
             
             {/* Chart Type */}
             <div>
-              <label style={{ display: 'block', marginBottom: 4, fontSize: 12, fontWeight: 500 }}>
+              <label style={{ display: 'block', marginBottom: theme.marginXXS, fontSize: theme.fontSizeSM, fontWeight: 500 }}>
                 Chart type:
               </label>
               <Radio.Group 
@@ -646,7 +623,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
           
           {/* Max Categories */}
           <div>
-            <label style={{ display: 'block', marginBottom: 4, fontSize: 12, fontWeight: 500 }}>
+            <label style={{ display: 'block', marginBottom: theme.marginXXS, fontSize: theme.fontSizeSM, fontWeight: 500 }}>
               Maximum categories:
             </label>
             <Select
@@ -659,15 +636,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
         </Space>
         
         {/* Chart Area */}
-        <div style={{ 
-          flex: 1, 
-          position: 'relative', 
-          marginTop: 12,
-          minHeight: 300,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
+        <div className="chart-area">
           {loading ? (
             <Spin size="large" tip="Generating chart..." />
           ) : chartData ? (
