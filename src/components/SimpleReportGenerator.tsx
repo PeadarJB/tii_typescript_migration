@@ -1,4 +1,4 @@
-// src/components/SimpleReportGenerator.tsx - Connected to Zustand Store
+// src/components/SimpleReportGenerator.tsx - Refactored with consolidated styling
 
 import { useState, FC } from 'react';
 import { Modal, Button, Space, Spin, message, Card, Divider } from 'antd';
@@ -9,6 +9,9 @@ import html2canvas from 'html2canvas';
 // Store imports
 import { useMapState, useFilterState, useStatisticsState } from '@/store/useAppStore';
 
+// Style imports
+import { usePanelStyles, useCommonStyles } from '@/styles/styled';
+
 // Type imports
 import type { ScenarioStatistics } from '@/types/index';
 
@@ -18,6 +21,10 @@ interface SimpleReportGeneratorProps {
 }
 
 const SimpleReportGenerator: FC<SimpleReportGeneratorProps> = ({ onClose }) => {
+  // Style hooks
+  const { styles: panelStyles } = usePanelStyles();
+  const { theme } = useCommonStyles();
+  
   // Store hooks
   const { mapView: view} = useMapState();
   const { currentFilters } = useFilterState();
@@ -176,11 +183,12 @@ const SimpleReportGenerator: FC<SimpleReportGeneratorProps> = ({ onClose }) => {
         <Button key="capture" icon={<CameraOutlined />} onClick={() => void captureMap()} disabled={generating || mapScreenshot !== null}>Capture Map</Button>,
         <Button key="generate" type="primary" icon={<DownloadOutlined />} onClick={() => void generatePDF()} loading={generating} disabled={mapScreenshot === null || generating}>Generate PDF</Button>
       ]}
+      className={panelStyles.reportModal}
     >
       <Space direction="vertical" style={{ width: '100%' }}>
-        <Card size="small" style={{ backgroundColor: '#f0f8ff' }}>
+        <Card size="small" className="info-card">
           <p style={{ margin: 0 }}>This will generate a PDF report containing:</p>
-          <ul style={{ margin: '8px 0 0 0', paddingLeft: 20 }}>
+          <ul style={{ margin: `${theme.marginXS}px 0 0 0`, paddingLeft: theme.marginLG }}>
             <li>Current map view screenshot</li>
             <li>Active filters summary</li>
             <li>Flood risk statistics</li>
@@ -190,24 +198,24 @@ const SimpleReportGenerator: FC<SimpleReportGeneratorProps> = ({ onClose }) => {
         {mapScreenshot && (
           <>
             <Divider>Map Preview</Divider>
-            <div style={{ textAlign: 'center' }}>
-              <img src={mapScreenshot} alt="Map preview" style={{ maxWidth: '100%', border: '1px solid #d9d9d9', borderRadius: 4 }} />
+            <div className="map-preview">
+              <img src={mapScreenshot} alt="Map preview" />
             </div>
           </>
         )}
 
         {generating && (
-          <div style={{ textAlign: 'center', padding: '20px' }}>
+          <div style={{ textAlign: 'center', padding: theme.marginLG }}>
             <Spin size="large" />
-            <p style={{ marginTop: 10, color: '#1890ff' }}>{captureStep}</p>
+            <p style={{ marginTop: theme.margin, color: theme.colorPrimary }}>{captureStep}</p>
           </div>
         )}
 
         <Divider>Report Content Preview</Divider>
         
-        <div style={{ fontSize: 12 }}>
+        <div style={{ fontSize: theme.fontSizeSM }} className="report-section">
           <strong>Active Filters:</strong>
-          <ul style={{ margin: '4px 0', paddingLeft: 20 }}>
+          <ul style={{ margin: `${theme.marginXXS}px 0`, paddingLeft: theme.marginLG }}>
             {Object.values(currentFilters).some(v => Array.isArray(v) && v.length > 0) ? (
               Object.entries(currentFilters).map(([key, values]) => (
                 (Array.isArray(values) && values.length > 0) && <li key={key}>{key}: {values.join(', ')}</li>
@@ -216,16 +224,18 @@ const SimpleReportGenerator: FC<SimpleReportGeneratorProps> = ({ onClose }) => {
               <li>No filters applied</li>
             )}
           </ul>
-
+        </div>
+        
+        <div style={{ fontSize: theme.fontSizeSM }} className="report-section">
           <strong>Statistics Summary:</strong>
           {statistics ? (
-            <ul style={{ margin: '4px 0', paddingLeft: 20 }}>
+            <ul style={{ margin: `${theme.marginXXS}px 0`, paddingLeft: theme.marginLG }}>
               <li>Total Network: {(statistics.totalLengthKm).toFixed(1)} km</li>
               <li>RCP 4.5 Impact: {getStatValue('rcp45', 'lengthKm').toFixed(1)} km ({getStatValue('rcp45', 'percentage').toFixed(1)}%)</li>
               <li>RCP 8.5 Impact: {getStatValue('rcp85', 'lengthKm').toFixed(1)} km ({getStatValue('rcp85', 'percentage').toFixed(1)}%)</li>
             </ul>
           ) : (
-            <p style={{ margin: '4px 0 0 20px', color: '#999' }}>No statistics available</p>
+            <p style={{ margin: `${theme.marginXXS}px 0 0 ${theme.marginLG}px`, color: theme.colorTextSecondary }}>No statistics available</p>
           )}
         </div>
       </Space>
