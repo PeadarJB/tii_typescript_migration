@@ -8,7 +8,7 @@ import { DashboardOutlined, WarningOutlined, DownloadOutlined } from '@ant-desig
 import { ErrorBoundary } from 'react-error-boundary';
 
 // Store imports
-import { useAppStore, useMapState, useUIState, useFilterState, useStatisticsState } from '@/store/useAppStore';
+import { useAppStore, useMapState, useUIState, useFilterState } from '@/store/useAppStore';
 
 
 const EnhancedFilterPanel = lazy(() => import('./components/EnhancedFilterPanel'));
