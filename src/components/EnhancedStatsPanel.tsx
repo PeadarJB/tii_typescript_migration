@@ -1,4 +1,4 @@
-// src/components/EnhancedStatsPanel.tsx - Connected to Zustand Store
+// src/components/EnhancedStatsPanel.tsx - Refactored with consolidated styling
 
 import React, { useState, useEffect, useRef } from 'react';
 import { 
@@ -26,14 +26,16 @@ import {
   RightOutlined
 } from '@ant-design/icons';
 import type { CarouselRef } from 'antd/lib/carousel';
+import classNames from 'classnames';
 
 // Store imports
 import { useAppStore, useMapState, useStatisticsState } from '@/store/useAppStore';
 
+// Style imports
+import { usePanelStyles, useCommonStyles, styleUtils } from '@/styles/styled';
+
 // Type imports
-import type {  
-  ScenarioStatistics,
-} from '@/types';
+import type { ScenarioStatistics } from '@/types';
 
 const { Title, Text } = Typography;
 
@@ -42,11 +44,15 @@ interface EnhancedStatsPanelProps {}
 
 interface RiskInfo {
   level: string;
-  color: 'success' | 'warning' | 'orange' | 'error';
+  color: 'success' | 'warning' | 'error';
   icon: string;
 }
 
 const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
+  // Style hooks
+  const { styles: panelStyles } = usePanelStyles();
+  const { styles: commonStyles, theme } = useCommonStyles();
+
   // Store hooks
   const { roadLayer } = useMapState();
   const { currentStats } = useStatisticsState();
@@ -87,10 +93,10 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
     return () => handle.remove();
   }, [roadLayer, calculateStatistics, updateStatistics]);
 
-  const getRiskLevel = (percent: number): RiskInfo => {
+  const getRiskInfo = (percent: number): RiskInfo => {
     if (percent < 5) return { level: 'low', color: 'success', icon: '✓' };
     if (percent < 15) return { level: 'medium', color: 'warning', icon: '!' };
-    if (percent < 25) return { level: 'high', color: 'orange', icon: '!!' };
+    if (percent < 25) return { level: 'high', color: 'error', icon: '!!' };
     return { level: 'extreme', color: 'error', icon: '!!!' };
   };
 
@@ -100,10 +106,10 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
   };
 
   const renderScenarioSlide = (scenario: ScenarioStatistics): React.ReactNode => {
-    const anyRisk = getRiskLevel(scenario.totalAffected.percentage);
+    const riskInfo = getRiskInfo(scenario.totalAffected.percentage);
     
     return (
-      <div style={{ padding: '0 20px 20px 20px' }}>
+      <div style={{ padding: `0 ${theme.margin}px ${theme.margin}px` }}>
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
           {/* Header */}
           <div style={{ textAlign: 'center' }}>
@@ -120,7 +126,7 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
                 </Space>
               )}
             </Title>
-            <Text type="secondary" style={{ fontSize: 12 }}>
+            <Text type="secondary" style={{ fontSize: theme.fontSizeSM }}>
               {scenario.returnPeriod}
             </Text>
           </div>
@@ -128,12 +134,7 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
           {/* Overall Risk Summary */}
           <Card
             size="small"
-            style={{
-              background: anyRisk.color === 'error' ? '#fff2e8' : 
-                         (anyRisk.color === 'warning' || anyRisk.color === 'orange' ? '#fffbe6' : '#f6ffed'),
-              borderColor: anyRisk.color === 'error' ? '#ffbb96' : 
-                          (anyRisk.color === 'warning' || anyRisk.color === 'orange' ? '#ffe58f' : '#b7eb8f')
-            }}
+            className={classNames(commonStyles.statsCard, `risk-${riskInfo.level}`)}
           >
             <Row gutter={16} align="middle">
               <Col span={12}>
@@ -145,17 +146,17 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
                 />
               </Col>
               <Col span={12} style={{ textAlign: 'right' }}>
-                <Tag color={anyRisk.color} style={{ fontSize: 14, padding: '4px 12px' }}>
-                  {anyRisk.icon} {anyRisk.level.toUpperCase()} Risk
+                <Tag color={riskInfo.color} style={{ fontSize: 14, padding: '4px 12px' }}>
+                  {riskInfo.icon} {riskInfo.level.toUpperCase()} Risk
                 </Tag>
-                <div style={{ marginTop: 8 }}>
+                <div style={{ marginTop: theme.marginXS }}>
                   <Text strong style={{ 
                     fontSize: 20, 
-                    color: anyRisk.color === 'error' ? '#ff4d4f' : undefined 
+                    color: styleUtils.getRiskColor(riskInfo.level, theme)
                   }}>
                     {scenario.totalAffected.percentage.toFixed(1)}%
                   </Text>
-                  <Text type="secondary" style={{ fontSize: 12 }}> of network</Text>
+                  <Text type="secondary" style={{ fontSize: theme.fontSizeSM }}> of network</Text>
                 </div>
               </Col>
             </Row>
@@ -163,7 +164,7 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
           
           {/* Detailed Model Breakdown */}
           <div>
-            <Text strong style={{ display: 'block', marginBottom: 8 }}>
+            <Text strong style={{ display: 'block', marginBottom: theme.marginXS }}>
               Model Breakdown:
             </Text>
             <Space direction="vertical" style={{ width: '100%' }} size="small">
@@ -171,10 +172,10 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
                 <div 
                   key={index} 
                   style={{ 
-                    padding: '8px 12px', 
-                    background: '#fafafa', 
-                    borderRadius: 4, 
-                    border: '1px solid #f0f0f0' 
+                    padding: `${theme.marginXS}px ${theme.marginSM}px`, 
+                    background: theme.colorBgContainer, 
+                    borderRadius: theme.borderRadius, 
+                    border: `1px solid ${theme.colorBorderSecondary}` 
                   }}
                 >
                   <Row align="middle">
@@ -192,7 +193,7 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
                         percent={Number(modelData.percentage.toFixed(1))}
                         size="small"
                         format={(percent) => `${percent}%`}
-                        strokeColor={modelData.percentage > 10 ? '#ff4d4f' : undefined}
+                        strokeColor={modelData.percentage > 10 ? theme.colorError : undefined}
                         style={{ marginBottom: 0 }}
                       />
                     </Col>
@@ -204,12 +205,12 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
 
           {/* Network Summary */}
           <div style={{ 
-            padding: '8px', 
-            background: '#f5f5f5', 
-            borderRadius: 4, 
+            padding: theme.marginXS, 
+            background: theme.colorBgLayout, 
+            borderRadius: theme.borderRadius, 
             textAlign: 'center' 
           }}>
-            <Text type="secondary" style={{ fontSize: 12 }}>
+            <Text type="secondary" style={{ fontSize: theme.fontSizeSM }}>
               Total Network Analyzed: {currentStats?.totalLengthKm.toFixed(1)} km 
               ({currentStats?.totalSegments.toLocaleString()} segments)
             </Text>
@@ -223,17 +224,11 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
     return (
       <Card
         size="small"
-        style={{ 
-          position: 'absolute', 
-          bottom: 16, 
-          left: 16, 
-          width: 450, 
-          boxShadow: '0 2px 8px rgba(0,0,0,0.15)' 
-        }}
+        className={panelStyles.statsPanel}
       >
-        <div style={{ textAlign: 'center', padding: '100px 20px' }}>
+        <div className={commonStyles.loadingContainer} style={{ position: 'relative', background: 'transparent', height: 200 }}>
           <Spin size="large" />
-          <p style={{ marginTop: 16 }}>Calculating statistics...</p>
+          <p style={{ marginTop: theme.margin, color: theme.colorTextSecondary }}>Calculating statistics...</p>
         </div>
       </Card>
     );
@@ -243,27 +238,20 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
     return (
       <Card
         size="small"
-        style={{ 
-          position: 'absolute', 
-          bottom: 16, 
-          left: 16, 
-          width: 450, 
-          boxShadow: '0 2px 8px rgba(0,0,0,0.15)', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          minHeight: '200px' 
-        }}
+        className={panelStyles.statsPanel}
+        style={{ minHeight: '200px' }}
       >
-        <Empty
-          image={<WarningOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />}
-          description={
-            <div style={{ color: '#8c8c8c' }}>
-              <Title level={5}>Statistics Unavailable</Title>
-              <Text type="secondary">Please apply a filter to view statistics.</Text>
-            </div>
-          }
-        />
+        <div className={commonStyles.loadingContainer} style={{ position: 'relative', background: 'transparent' }}>
+          <Empty
+            image={<WarningOutlined style={{ fontSize: 48, color: theme.colorTextQuaternary }} />}
+            description={
+              <div style={{ color: theme.colorTextSecondary }}>
+                <Title level={5}>Statistics Unavailable</Title>
+                <Text type="secondary">Please apply a filter to view statistics.</Text>
+              </div>
+            }
+          />
+        </div>
       </Card>
     );
   }
@@ -275,19 +263,12 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
           <WarningOutlined />
           <span>Flood Risk Statistics</span>
           <Tooltip title="Swipe to see different climate scenarios">
-            <InfoCircleOutlined style={{ fontSize: 12, color: '#8c8c8c' }} />
+            <InfoCircleOutlined style={{ fontSize: theme.fontSizeSM, color: theme.colorTextTertiary }} />
           </Tooltip>
         </Space>
       }
       size="small"
-      style={{ 
-        position: 'absolute', 
-        bottom: 16, 
-        left: 16, 
-        width: 450, 
-        boxShadow: '0 2px 8px rgba(0,0,0,0.15)' 
-      }}
-      bodyStyle={{ padding: '12px 0 30px 0', position: 'relative' }}
+      className={panelStyles.statsPanel}
     >
       <Carousel
         ref={carouselRef}
@@ -306,13 +287,7 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
         shape="circle"
         icon={<LeftOutlined />}
         onClick={() => carouselRef.current?.prev()}
-        style={{ 
-          position: 'absolute', 
-          left: 8, 
-          top: '50%', 
-          transform: 'translateY(-50%)', 
-          zIndex: 10 
-        }}
+        className="navigation-button prev"
         disabled={currentSlide === 0}
       />
       <Button
@@ -320,24 +295,12 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
         shape="circle"
         icon={<RightOutlined />}
         onClick={() => carouselRef.current?.next()}
-        style={{ 
-          position: 'absolute', 
-          right: 8, 
-          top: '50%', 
-          transform: 'translateY(-50%)', 
-          zIndex: 10 
-        }}
+        className="navigation-button next"
         disabled={currentSlide === currentStats.scenarios.length - 1}
       />
       
       {/* Slide Indicator */}
-      <div style={{ 
-        position: 'absolute', 
-        bottom: 8, 
-        left: 0, 
-        right: 0, 
-        textAlign: 'center' 
-      }}>
+      <div className="slide-indicators">
         <Space size="small">
           {currentStats.scenarios.map((scenario, index) => (
             <Tag 
