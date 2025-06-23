@@ -7,6 +7,9 @@ import { SwapOutlined, CloseOutlined } from '@ant-design/icons';
 // Store imports
 import { useAppStore, useMapState, useUIState } from '@/store/useAppStore';
 
+// Style imports
+import { usePanelStyles, useCommonStyles } from '@/styles/styled';
+
 // Type imports
 import type Swipe from '@arcgis/core/widgets/Swipe';
 import type Layer from '@arcgis/core/layers/Layer';
@@ -17,6 +20,10 @@ import { CONFIG } from '@/config/appConfig';
 interface SimpleSwipePanelProps {}
 
 const SimpleSwipePanel: FC<SimpleSwipePanelProps> = () => {
+  // Style hooks
+  const { styles: panelStyles } = usePanelStyles();
+  const { theme } = useCommonStyles();
+
   // Store hooks
   const { mapView: view, webmap } = useMapState();
   const { isSwipeActive } = useUIState();
@@ -129,17 +136,11 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = () => {
         </Space>
       }
       size="small"
-      style={{
-        position: 'absolute',
-        bottom: 16,
-        right: 16,
-        width: 350,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-      }}
+      className={panelStyles.swipePanel}
     >
       <Space direction="vertical" style={{ width: '100%' }}>
-        <div>
-          <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
+        <div className="layer-select">
+          <label style={{ display: 'block', marginBottom: theme.marginXS, fontWeight: 500 }}>
             Left/Top Layers (RCP 4.5):
           </label>
           <Select
@@ -155,8 +156,8 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = () => {
             }))}
           />
         </div>
-        <div>
-          <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
+        <div className="layer-select">
+          <label style={{ display: 'block', marginBottom: theme.marginXS, fontWeight: 500 }}>
             Right/Bottom Layers (RCP 8.5):
           </label>
           <Select
@@ -173,7 +174,7 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = () => {
           />
         </div>
         <div>
-          <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
+          <label style={{ display: 'block', marginBottom: theme.marginXS, fontWeight: 500 }}>
             Swipe Direction:
           </label>
           <Radio.Group
@@ -187,7 +188,7 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = () => {
         </div>
         {isSwipeActive && (
           <div>
-            <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
+            <label style={{ display: 'block', marginBottom: theme.marginXS, fontWeight: 500 }}>
               Position: {position}%
             </label>
             <Slider
