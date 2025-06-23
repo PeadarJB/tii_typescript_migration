@@ -30,6 +30,7 @@
     "@ant-design/pro-components": "^2.6.43",
     "@arcgis/core": "^4.29.0",
     "antd": "^5.12.8",
+    "antd-style": "^3.7.1",
     "chart.js": "^4.4.1",
     "classnames": "^2.5.1",
     "date-fns": "^3.3.1",
