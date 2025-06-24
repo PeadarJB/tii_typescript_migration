@@ -245,6 +245,16 @@ export interface SwipeWidgetConfig {
   position: number;
 }
 
+export interface LayerConfig {
+  title: string;
+  label: string;
+  roadNetworkFieldName?: string; // Field in the road network layer to filter by
+  visible?: boolean;
+  opacity?: number;
+  minScale?: number;
+  maxScale?: number;
+}
+
 // ====================================
 // Report Types
 // ====================================

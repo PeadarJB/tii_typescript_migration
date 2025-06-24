@@ -25,9 +25,11 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = () => {
   const { theme } = useCommonStyles();
 
   // Store hooks
-  const { mapView: view, webmap } = useMapState();
+  const { mapView: view, webmap, roadLayer } = useMapState();
   const { isSwipeActive } = useUIState();
   const setIsSwipeActive = useAppStore((state) => state.setIsSwipeActive);
+  const enterSwipeMode = useAppStore((state) => state.enterSwipeMode);
+  const exitSwipeMode = useAppStore((state) => state.exitSwipeMode);
 
   // Local state
   const [swipeWidget, setSwipeWidget] = useState<Swipe | null>(null);
@@ -37,6 +39,10 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = () => {
   const [position, setPosition] = useState(50);
 
   // Config
+  const allSwipeLayers: readonly LayerConfig[] = [
+    ...CONFIG.swipeLayerConfig.leftPanel.layers,
+    ...CONFIG.swipeLayerConfig.rightPanel.layers,
+  ];
   const leftLayerOptions: readonly LayerConfig[] = CONFIG.swipeLayerConfig.leftPanel.layers;
   const rightLayerOptions: readonly LayerConfig[] = CONFIG.swipeLayerConfig.rightPanel.layers;
 
@@ -52,15 +58,18 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = () => {
 
       view.ui.remove(swipeWidget);
       swipeWidget.destroy();
+
+      // Restore pre-swipe filter state
+      exitSwipeMode();
       
       setSwipeWidget(null);
       setIsSwipeActive(false);
       message.info('Layer comparison deactivated');
     }
-  }, [swipeWidget, view, leftLayers, rightLayers, setIsSwipeActive]);
+  }, [swipeWidget, view, leftLayers, rightLayers, setIsSwipeActive, exitSwipeMode]);
 
   useEffect(() => {
-    // Return a cleanup function to be called when the component unmounts
+    // Cleanup function to be called when the component unmounts
     return () => {
       stopSwipe();
     };
@@ -72,9 +81,7 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = () => {
   };
 
   const startSwipe = async () => {
-    const SwipeWidget = (await import('@arcgis/core/widgets/Swipe')).default;
-
-    if (!view || !webmap) {
+    if (!view || !webmap || !roadLayer) {
       return;
     }
 
@@ -87,10 +94,29 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = () => {
         return;
       }
       
+      // Save current filter state before applying swipe filters
+      enterSwipeMode();
+
+      // Build definition expression for road network layer
+      const allSelectedLayerTitles = [...leftLayers, ...rightLayers];
+      const roadFilterFields = allSelectedLayerTitles
+        .map(title => allSwipeLayers.find(l => l.title === title)?.roadNetworkFieldName)
+        .filter((field): field is string => !!field);
+      
+      if (roadFilterFields.length > 0) {
+        const swipeDefinitionExpression = roadFilterFields.map(field => `${field} = 1`).join(' OR ');
+        roadLayer.definitionExpression = swipeDefinitionExpression;
+        roadLayer.visible = true;
+      } else {
+        roadLayer.visible = false;
+      }
+
+      // Make selected swipe layers visible
       [...leftLayerObjects, ...rightLayerObjects].forEach(layer => {
         layer.visible = true;
       });
       
+      const SwipeWidget = (await import('@arcgis/core/widgets/Swipe')).default;
       const swipe = new SwipeWidget({
         view: view,
         leadingLayers: leftLayerObjects,
@@ -107,6 +133,8 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = () => {
     } catch (error) {
       console.error('Failed to create swipe:', error);
       message.error('Failed to activate layer comparison');
+      // Restore state on failure
+      exitSwipeMode();
     }
   };
 

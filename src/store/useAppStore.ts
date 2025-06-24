@@ -42,6 +42,9 @@ interface AppStore {
   currentStats: NetworkStatistics | null;
   filterPanelKey: number;
 
+  // Swipe initial state
+  preSwipeDefinitionExpression: string | null;
+
   // Actions - Map
   initializeMap: (containerId: string) => Promise<void>;
   
@@ -70,6 +73,10 @@ interface AppStore {
   // Reset actions
   resetFilterPanel: () => void;
   resetError: () => void;
+
+  // Swipe actions
+  enterSwipeMode: () => void;
+  exitSwipeMode: () => void;
 }
 
 // Create the store with persist middleware
@@ -96,6 +103,7 @@ export const useAppStore = create<AppStore>()(
           currentFilters: {},
           currentStats: null,
           filterPanelKey: Date.now(),
+          preSwipeDefinitionExpression: null,
 
           // Map initialization
           initializeMap: async (containerId: string) => {
@@ -267,6 +275,29 @@ export const useAppStore = create<AppStore>()(
             return Object.values(filters).some(
               (value) => Array.isArray(value) && value.length > 0
             );
+          },
+
+          // Swipe Actions
+          // Swipe Mode Actions
+          enterSwipeMode: () => {
+            const { roadLayer } = get();
+            if (roadLayer) {
+              set({ preSwipeDefinitionExpression: roadLayer.definitionExpression || '1=1' });
+            }
+          },
+
+          exitSwipeMode: () => {
+            const { roadLayer, preSwipeDefinitionExpression } = get();
+            if (roadLayer && preSwipeDefinitionExpression) {
+              roadLayer.definitionExpression = preSwipeDefinitionExpression;
+              // Make road layer visible only if the restored filter is not the default empty one
+              roadLayer.visible = preSwipeDefinitionExpression !== '1=1';
+            } else if (roadLayer) {
+              // Fallback if preSwipe state is null for some reason
+              roadLayer.definitionExpression = '1=1';
+              roadLayer.visible = false;
+            }
+            set({ preSwipeDefinitionExpression: null });
           },
 
           // Reset actions
