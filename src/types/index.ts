@@ -245,7 +245,6 @@ export interface SwipeWidgetConfig {
   position: number;
 }
 
-
 // ====================================
 // Report Types
 // ====================================
