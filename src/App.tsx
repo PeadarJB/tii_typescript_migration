@@ -1,7 +1,7 @@
 // App.tsx - Refactored with consolidated styling
 
 import { useEffect, useRef, lazy, Suspense } from 'react';
-import type { ReactElement } from 'react';
+import type { ReactElement, FC } from 'react';
 import { Layout, Menu, Button, Space, Spin, Card, Switch, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
 import { DashboardOutlined, WarningOutlined, DownloadOutlined } from '@ant-design/icons';
@@ -48,6 +48,15 @@ function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps): React
       </Card>
     </div>
   );
+}
+
+const LoadingFallback: FC = () => {
+    const { styles } = useCommonStyles();
+    return (
+      <div className={styles.loadingContainer}>
+        <Spin />
+      </div>
+    );
 }
 
 function App(): ReactElement {
@@ -245,59 +254,31 @@ function App(): ReactElement {
             )}
             
             {showReportModal && mapView && (
-              <Suspense fallback={<Spin />}>
+              <Suspense fallback={<LoadingFallback />}>
                 <SimpleReportGenerator onClose={() => setShowReportModal(false)} />
               </Suspense>
             )}
             
             {showFilters && roadLayer && mapView && (
-              <Suspense fallback={
-                <Card loading style={{ 
-                  position: 'absolute', 
-                  top: theme.margin, 
-                  right: theme.margin, 
-                  width: 360 
-                }} />
-              }>
+              <Suspense fallback={<LoadingFallback />}>
                 <EnhancedFilterPanel key={filterPanelKey} />
               </Suspense>
             )}
             
             {showChart && roadLayer && !loading && (
-              <Suspense fallback={
-                <Card loading style={{ 
-                  position: 'absolute', 
-                  top: theme.margin, 
-                  right: theme.margin, 
-                  width: 480 
-                }} />
-              }>
+              <Suspense fallback={<LoadingFallback />}>
                 <EnhancedChartPanel />
               </Suspense>
             )}
             
             {showSwipe && mapView && webmap && !loading && (
-              <Suspense fallback={
-                <Card loading style={{ 
-                  position: 'absolute', 
-                  bottom: theme.margin, 
-                  right: theme.margin, 
-                  width: 350 
-                }} />
-              }>
+              <Suspense fallback={<LoadingFallback />}>
                 <SimpleSwipePanel />
               </Suspense>
             )}
             
             {showStats && hasActiveFilters && roadLayer && !loading && (
-              <Suspense fallback={
-                <Card loading style={{ 
-                  position: 'absolute', 
-                  bottom: theme.margin, 
-                  left: theme.margin, 
-                  width: 450 
-                }} />
-              }>
+              <Suspense fallback={<LoadingFallback />}>
                 <EnhancedStatsPanel />
               </Suspense>
             )}
@@ -308,16 +289,16 @@ function App(): ReactElement {
                 top: theme.margin, 
                 right: theme.margin, 
                 width: 300, 
-                background: '#fff3cd', 
-                borderColor: '#ffeaa7' 
+                background: theme.colorWarningBg, 
+                borderColor: theme.colorWarningBorder 
               }}>
-                <p style={{ margin: 0, color: '#856404' }}>
+                <p style={{ margin: 0, color: theme.colorWarningText }}>
                   Cannot show filters: Road layer not found
                 </p>
-                <p style={{ margin: `${theme.marginXS}px 0 0 0`, fontSize: 12, color: '#856404' }}>
+                <p style={{ margin: `${theme.marginXS}px 0 0 0`, fontSize: theme.fontSizeSM, color: theme.colorWarningText }}>
                   Looking for layer: &quot;{CONFIG.roadNetworkLayerTitle}&quot;
                 </p>
-                <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#856404' }}>
+                <p style={{ margin: `${theme.marginXXS}px 0 0 0`, fontSize: theme.fontSizeSM, color: theme.colorWarningText }}>
                   Available layers: {webmap.layers.map(l => l.title).join(', ') || 'None'}
                 </p>
               </Card>
