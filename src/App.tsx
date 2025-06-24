@@ -4,12 +4,12 @@ import { useEffect, useRef, lazy, Suspense, FC } from 'react';
 import type { ReactElement } from 'react';
 import { Layout, Menu, Button, Space, Spin, Card, Switch, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
-import { 
-  DashboardOutlined, 
-  WarningOutlined, 
+import {
+  DashboardOutlined,
+  WarningOutlined,
   DownloadOutlined,
   SunOutlined,
-  MoonOutlined 
+  MoonOutlined
 } from '@ant-design/icons';
 import { ErrorBoundary } from 'react-error-boundary';
 import { ThemeProvider } from 'antd-style';
@@ -41,7 +41,7 @@ interface ErrorFallbackProps {
 
 function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps): ReactElement {
   const { styles } = useCommonStyles();
-  
+
   return (
     <div className={styles.errorContainer}>
       <Card>
@@ -80,21 +80,21 @@ function App(): ReactElement {
 
 function AppContent(): ReactElement {
   const { styles, theme } = useCommonStyles();
-  
+
   // Store hooks
   const { mapView, webmap, roadLayer, loading, error } = useMapState();
-  const { 
-    siderCollapsed, 
-    showFilters, 
-    showStats, 
-    showChart, 
-    showSwipe, 
+  const {
+    siderCollapsed,
+    showFilters,
+    showStats,
+    showChart,
+    showSwipe,
     showReportModal,
-    isSwipeActive 
+    isSwipeActive
   } = useUIState();
   const { hasActiveFilters, filterPanelKey } = useFilterState();
   const { themeMode, setThemeMode } = useThemeState();
-  
+
   // Store actions
   const initializeMap = useAppStore((state) => state.initializeMap);
   const setSiderCollapsed = useAppStore((state) => state.setSiderCollapsed);
@@ -119,26 +119,40 @@ function AppContent(): ReactElement {
       await new Promise<void>(resolve => setTimeout(resolve, 100));
       await initializeMap('viewDiv');
     };
-    
+
     void init();
   }, [initializeMap]);
 
-  // Handle filter toggle
+  // Handle filter toggle with mutual exclusion
   const handleFilterToggle = (checked: boolean): void => {
-    if (!checked && hasActiveFilters) {
-      clearAllFilters();
-    }
     setShowFilters(checked);
+    if (checked) {
+      setShowChart(false);
+      setShowSwipe(false);
+    } else {
+      if (hasActiveFilters) {
+        clearAllFilters();
+      }
+    }
   };
 
-  // Handle swipe toggle
+  // Handle chart toggle with mutual exclusion
+  const handleChartToggle = (checked: boolean): void => {
+    setShowChart(checked);
+    if (checked) {
+      setShowFilters(false);
+      setShowSwipe(false);
+    }
+  };
+
+
+  // Handle swipe toggle with mutual exclusion
   const handleSwipeToggle = (checked: boolean): void => {
     setShowSwipe(checked);
-    
     if (checked) {
-      if (showFilters) {
-        handleFilterToggle(false);
-      }
+      // Deactivate other panels when swipe is activated
+      setShowFilters(false);
+      setShowChart(false);
       if (showStats) {
         setShowStats(false);
       }
@@ -206,21 +220,21 @@ function AppContent(): ReactElement {
             items={menuItems}
           />
         </Sider>
-        
+
         <Layout>
-          <Header style={{ 
-            padding: `0 ${theme.marginLG}px`, 
-            background: theme.colorBgContainer, 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'space-between', 
-            borderBottom: `1px solid ${theme.colorBorderSecondary}` 
+          <Header style={{
+            padding: `0 ${theme.marginLG}px`,
+            background: theme.colorBgContainer,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: `1px solid ${theme.colorBorderSecondary}`
           }}>
             <h2 style={{ margin: 0 }}>TII Flood Risk Dashboard</h2>
             <Space>
               <Space size="small">
                 <span>Panels:</span>
-                <Tooltip title={isSwipeActive ? 'Disable layer comparison to use filters' : ''}>
+                <Tooltip title={isSwipeActive ? 'Disable layer comparison to use filters' : 'Show/Hide the data filtering panel'}>
                   <Switch
                     size="small"
                     checked={showFilters}
@@ -240,27 +254,34 @@ function AppContent(): ReactElement {
                     disabled={!hasActiveFilters || isSwipeActive}
                   />
                 </Tooltip>
-                <Switch
-                  size="small"
-                  checked={showChart}
-                  onChange={setShowChart}
-                  checkedChildren="Chart"
-                  unCheckedChildren="Chart"
-                />
-                <Switch
-                  size="small"
-                  checked={showSwipe}
-                  onChange={handleSwipeToggle}
-                  checkedChildren="Swipe"
-                  unCheckedChildren="Swipe"
-                />
+                <Tooltip title="Show advanced data visualization and analysis">
+                  <Switch
+                    size="small"
+                    checked={showChart}
+                    onChange={handleChartToggle}
+                    checkedChildren="Chart"
+                    unCheckedChildren="Chart"
+                    disabled={isSwipeActive}
+                  />
+                </Tooltip>
+                <Tooltip title="Compare two sets of layers side-by-side">
+                  <Switch
+                    size="small"
+                    checked={showSwipe}
+                    onChange={handleSwipeToggle}
+                    checkedChildren="Swipe"
+                    unCheckedChildren="Swipe"
+                  />
+                </Tooltip>
               </Space>
+              <Tooltip title="Toggle between light and dark themes">
               <Switch
                 checked={themeMode === 'dark'}
                 onChange={handleThemeChange}
                 checkedChildren={<MoonOutlined />}
                 unCheckedChildren={<SunOutlined />}
               />
+              </Tooltip>
               <Button
                 type="primary"
                 icon={<DownloadOutlined />}
@@ -270,58 +291,58 @@ function AppContent(): ReactElement {
               </Button>
             </Space>
           </Header>
-          
+
           <Content style={{ position: 'relative' }}>
             <div
               ref={mapContainerRef}
               id="viewDiv"
               className={styles.mapContainer}
             />
-            
+
             {loading && (
               <div className={styles.loadingContainer}>
                 <Spin size="large" />
               </div>
             )}
-            
+
             {showReportModal && mapView && (
               <Suspense fallback={<LoadingFallback />}>
                 <SimpleReportGenerator onClose={() => setShowReportModal(false)} />
               </Suspense>
             )}
-            
+
             {showFilters && roadLayer && mapView && (
               <Suspense fallback={<LoadingFallback />}>
                 <EnhancedFilterPanel key={filterPanelKey} />
               </Suspense>
             )}
-            
+
             {showChart && roadLayer && !loading && (
               <Suspense fallback={<LoadingFallback />}>
                 <EnhancedChartPanel />
               </Suspense>
             )}
-            
+
             {showSwipe && mapView && webmap && !loading && (
               <Suspense fallback={<LoadingFallback />}>
                 <SimpleSwipePanel />
               </Suspense>
             )}
-            
+
             {showStats && hasActiveFilters && roadLayer && !loading && (
               <Suspense fallback={<LoadingFallback />}>
                 <EnhancedStatsPanel />
               </Suspense>
             )}
-            
+
             {showFilters && !roadLayer && !loading && webmap && (
-              <Card size="small" style={{ 
-                position: 'absolute', 
-                top: theme.margin, 
-                right: theme.margin, 
-                width: 300, 
-                background: theme.colorWarningBg, 
-                borderColor: theme.colorWarningBorder 
+              <Card size="small" style={{
+                position: 'absolute',
+                top: theme.margin,
+                right: theme.margin,
+                width: 300,
+                background: theme.colorWarningBg,
+                borderColor: theme.colorWarningBorder
               }}>
                 <p style={{ margin: 0, color: theme.colorWarningText }}>
                   Cannot show filters: Road layer not found
