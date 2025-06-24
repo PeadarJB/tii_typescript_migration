@@ -1,27 +1,27 @@
 // src/components/EnhancedChartPanel.tsx - Refactored with consolidated styling
 
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Card, 
-  Select, 
-  Button, 
-  Space, 
-  Spin, 
-  Empty, 
-  Radio, 
-  Tag, 
-  Tooltip, 
-  Modal, 
-  message 
+import {
+  Card,
+  Select,
+  Button,
+  Space,
+  Spin,
+  Empty,
+  Radio,
+  Tag,
+  Tooltip,
+  Modal,
+  message
 } from 'antd';
-import { 
-  BarChartOutlined, 
-  ReloadOutlined, 
-  PieChartOutlined, 
+import {
+  BarChartOutlined,
+  ReloadOutlined,
+  PieChartOutlined,
   DownloadOutlined,
   ClearOutlined,
   ExpandOutlined,
-  InfoCircleOutlined 
+  InfoCircleOutlined
 } from '@ant-design/icons';
 import type { RadioChangeEvent } from 'antd';
 import Chart from 'chart.js/auto';
@@ -34,10 +34,10 @@ import { useMapState } from '@/store/useAppStore';
 import { usePanelStyles, useCommonStyles, styleUtils } from '@/styles/styled';
 
 // Type imports
-import type {  
-  ChartConfig, 
+import type {
+  ChartConfig,
   ChartDataPoint,
-  FilterOption 
+  FilterOption
 } from '@/types';
 import { CONFIG } from '@/config/appConfig';
 import Query from '@arcgis/core/rest/support/Query';
@@ -75,7 +75,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
   const [groupByOptions, setGroupByOptions] = useState<GroupByOption[]>([]);
   const [chartData, setChartData] = useState<ProcessedChartData | null>(null);
   const [expandedView, setExpandedView] = useState(false);
-  
+
   const chartRef = useRef<HTMLCanvasElement>(null);
   const expandedChartRef = useRef<HTMLCanvasElement>(null);
   const chartInstance = useRef<Chart | null>(null);
@@ -141,7 +141,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
 
   const generateChart = async (): Promise<void> => {
     const { features, groupBy, metric, maxCategories } = chartConfig;
-    
+
     if (!roadLayer || features.length === 0 || !groupBy) {
       message.warning('Please select features and group by field');
       return;
@@ -149,17 +149,18 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
 
     try {
       setLoading(true);
-      
-      const baseWhere = roadLayer.definitionExpression || '1=1';
+
+      // Per user request, the chart panel should always query the entire layer, ignoring global filters.
+      const baseWhere = '1=1';
       const allData: ChartDataPoint[] = [];
-      
+
       // Query for each selected feature
       for (const featureField of features) {
         const feature = CONFIG.chartingFeatures.find(f => f.field === featureField);
         if (!feature) continue;
 
         const whereClause = `(${baseWhere}) AND (${featureField} = 1)`;
-        
+
         const query = new Query({
           where: whereClause,
           groupByFieldsForStatistics: [groupBy],
@@ -172,11 +173,15 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
         });
 
         const results = await roadLayer.queryFeatures(query);
-        
+
         results.features.forEach((f) => {
-          const groupValue = f.attributes[groupBy] || 'Unknown';
+          // Handle cases where the groupValue is 0 (a valid category for Subnet)
+          const rawGroupValue = f.attributes[groupBy];
+          const groupValue = rawGroupValue !== null && rawGroupValue !== undefined
+            ? rawGroupValue
+            : 'Unknown';
           const count = f.attributes.segment_count || 0;
-          
+
           allData.push({
             category: String(groupValue),
             feature: feature.label,
@@ -191,7 +196,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
       // Process and limit data
       const processedData = processChartData(allData, maxCategories);
       setChartData(processedData);
-      
+
       message.success('Chart generated successfully');
       setExpandedView(true); // Automatically open the modal
     } catch (error) {
@@ -204,7 +209,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
   };
 
   const processChartData = (
-    rawData: ChartDataPoint[], 
+    rawData: ChartDataPoint[],
     maxCategories: number
   ): ProcessedChartData => {
     // Calculate totals by category
@@ -212,31 +217,31 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
     rawData.forEach(item => {
       categoryTotals[item.category] = (categoryTotals[item.category] || 0) + item.value;
     });
-    
+
     // Sort and get top categories
     const sortedCategories = Object.entries(categoryTotals)
       .sort(([, a], [, b]) => b - a);
-    
+
     const topCategories = sortedCategories
       .slice(0, maxCategories)
       .map(([category]) => category);
-    
+
     // Create "Other" category if needed
     const hasOther = sortedCategories.length > maxCategories && maxCategories < 999;
     if (hasOther) {
       const otherTotal = sortedCategories
         .slice(maxCategories)
         .reduce((sum, [, value]) => sum + value, 0);
-      
+
       if (otherTotal > 0) {
         topCategories.push('Other');
         categoryTotals['Other'] = otherTotal;
       }
     }
-    
+
     // Filter and organize data
     const filteredData = rawData.filter(item => topCategories.includes(item.category));
-    
+
     // Add "Other" data for each feature if needed
     if (hasOther && categoryTotals['Other'] > 0) {
       const otherData = sortedCategories.slice(maxCategories);
@@ -245,16 +250,16 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
         if (!feature) return;
 
         let otherValue = 0;
-        
+
         otherData.forEach(([category]) => {
-          const item = rawData.find(d => 
+          const item = rawData.find(d =>
             d.category === category && d.featureField === featureField
           );
           if (item) {
             otherValue += item.value;
           }
         });
-        
+
         if (otherValue > 0) {
           filteredData.push({
             category: 'Other',
@@ -267,7 +272,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
         }
       });
     }
-    
+
     return {
       categories: topCategories,
       data: filteredData,
@@ -281,9 +286,9 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
   const renderChart = (): void => {
     const ctx = chartRef.current?.getContext('2d');
     const expandedCtx = expandedChartRef.current?.getContext('2d');
-    
+
     if (!ctx || !chartData) return;
-    
+
     // Destroy existing charts
     if (chartInstance.current) {
       chartInstance.current.destroy();
@@ -296,14 +301,14 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
 
     const createChartConfig = (): ChartConfiguration => {
       const { type, metric, groupBy } = chartConfig;
-      
+
       if (type === 'pie') {
         // For pie chart, aggregate all features
         const aggregatedData: Record<string, number> = {};
         chartData.data.forEach(item => {
           aggregatedData[item.category] = (aggregatedData[item.category] || 0) + item.value;
         });
-        
+
         return {
           type: 'pie',
           data: {
@@ -350,12 +355,12 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
         // Bar chart
         const datasets = chartData.features.map((featureLabel, index) => {
           const data = chartData.categories.map(category => {
-            const item = chartData.data.find(d => 
+            const item = chartData.data.find(d =>
               d.category === category && d.feature === featureLabel
             );
             return item ? item.value : 0;
           });
-          
+
           return {
             label: featureLabel,
             data: data,
@@ -422,10 +427,10 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
     };
 
     const config = createChartConfig();
-    
+
     // Create main chart
     chartInstance.current = new Chart(ctx, config);
-    
+
     // Create expanded chart if modal is open
     if (expandedCtx && expandedView) {
       expandedChartInstance.current = new Chart(expandedCtx, config);
@@ -433,10 +438,10 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
   };
 
   const downloadChart = (): void => {
-    const chart = expandedView && expandedChartInstance.current 
-      ? expandedChartInstance.current 
+    const chart = expandedView && expandedChartInstance.current
+      ? expandedChartInstance.current
       : chartInstance.current;
-      
+
     if (chart) {
       const url = chart.toBase64Image();
       const link = document.createElement('a');
@@ -546,8 +551,8 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
               options={featureOptions.map(opt => ({
                 label: (
                   <Space size={4}>
-                    <Tag 
-                      color={opt.scenario === 'rcp85' ? 'red' : 'blue'} 
+                    <Tag
+                      color={opt.scenario === 'rcp85' ? 'red' : 'blue'}
                       style={{ margin: 0, fontSize: 11 }}
                     >
                       {opt.scenario === 'rcp85' ? '8.5' : '4.5'}
@@ -561,7 +566,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
               maxTagPlaceholder={(omitted) => `+${omitted.length} more`}
             />
           </div>
-          
+
           {/* Group By */}
           <div>
             <label style={{ display: 'block', marginBottom: theme.marginXXS, fontSize: theme.fontSizeSM, fontWeight: 500 }}>
@@ -583,7 +588,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
               placeholder="Select grouping field..."
             />
           </div>
-          
+
           {/* Chart Options Row */}
           <Space style={{ width: '100%', justifyContent: 'space-between' }}>
             {/* Measure By */}
@@ -591,8 +596,8 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
               <label style={{ display: 'block', marginBottom: theme.marginXXS, fontSize: theme.fontSizeSM, fontWeight: 500 }}>
                 Measure by:
               </label>
-              <Radio.Group 
-                value={chartConfig.metric} 
+              <Radio.Group
+                value={chartConfig.metric}
                 onChange={handleMetricChange}
                 size="small"
               >
@@ -600,14 +605,14 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
                 <Radio.Button value="totalLength">Length (km)</Radio.Button>
               </Radio.Group>
             </div>
-            
+
             {/* Chart Type */}
             <div>
               <label style={{ display: 'block', marginBottom: theme.marginXXS, fontSize: theme.fontSizeSM, fontWeight: 500 }}>
                 Chart type:
               </label>
-              <Radio.Group 
-                value={chartConfig.type} 
+              <Radio.Group
+                value={chartConfig.type}
                 onChange={(e) => handleChartTypeChange(e.target.value as ChartType)}
                 size="small"
               >
@@ -620,7 +625,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
               </Radio.Group>
             </div>
           </Space>
-          
+
           {/* Max Categories */}
           <div>
             <label style={{ display: 'block', marginBottom: theme.marginXXS, fontSize: theme.fontSizeSM, fontWeight: 500 }}>
@@ -634,7 +639,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
             />
           </div>
         </Space>
-        
+
         {/* Chart Area */}
         <div className="chart-area">
           {loading ? (
@@ -642,14 +647,14 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
           ) : chartData ? (
             <canvas ref={chartRef} style={{ maxHeight: '100%', maxWidth: '100%' }} />
           ) : (
-            <Empty 
-              description="Configure options and click 'Generate' to create a chart" 
+            <Empty
+              description="Configure options and click 'Generate' to create a chart"
               image={Empty.PRESENTED_IMAGE_SIMPLE}
             />
           )}
         </div>
       </Card>
-      
+
       {/* Expanded View Modal */}
       <Modal
         title="Chart View"

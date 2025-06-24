@@ -236,7 +236,7 @@ export const usePanelStyles = createStyles(({ token, css }: { token: any; css: a
     top: ${token.margin}px;
     right: ${token.margin}px;
     width: 480px;
-    height: 550px;
+    max-height: calc(100vh - 96px); /* Use max-height to prevent overflow */
     display: flex;
     flex-direction: column;
 
@@ -245,7 +245,7 @@ export const usePanelStyles = createStyles(({ token, css }: { token: any; css: a
       flex: 1;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
+      overflow: auto; /* Allow scrolling if content is very large */
     }
 
     .chart-config {
@@ -253,7 +253,7 @@ export const usePanelStyles = createStyles(({ token, css }: { token: any; css: a
     }
 
     .chart-area {
-      flex: 1;
+      flex-shrink: 0; /* Allow chart area to maintain its size */
       position: relative;
       min-height: 300px;
       ${mixins.flexCenter()}
