@@ -4,7 +4,8 @@ import { createStyles } from 'antd-style';
 import type { CSSObject } from 'antd-style';
 
 // Re-export theme tokens for easy access
-export { theme } from '@/config/themeConfig';
+// We export lightTheme as 'theme' to be used as a default or fallback.
+export { lightTheme as theme } from '@/config/themeConfig';
 
 // Common style mixins
 export const mixins = {
@@ -287,7 +288,8 @@ export const usePanelStyles = createStyles(({ token, css }: { token: any; css: a
     }
 
     .info-card {
-      background-color: #f0f8ff;
+      background-color: ${token.colorInfoBg};
+      border-color: ${token.colorInfoBorder};
       margin-bottom: ${token.margin}px;
     }
   `,
