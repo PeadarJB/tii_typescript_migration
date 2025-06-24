@@ -1,15 +1,24 @@
-// App.tsx - Refactored with consolidated styling
+// App.tsx - Refactored with theme toggle functionality
 
-import { useEffect, useRef, lazy, Suspense } from 'react';
-import type { ReactElement, FC } from 'react';
+import { useEffect, useRef, lazy, Suspense, FC } from 'react';
+import type { ReactElement } from 'react';
 import { Layout, Menu, Button, Space, Spin, Card, Switch, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
-import { DashboardOutlined, WarningOutlined, DownloadOutlined } from '@ant-design/icons';
+import { 
+  DashboardOutlined, 
+  WarningOutlined, 
+  DownloadOutlined,
+  SunOutlined,
+  MoonOutlined 
+} from '@ant-design/icons';
 import { ErrorBoundary } from 'react-error-boundary';
+import { ThemeProvider } from 'antd-style';
+
 import { CONFIG } from './config/appConfig';
+import { lightTheme, darkTheme } from './config/themeConfig';
 
 // Store imports
-import { useAppStore, useMapState, useUIState, useFilterState } from '@/store/useAppStore';
+import { useAppStore, useMapState, useUIState, useFilterState, useThemeState } from '@/store/useAppStore';
 
 // Style imports
 import { useCommonStyles } from '@/styles/styled';
@@ -53,13 +62,23 @@ function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps): React
 const LoadingFallback: FC = () => {
     const { styles } = useCommonStyles();
     return (
-      <div className={styles.loadingContainer}>
+      <div className={styles.loadingContainer} style={{ position: 'absolute', background: 'transparent' }}>
         <Spin />
       </div>
     );
 }
 
 function App(): ReactElement {
+  const { themeMode } = useThemeState();
+
+  return (
+    <ThemeProvider theme={themeMode === 'dark' ? darkTheme : lightTheme}>
+      <AppContent />
+    </ThemeProvider>
+  );
+}
+
+function AppContent(): ReactElement {
   const { styles, theme } = useCommonStyles();
   
   // Store hooks
@@ -74,6 +93,7 @@ function App(): ReactElement {
     isSwipeActive 
   } = useUIState();
   const { hasActiveFilters, filterPanelKey } = useFilterState();
+  const { themeMode, setThemeMode } = useThemeState();
   
   // Store actions
   const initializeMap = useAppStore((state) => state.initializeMap);
@@ -123,6 +143,10 @@ function App(): ReactElement {
         setShowStats(false);
       }
     }
+  };
+
+  const handleThemeChange = (checked: boolean) => {
+    setThemeMode(checked ? 'dark' : 'light');
   };
 
   // Get stats tooltip
@@ -175,6 +199,7 @@ function App(): ReactElement {
             TII
           </div>
           <Menu
+            theme={themeMode}
             mode="inline"
             defaultSelectedKeys={['1']}
             style={{ borderRight: 0 }}
@@ -230,6 +255,12 @@ function App(): ReactElement {
                   unCheckedChildren="Swipe"
                 />
               </Space>
+              <Switch
+                checked={themeMode === 'dark'}
+                onChange={handleThemeChange}
+                checkedChildren={<MoonOutlined />}
+                unCheckedChildren={<SunOutlined />}
+              />
               <Button
                 type="primary"
                 icon={<DownloadOutlined />}
