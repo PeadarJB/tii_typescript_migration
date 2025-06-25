@@ -3,7 +3,8 @@ import type {
   ScenarioStatistics,
   SegmentStatistic,
   ClimateScenarioType,
-  RiskLevelType
+  RiskLevelType,
+  PastEventStatistics
 } from '@/types';
 import FeatureLayer from '@arcgis/core/layers/FeatureLayer';
 import { CONFIG } from '@/config/appConfig';
@@ -121,6 +122,46 @@ export class StatisticsService {
       modelBreakdown,
       riskLevel: this.calculateRiskLevel(totalAffectedPercentage)
     };
+  }
+
+  /**
+   * Calculate statistics for past flood events based on current filters
+   * @param layer - Road network layer
+   * @param definitionExpression - Current filter expression
+   * @returns Past event statistics
+   */
+  public static async calculatePastEventStatistics(
+    layer: FeatureLayer,
+    definitionExpression: string = '1=1'
+  ): Promise<PastEventStatistics> {
+    try {
+      const stats = await QueryService.getStatistics(
+        layer,
+        definitionExpression,
+        [
+          { statisticType: 'sum', onStatisticField: 'Drainage_Defects_count', outStatisticFieldName: 'total_drainage' },
+          { statisticType: 'sum', onStatisticField: 'OPW_flood_points_count', outStatisticFieldName: 'total_opw' },
+          { statisticType: 'sum', onStatisticField: 'NRA_flood_points_count', outStatisticFieldName: 'total_nra' },
+          { statisticType: 'sum', onStatisticField: 'MOCC_flood_points_count', outStatisticFieldName: 'total_mocc' },
+          { statisticType: 'count', onStatisticField: 'OBJECTID', outStatisticFieldName: 'total_segments' },
+        ]
+      );
+
+      return {
+        totalAffectedSegments: stats.total_segments || 0,
+        totalAffectedLengthKm: (stats.total_segments || 0) * CONFIG.defaultSettings.segmentLengthKm,
+        breakdown: {
+          drainageDefects: stats.total_drainage || 0,
+          opwFloodPoints: stats.total_opw || 0,
+          nraFloodPoints: stats.total_nra || 0,
+          moccFloodPoints: stats.total_mocc || 0,
+        },
+        lastUpdated: new Date(),
+      };
+    } catch (error) {
+      console.error('StatisticsService: Failed to calculate past event statistics', error);
+      throw error;
+    }
   }
 
   /**

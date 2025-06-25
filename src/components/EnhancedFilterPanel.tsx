@@ -15,6 +15,9 @@ import {
   HeartOutlined
 } from '@ant-design/icons';
 
+// Type imports
+import type { AppPage } from '@/types';
+
 // Store imports
 import { useAppStore, useMapState, useFilterState } from '@/store/useAppStore';
 
@@ -33,6 +36,12 @@ interface EnhancedFilterPanelProps {
 interface FilterOption {
   label: string;
   value: string;
+}
+
+// Add a prop to accept a filter configuration
+interface EnhancedFilterPanelProps {
+  config: ReadonlyArray<FilterConfigItem>;
+  page: AppPage; // To scope filter state
 }
 
 // Scenario Item Interface

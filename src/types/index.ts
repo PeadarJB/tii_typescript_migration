@@ -159,6 +159,18 @@ export interface NetworkStatistics {
   lastUpdated: Date;
 }
 
+export interface PastEventStatistics {
+  totalAffectedLengthKm: number;
+  totalAffectedSegments: number;
+  breakdown: {
+    drainageDefects: number;
+    opwFloodPoints: number;
+    nraFloodPoints: number;
+    moccFloodPoints: number;
+  };
+  lastUpdated: Date;
+}
+
 // ====================================
 // Chart Types
 // ====================================
@@ -200,12 +212,14 @@ export interface RoadSegmentAttributes {
   Lifeline: 0 | 1;
   Subnet: number;
   
+  // Future Flood Scenarios
   future_flood_intersection_m: 0 | 1;
   future_flood_intersection_h: 0 | 1;
   historic_intersection_m: 0 | 1;
   historic_intersection_h: 0 | 1;
   hist_no_future_m: 0 | 1;
   hist_no_future_h: 0 | 1;
+  historic_flooding_any: 0 | 1;
   
   cfram_f_m_0010: 0 | 1;
   cfram_c_m_0010: 0 | 1;
@@ -215,6 +229,20 @@ export interface RoadSegmentAttributes {
   cfram_c_h_0200: 0 | 1;
   nifm_f_h_0100: 0 | 1;
   ncfhm_c_c_0200: 0 | 1;
+
+  // New Past Event Fields
+  opw_jba_flood_points: number;
+  MOCC_100m: number;
+  DMS_Defects_2015_2023: number;
+  JBA_Hist_Floods_NRA_Points: number;
+  GSI_Hist_Groundwater: number;
+  GSI_2015_2016_SurfWater: number;
+  
+  // New Past Event Count Fields
+  Drainage_Defects_count: number;
+  OPW_flood_points_count: number;
+  NRA_flood_points_count: number;
+  MOCC_flood_points_count: number;
   
   [key: string]: any;
 }

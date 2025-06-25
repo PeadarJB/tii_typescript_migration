@@ -9,7 +9,7 @@ import type MapView from '@arcgis/core/views/MapView';
 import type WebMap from '@arcgis/core/WebMap';
 import type FeatureLayer from '@arcgis/core/layers/FeatureLayer';
 import type Extent from '@arcgis/core/geometry/Extent';
-import type { FilterState, NetworkStatistics, AppPage } from '@/types/index';
+import type { FilterState, NetworkStatistics, AppPage, PastEventStatistics } from '@/types/index';
 import { isFeatureLayer } from '@/types/index';
 
 // Service imports
@@ -28,6 +28,8 @@ interface AppStore {
   initialExtent: Extent | null;
   error: string | null;
   preSwipeDefinitionExpression: string | null;
+  pastEventStats: PastEventStatistics | null;
+  calculatePastEventStatistics: () => Promise<void>;
 
   // UI state
   siderCollapsed: boolean;
@@ -317,6 +319,23 @@ export const useAppStore = create<AppStore>()(
             );
           },
 
+          // Past Event Statistics
+          pastEventStats: null,
+          
+          calculatePastEventStatistics: async () => {
+            const { roadLayer } = get();
+            if (!roadLayer) return;
+            try {
+              set({ loading: true });
+              const stats = await StatisticsService.calculatePastEventStatistics(roadLayer, roadLayer.definitionExpression || '1=1');
+              set({ pastEventStats: stats });
+            } catch (error) {
+              console.error('Failed to calculate past event stats:', error);
+            } finally {
+              set({ loading: false });
+            }
+          },
+
           // Reset actions
           resetFilterPanel: () => set({ filterPanelKey: Date.now() }),
           resetError: () => set({ error: null }),
@@ -363,6 +382,8 @@ export const useFilterState = () => useAppStore((state) => ({
 
 export const useStatisticsState = () => useAppStore((state) => ({
   currentStats: state.currentStats,
+  pastEventStats: state.pastEventStats,
+  loading: state.loading,
 }));
 
 export const useThemeState = () => useAppStore((state) => ({

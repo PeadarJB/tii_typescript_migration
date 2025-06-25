@@ -13,6 +13,32 @@ export const PAGE_CONFIG: Record<AppPage, { title: string }> = {
   explore: { title: 'Explore Statistics' },
 };
 
+export const PAST_EVENTS_FILTER_CONFIG: ReadonlyArray<FilterConfigItem> = [
+  {
+    id: 'past-event-type',
+    label: 'Past Flood Event Type',
+    type: 'scenario-select', // Using scenario-select for a similar UI experience
+    description: 'Filter road sections based on the presence of historical flood or drainage data.',
+    items: [
+      { label: 'OPW Flood Event', field: 'opw_jba_flood_points', value: 1 },
+      { label: 'MOCC Flood Event', field: 'MOCC_100m', value: 1 },
+      { label: 'DMS Drainage Defects', field: 'DMS_Defects_2015_2023', value: 1 },
+      { label: 'JBA Historic NRA Flood Event', field: 'JBA_Hist_Floods_NRA_Points', value: 1 },
+      { label: 'GSI Historic Groundwater', field: 'GSI_Hist_Groundwater', value: 1 },
+      { label: 'GSI 2015-2016 Surface Water', field: 'GSI_2015_2016_SurfWater', value: 1 },
+    ],
+  },
+];
+
+export const PAST_EVENTS_CHARTING_FEATURES: ReadonlyArray<ChartFeature> = [
+    { label: 'OPW Flood Event', field: 'opw_jba_flood_points', description: 'Road segments with OPW flood points.', scenario: 'rcp45' }, // scenario is just for color-coding
+    { label: 'MOCC Flood Event', field: 'MOCC_100m', description: 'Road segments with MOCC flood events.', scenario: 'rcp85' },
+    { label: 'DMS Drainage Defects', field: 'DMS_Defects_2015_2023', description: 'Road segments with DMS drainage defects.', scenario: 'rcp45' },
+    { label: 'JBA Historic NRA Flood Event', field: 'JBA_Hist_Floods_NRA_Points', description: 'Road segments with JBA/NRA flood points.', scenario: 'rcp85' },
+    { label: 'GSI Historic Groundwater', field: 'GSI_Hist_Groundwater', description: 'Road segments with GSI groundwater flood data.', scenario: 'rcp45' },
+    { label: 'GSI 2015-2016 Surface Water', field: 'GSI_2015_2016_SurfWater', description: 'Road segments with GSI surface water flood data.', scenario: 'rcp85' }
+];
+
 interface AppConfiguration {
   readonly webMapId: string;
   readonly roadNetworkLayerTitle: string;
@@ -34,6 +60,7 @@ interface AppConfiguration {
     ncfhm_c_c_0200: string;
     historic_intersection_m: string;
     historic_intersection_h: string;
+    historic_flooding_any: string;
   }>;
   readonly chartingFeatures: ReadonlyArray<ChartFeature>;
   readonly swipeLayerConfig: Readonly<{
@@ -117,7 +144,12 @@ export const CONFIG: AppConfiguration = {
           label: 'Historic Only (High-Range, RCP 8.5%)', 
           field: 'hist_no_future_h', 
           value: 1 
-        }
+        },
+       {
+           label: 'Any Historic Flooding',
+           field: 'historic_flooding_any',
+           value: 1
+       },
       ]
     },
     {
@@ -189,6 +221,7 @@ export const CONFIG: AppConfiguration = {
     ncfhm_c_c_0200: "ncfhm_c_c_0200",
     historic_intersection_m: "historic_intersection_m",
     historic_intersection_h: "historic_intersection_h",
+    historic_flooding_any: "historic_flooding_any",
   },
 
   // --- Charting Features ---
@@ -216,6 +249,12 @@ export const CONFIG: AppConfiguration = {
       field: "historic_intersection_h",
       description: "Segments affected by both future and historic flood models under RCP 8.5.",
       scenario: 'rcp85'
+    },
+    {
+      label: "Any Historic Flooding",
+      field: "historic_flooding_any",
+      description: "Any segment affected by a recorded historic flood event.",
+      scenario: 'rcp45' // Assigned to a scenario for color-coding purposes
     },
     {
       label: "CFRAM Fluvial Model (4.5%)",
