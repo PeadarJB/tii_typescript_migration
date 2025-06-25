@@ -1,4 +1,4 @@
-import type { FilterConfigItem, ChartFeature, LayerConfig } from '@/types';
+import type { FilterConfigItem, ChartFeature, LayerConfig, AppPage } from '@/types';
 
 /**
  * Application configuration with strict TypeScript typing
@@ -10,6 +10,7 @@ interface AppConfiguration {
   readonly roadNetworkLayerTitle: string;
   readonly roadNetworkLayerSwipeTitle: string; // Added for the duplicate layer
   readonly filterConfig: ReadonlyArray<FilterConfigItem>;
+  readonly pageLayerVisibility: Record<AppPage, string[]>; // New config for widget
   readonly fields: Readonly<{
     object_id: string;
     route: string;
@@ -52,6 +53,17 @@ export const CONFIG: AppConfiguration = {
   webMapId: "bb27815620254e69819e7ce6b56f14b8",
   roadNetworkLayerTitle: "TII CAIP NM",
   roadNetworkLayerSwipeTitle: "TII CAIP NM SWIPE", // Added new layer title
+
+  // --- Page-Specific Layer List Configuration ---
+  // Defines which layers are visible in the LayerList widget on each page.
+  pageLayerVisibility: {
+    future: ["TII CAIP NM", "TII CAIP NM SWIPE"],
+    // NOTE: These layer titles for the 'past' page are placeholders based on the methodology document.
+    // They may need to be updated to match the exact titles in the Web Map.
+    past: ["OPW Historic Flood Points", "TII DMS Defects", "Motorway Operations Control Centre (MOCC)"],
+    precipitation: [], // To be defined
+    explore: [], // No layers needed for a statistics-only page
+  },
 
   // --- Centralized Filter Configuration ---
   filterConfig: [
