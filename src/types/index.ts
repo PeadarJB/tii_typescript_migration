@@ -37,6 +37,12 @@ declare global {
 }
 
 // ====================================
+// Application State & Page Types
+// ====================================
+export type AppPage = 'future' | 'past' | 'precipitation' | 'explore';
+
+
+// ====================================
 // Domain Types - Business Logic
 // ====================================
 
@@ -231,6 +237,7 @@ export interface MapViewState {
 export interface LayerConfig {
   title: string;
   label: string;
+  roadNetworkFieldName?: string; // Field in the road network layer to filter by
   visible?: boolean;
   opacity?: number;
   minScale?: number;
@@ -245,15 +252,6 @@ export interface SwipeWidgetConfig {
   position: number;
 }
 
-export interface LayerConfig {
-  title: string;
-  label: string;
-  roadNetworkFieldName?: string; // Field in the road network layer to filter by
-  visible?: boolean;
-  opacity?: number;
-  minScale?: number;
-  maxScale?: number;
-}
 
 // ====================================
 // Report Types

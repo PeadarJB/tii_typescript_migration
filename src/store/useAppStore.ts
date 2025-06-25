@@ -9,7 +9,7 @@ import type MapView from '@arcgis/core/views/MapView';
 import type WebMap from '@arcgis/core/WebMap';
 import type FeatureLayer from '@arcgis/core/layers/FeatureLayer';
 import type Extent from '@arcgis/core/geometry/Extent';
-import type { FilterState, NetworkStatistics } from '@/types/index';
+import type { FilterState, NetworkStatistics, AppPage } from '@/types/index';
 import { isFeatureLayer } from '@/types/index';
 
 // Service imports
@@ -24,13 +24,14 @@ interface AppStore {
   mapView: MapView | null;
   webmap: WebMap | null;
   roadLayer: FeatureLayer | null;
-  roadLayerSwipe: FeatureLayer | null; // Layer for the right side of the swipe
+  roadLayerSwipe: FeatureLayer | null;
   initialExtent: Extent | null;
   error: string | null;
-  preSwipeDefinitionExpression: string | null; // To restore filter state
+  preSwipeDefinitionExpression: string | null;
 
   // UI state
   siderCollapsed: boolean;
+  activePage: AppPage; // New state for navigation
   showFilters: boolean;
   showStats: boolean;
   showChart: boolean;
@@ -49,6 +50,7 @@ interface AppStore {
   
   // Actions - UI
   setSiderCollapsed: (collapsed: boolean) => void;
+  setActivePage: (page: AppPage) => void; // New action for navigation
   setShowFilters: (show: boolean) => void;
   setShowStats: (show: boolean) => void;
   setShowChart: (show: boolean) => void;
@@ -89,18 +91,19 @@ export const useAppStore = create<AppStore>()(
           mapView: null,
           webmap: null,
           roadLayer: null,
-          roadLayerSwipe: null, // Initialize swipe layer as null
+          roadLayerSwipe: null,
           initialExtent: null,
           error: null,
           preSwipeDefinitionExpression: null,
           siderCollapsed: true,
+          activePage: 'future', // Set default page
           showFilters: true,
           showStats: false,
           showChart: false,
           showSwipe: false,
           showReportModal: false,
           isSwipeActive: false,
-          themeMode: 'light', // Default theme
+          themeMode: 'light',
           currentFilters: {},
           currentStats: null,
           filterPanelKey: Date.now(),
@@ -160,6 +163,7 @@ export const useAppStore = create<AppStore>()(
 
           // UI Actions
           setSiderCollapsed: (collapsed) => set({ siderCollapsed: collapsed }),
+          setActivePage: (page) => set({ activePage: page }), // New page setter
           setShowFilters: (show) => set({ showFilters: show }),
           setShowStats: (show) => set({ showStats: show }),
           setShowChart: (show) => set({ showChart: show }),
@@ -335,7 +339,7 @@ export const useMapState = () => useAppStore((state) => ({
   mapView: state.mapView,
   webmap: state.webmap,
   roadLayer: state.roadLayer,
-  roadLayerSwipe: state.roadLayerSwipe, // Expose the swipe layer
+  roadLayerSwipe: state.roadLayerSwipe,
   loading: state.loading,
   error: state.error,
 }));
@@ -348,6 +352,7 @@ export const useUIState = () => useAppStore((state) => ({
   showSwipe: state.showSwipe,
   showReportModal: state.showReportModal,
   isSwipeActive: state.isSwipeActive,
+  activePage: state.activePage,
 }));
 
 export const useFilterState = () => useAppStore((state) => ({

@@ -2,14 +2,16 @@
 
 import { useEffect, useRef, lazy, Suspense, FC } from 'react';
 import type { ReactElement } from 'react';
-import { Layout, Menu, Button, Space, Spin, Card, Switch, Tooltip } from 'antd';
+import { Layout, Menu, Button, Space, Spin, Card, Switch, Tooltip, Typography } from 'antd';
 import type { MenuProps } from 'antd';
 import {
-  DashboardOutlined,
   WarningOutlined,
   DownloadOutlined,
   SunOutlined,
-  MoonOutlined
+  MoonOutlined,
+  FieldTimeOutlined,
+  CloudOutlined,
+  AreaChartOutlined,
 } from '@ant-design/icons';
 import { ErrorBoundary } from 'react-error-boundary';
 import { ThemeProvider } from 'antd-style';
@@ -19,6 +21,8 @@ import { lightTheme, darkTheme } from './config/themeConfig';
 
 // Store imports
 import { useAppStore, useMapState, useUIState, useFilterState, useThemeState } from '@/store/useAppStore';
+import type { AppPage } from '@/types';
+
 
 // Style imports
 import { useCommonStyles } from '@/styles/styled';
@@ -85,6 +89,7 @@ function AppContent(): ReactElement {
   const { mapView, webmap, roadLayer, loading, error } = useMapState();
   const {
     siderCollapsed,
+    activePage,
     showFilters,
     showStats,
     showChart,
@@ -98,6 +103,7 @@ function AppContent(): ReactElement {
   // Store actions
   const initializeMap = useAppStore((state) => state.initializeMap);
   const setSiderCollapsed = useAppStore((state) => state.setSiderCollapsed);
+  const setActivePage = useAppStore((state) => state.setActivePage);
   const setShowFilters = useAppStore((state) => state.setShowFilters);
   const setShowStats = useAppStore((state) => state.setShowStats);
   const setShowChart = useAppStore((state) => state.setShowChart);
@@ -163,6 +169,10 @@ function AppContent(): ReactElement {
     setThemeMode(checked ? 'dark' : 'light');
   };
 
+  const handleMenuClick: MenuProps['onClick'] = (e) => {
+    setActivePage(e.key as AppPage);
+  };
+
   // Get stats tooltip
   const getStatsTooltip = (): string => {
     if (isSwipeActive) {
@@ -174,10 +184,12 @@ function AppContent(): ReactElement {
     return '';
   };
 
-  // Menu items
+  // Menu items for the new page structure
   const menuItems: MenuProps['items'] = [
-    { key: '1', icon: <DashboardOutlined />, label: 'Dashboard' },
-    { key: '2', icon: <WarningOutlined />, label: 'Flood Analysis' },
+    { key: 'future', icon: <WarningOutlined />, label: 'Future Flood Hazard' },
+    { key: 'past', icon: <FieldTimeOutlined />, label: 'Past Flood Events' },
+    { key: 'precipitation', icon: <CloudOutlined />, label: 'Precipitation' },
+    { key: 'explore', icon: <AreaChartOutlined />, label: 'Explore Statistics' },
   ];
 
   // Handle error state
@@ -215,7 +227,8 @@ function AppContent(): ReactElement {
           <Menu
             theme={themeMode}
             mode="inline"
-            defaultSelectedKeys={['1']}
+            selectedKeys={[activePage]}
+            onClick={handleMenuClick}
             style={{ borderRight: 0 }}
             items={menuItems}
           />
@@ -274,14 +287,12 @@ function AppContent(): ReactElement {
                   />
                 </Tooltip>
               </Space>
-              <Tooltip title="Toggle between light and dark themes">
               <Switch
                 checked={themeMode === 'dark'}
                 onChange={handleThemeChange}
                 checkedChildren={<MoonOutlined />}
                 unCheckedChildren={<SunOutlined />}
               />
-              </Tooltip>
               <Button
                 type="primary"
                 icon={<DownloadOutlined />}
@@ -304,57 +315,72 @@ function AppContent(): ReactElement {
                 <Spin size="large" />
               </div>
             )}
-
-            {showReportModal && mapView && (
-              <Suspense fallback={<LoadingFallback />}>
-                <SimpleReportGenerator onClose={() => setShowReportModal(false)} />
-              </Suspense>
+            
+            {/* For now, we only render the main components. 
+                In the next step, we'll conditionally render based on 'activePage' */}
+            {activePage === 'future' && (
+              <>
+                {showReportModal && mapView && (
+                  <Suspense fallback={<LoadingFallback />}>
+                    <SimpleReportGenerator onClose={() => setShowReportModal(false)} />
+                  </Suspense>
+                )}
+                
+                {showFilters && roadLayer && mapView && (
+                  <Suspense fallback={<LoadingFallback />}>
+                    <EnhancedFilterPanel key={filterPanelKey} />
+                  </Suspense>
+                )}
+                
+                {showChart && roadLayer && !loading && (
+                  <Suspense fallback={<LoadingFallback />}>
+                    <EnhancedChartPanel />
+                  </Suspense>
+                )}
+                
+                {showSwipe && mapView && webmap && !loading && (
+                  <Suspense fallback={<LoadingFallback />}>
+                    <SimpleSwipePanel />
+                  </Suspense>
+                )}
+                
+                {showStats && hasActiveFilters && roadLayer && !loading && (
+                  <Suspense fallback={<LoadingFallback />}>
+                    <EnhancedStatsPanel />
+                  </Suspense>
+                )}
+                
+                {showFilters && !roadLayer && !loading && webmap && (
+                  <Card size="small" style={{
+                    position: 'absolute',
+                    top: theme.margin,
+                    right: theme.margin,
+                    width: 300,
+                    background: theme.colorWarningBg,
+                    borderColor: theme.colorWarningBorder
+                  }}>
+                    <p style={{ margin: 0, color: theme.colorWarningText }}>
+                      Cannot show filters: Road layer not found
+                    </p>
+                    <p style={{ margin: `${theme.marginXS}px 0 0 0`, fontSize: theme.fontSizeSM, color: theme.colorWarningText }}>
+                      Looking for layer: &quot;{CONFIG.roadNetworkLayerTitle}&quot;
+                    </p>
+                    <p style={{ margin: `${theme.marginXXS}px 0 0 0`, fontSize: theme.fontSizeSM, color: theme.colorWarningText }}>
+                      Available layers: {webmap.layers.map(l => l.title).join(', ') || 'None'}
+                    </p>
+                  </Card>
+                )}
+              </>
             )}
 
-            {showFilters && roadLayer && mapView && (
-              <Suspense fallback={<LoadingFallback />}>
-                <EnhancedFilterPanel key={filterPanelKey} />
-              </Suspense>
+            {/* Placeholder for other pages */}
+            {activePage !== 'future' && (
+              <div style={{ padding: 50, textAlign: 'center' }}>
+                <Typography.Title level={3}>'{activePage}' Page</Typography.Title>
+                <Typography.Text>This content will be built in the next steps.</Typography.Text>
+              </div>
             )}
 
-            {showChart && roadLayer && !loading && (
-              <Suspense fallback={<LoadingFallback />}>
-                <EnhancedChartPanel />
-              </Suspense>
-            )}
-
-            {showSwipe && mapView && webmap && !loading && (
-              <Suspense fallback={<LoadingFallback />}>
-                <SimpleSwipePanel />
-              </Suspense>
-            )}
-
-            {showStats && hasActiveFilters && roadLayer && !loading && (
-              <Suspense fallback={<LoadingFallback />}>
-                <EnhancedStatsPanel />
-              </Suspense>
-            )}
-
-            {showFilters && !roadLayer && !loading && webmap && (
-              <Card size="small" style={{
-                position: 'absolute',
-                top: theme.margin,
-                right: theme.margin,
-                width: 300,
-                background: theme.colorWarningBg,
-                borderColor: theme.colorWarningBorder
-              }}>
-                <p style={{ margin: 0, color: theme.colorWarningText }}>
-                  Cannot show filters: Road layer not found
-                </p>
-                <p style={{ margin: `${theme.marginXS}px 0 0 0`, fontSize: theme.fontSizeSM, color: theme.colorWarningText }}>
-                  Looking for layer: &quot;{CONFIG.roadNetworkLayerTitle}&quot;
-                </p>
-                <p style={{ margin: `${theme.marginXXS}px 0 0 0`, fontSize: theme.fontSizeSM, color: theme.colorWarningText }}>
-                  Available layers: {webmap.layers.map(l => l.title).join(', ') || 'None'}
-                </p>
-              </Card>
-            )}
           </Content>
         </Layout>
       </Layout>
