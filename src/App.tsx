@@ -1,4 +1,4 @@
-// App.tsx - Refactored with theme toggle functionality
+// App.tsx - Refactored for Multi-Page Structure
 
 import { useEffect, useRef, lazy, Suspense, FC } from 'react';
 import type { ReactElement } from 'react';
@@ -16,27 +16,22 @@ import {
 import { ErrorBoundary } from 'react-error-boundary';
 import { ThemeProvider } from 'antd-style';
 
-import { CONFIG } from './config/appConfig';
 import { lightTheme, darkTheme } from './config/themeConfig';
 
 // Store imports
 import { useAppStore, useMapState, useUIState, useFilterState, useThemeState } from '@/store/useAppStore';
 import type { AppPage } from '@/types';
 
-
 // Style imports
 import { useCommonStyles } from '@/styles/styled';
 
-// Lazy loaded components
-const EnhancedFilterPanel = lazy(() => import('./components/EnhancedFilterPanel'));
-const EnhancedStatsPanel = lazy(() => import('./components/EnhancedStatsPanel'));
-const EnhancedChartPanel = lazy(() => import('./components/EnhancedChartPanel'));
-const SimpleSwipePanel = lazy(() => import('./components/SimpleSwipePanel'));
-const SimpleReportGenerator = lazy(() => import('./components/SimpleReportGenerator'));
+// Page imports
+import { FutureHazardPage } from '@/pages';
 
 import 'antd/dist/reset.css';
 
 const { Header, Sider, Content } = Layout;
+const { Title, Text } = Typography;
 
 interface ErrorFallbackProps {
   error: Error;
@@ -63,15 +58,6 @@ function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps): React
   );
 }
 
-const LoadingFallback: FC = () => {
-    const { styles } = useCommonStyles();
-    return (
-      <div className={styles.loadingContainer} style={{ position: 'absolute', background: 'transparent' }}>
-        <Spin />
-      </div>
-    );
-}
-
 function App(): ReactElement {
   const { themeMode } = useThemeState();
 
@@ -82,22 +68,22 @@ function App(): ReactElement {
   );
 }
 
+// A simple placeholder for pages that are not yet built
+const PlaceholderPage: FC<{pageName: string}> = ({ pageName }) => (
+    <div style={{ padding: 50, textAlign: 'center' }}>
+        <Title level={3}>'{pageName}' Page</Title>
+        <Text>This content will be built in the next steps.</Text>
+    </div>
+);
+
+
 function AppContent(): ReactElement {
   const { styles, theme } = useCommonStyles();
 
   // Store hooks
-  const { mapView, webmap, roadLayer, loading, error } = useMapState();
-  const {
-    siderCollapsed,
-    activePage,
-    showFilters,
-    showStats,
-    showChart,
-    showSwipe,
-    showReportModal,
-    isSwipeActive
-  } = useUIState();
-  const { hasActiveFilters, filterPanelKey } = useFilterState();
+  const { loading, error } = useMapState();
+  const { siderCollapsed, activePage, isSwipeActive } = useUIState();
+  const { hasActiveFilters } = useFilterState();
   const { themeMode, setThemeMode } = useThemeState();
 
   // Store actions
@@ -112,7 +98,6 @@ function AppContent(): ReactElement {
   const clearAllFilters = useAppStore((state) => state.clearAllFilters);
 
   // Refs
-  const siderRef = useRef<HTMLDivElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const initStarted = useRef<boolean>(false);
 
@@ -121,28 +106,25 @@ function AppContent(): ReactElement {
     const init = async (): Promise<void> => {
       if (initStarted.current) return;
       initStarted.current = true;
-
       await new Promise<void>(resolve => setTimeout(resolve, 100));
       await initializeMap('viewDiv');
     };
-
     void init();
   }, [initializeMap]);
 
-  // Handle filter toggle with mutual exclusion
+  // Panel Toggles
+  const { showFilters, showStats, showChart, showSwipe } = useUIState();
+
   const handleFilterToggle = (checked: boolean): void => {
     setShowFilters(checked);
     if (checked) {
       setShowChart(false);
       setShowSwipe(false);
-    } else {
-      if (hasActiveFilters) {
-        clearAllFilters();
-      }
+    } else if (hasActiveFilters) {
+      clearAllFilters();
     }
   };
 
-  // Handle chart toggle with mutual exclusion
   const handleChartToggle = (checked: boolean): void => {
     setShowChart(checked);
     if (checked) {
@@ -151,17 +133,12 @@ function AppContent(): ReactElement {
     }
   };
 
-
-  // Handle swipe toggle with mutual exclusion
   const handleSwipeToggle = (checked: boolean): void => {
     setShowSwipe(checked);
     if (checked) {
-      // Deactivate other panels when swipe is activated
       setShowFilters(false);
       setShowChart(false);
-      if (showStats) {
-        setShowStats(false);
-      }
+      if (showStats) setShowStats(false);
     }
   };
 
@@ -173,18 +150,6 @@ function AppContent(): ReactElement {
     setActivePage(e.key as AppPage);
   };
 
-  // Get stats tooltip
-  const getStatsTooltip = (): string => {
-    if (isSwipeActive) {
-      return 'Disable layer comparison to use stats';
-    }
-    if (!hasActiveFilters) {
-      return 'Apply filters to view statistics';
-    }
-    return '';
-  };
-
-  // Menu items for the new page structure
   const menuItems: MenuProps['items'] = [
     { key: 'future', icon: <WarningOutlined />, label: 'Future Flood Hazard' },
     { key: 'past', icon: <FieldTimeOutlined />, label: 'Past Flood Events' },
@@ -192,7 +157,6 @@ function AppContent(): ReactElement {
     { key: 'explore', icon: <AreaChartOutlined />, label: 'Explore Statistics' },
   ];
 
-  // Handle error state
   if (error) {
     return (
       <div className={styles.errorContainer}>
@@ -207,12 +171,26 @@ function AppContent(): ReactElement {
       </div>
     );
   }
+  
+  const renderActivePage = () => {
+    switch (activePage) {
+        case 'future':
+            return <FutureHazardPage />;
+        case 'past':
+            return <PlaceholderPage pageName="Past Flood Events" />;
+        case 'precipitation':
+            return <PlaceholderPage pageName="Precipitation" />;
+        case 'explore':
+            return <PlaceholderPage pageName="Explore Statistics" />;
+        default:
+            return <FutureHazardPage />;
+    }
+  };
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <Layout style={{ minHeight: '100vh' }}>
         <Sider
-          ref={siderRef}
           collapsible
           collapsed={siderCollapsed}
           onCollapse={setSiderCollapsed}
@@ -221,9 +199,7 @@ function AppContent(): ReactElement {
           onMouseEnter={() => setSiderCollapsed(false)}
           onMouseLeave={() => setSiderCollapsed(true)}
         >
-          <div className={styles.siderLogo}>
-            TII
-          </div>
+          <div className={styles.siderLogo}>TII</div>
           <Menu
             theme={themeMode}
             mode="inline"
@@ -245,54 +221,58 @@ function AppContent(): ReactElement {
           }}>
             <h2 style={{ margin: 0 }}>TII Flood Risk Dashboard</h2>
             <Space>
-              <Space size="small">
-                <span>Panels:</span>
-                <Tooltip title={isSwipeActive ? 'Disable layer comparison to use filters' : 'Show/Hide the data filtering panel'}>
-                  <Switch
-                    size="small"
-                    checked={showFilters}
-                    onChange={handleFilterToggle}
-                    checkedChildren="Filter"
-                    unCheckedChildren="Filter"
-                    disabled={isSwipeActive}
-                  />
-                </Tooltip>
-                <Tooltip title={getStatsTooltip()}>
-                  <Switch
-                    size="small"
-                    checked={showStats}
-                    onChange={setShowStats}
-                    checkedChildren="Stats"
-                    unCheckedChildren="Stats"
-                    disabled={!hasActiveFilters || isSwipeActive}
-                  />
-                </Tooltip>
-                <Tooltip title="Show advanced data visualization and analysis">
-                  <Switch
-                    size="small"
-                    checked={showChart}
-                    onChange={handleChartToggle}
-                    checkedChildren="Chart"
-                    unCheckedChildren="Chart"
-                    disabled={isSwipeActive}
-                  />
-                </Tooltip>
-                <Tooltip title="Compare two sets of layers side-by-side">
-                  <Switch
-                    size="small"
-                    checked={showSwipe}
-                    onChange={handleSwipeToggle}
-                    checkedChildren="Swipe"
-                    unCheckedChildren="Swipe"
-                  />
-                </Tooltip>
-              </Space>
+              {activePage === 'future' && (
+                <Space size="small">
+                    <span>Panels:</span>
+                    <Tooltip title={isSwipeActive ? 'Disable layer comparison to use filters' : 'Show/Hide the data filtering panel'}>
+                    <Switch
+                        size="small"
+                        checked={showFilters}
+                        onChange={handleFilterToggle}
+                        checkedChildren="Filter"
+                        unCheckedChildren="Filter"
+                        disabled={isSwipeActive}
+                    />
+                    </Tooltip>
+                    <Tooltip title={!hasActiveFilters ? 'Apply filters to view statistics' : ''}>
+                    <Switch
+                        size="small"
+                        checked={showStats}
+                        onChange={setShowStats}
+                        checkedChildren="Stats"
+                        unCheckedChildren="Stats"
+                        disabled={!hasActiveFilters || isSwipeActive}
+                    />
+                    </Tooltip>
+                     <Tooltip title="Show advanced data visualization and analysis">
+                        <Switch
+                            size="small"
+                            checked={showChart}
+                            onChange={handleChartToggle}
+                            checkedChildren="Chart"
+                            unCheckedChildren="Chart"
+                            disabled={isSwipeActive}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Compare two sets of layers side-by-side">
+                        <Switch
+                            size="small"
+                            checked={showSwipe}
+                            onChange={handleSwipeToggle}
+                            checkedChildren="Swipe"
+                            unCheckedChildren="Swipe"
+                        />
+                    </Tooltip>
+                </Space>
+              )}
+              <Tooltip title="Toggle Dark/Light Theme">
               <Switch
                 checked={themeMode === 'dark'}
                 onChange={handleThemeChange}
                 checkedChildren={<MoonOutlined />}
                 unCheckedChildren={<SunOutlined />}
               />
+              </Tooltip>
               <Button
                 type="primary"
                 icon={<DownloadOutlined />}
@@ -309,77 +289,13 @@ function AppContent(): ReactElement {
               id="viewDiv"
               className={styles.mapContainer}
             />
-
             {loading && (
               <div className={styles.loadingContainer}>
                 <Spin size="large" />
               </div>
             )}
             
-            {/* For now, we only render the main components. 
-                In the next step, we'll conditionally render based on 'activePage' */}
-            {activePage === 'future' && (
-              <>
-                {showReportModal && mapView && (
-                  <Suspense fallback={<LoadingFallback />}>
-                    <SimpleReportGenerator onClose={() => setShowReportModal(false)} />
-                  </Suspense>
-                )}
-                
-                {showFilters && roadLayer && mapView && (
-                  <Suspense fallback={<LoadingFallback />}>
-                    <EnhancedFilterPanel key={filterPanelKey} />
-                  </Suspense>
-                )}
-                
-                {showChart && roadLayer && !loading && (
-                  <Suspense fallback={<LoadingFallback />}>
-                    <EnhancedChartPanel />
-                  </Suspense>
-                )}
-                
-                {showSwipe && mapView && webmap && !loading && (
-                  <Suspense fallback={<LoadingFallback />}>
-                    <SimpleSwipePanel />
-                  </Suspense>
-                )}
-                
-                {showStats && hasActiveFilters && roadLayer && !loading && (
-                  <Suspense fallback={<LoadingFallback />}>
-                    <EnhancedStatsPanel />
-                  </Suspense>
-                )}
-                
-                {showFilters && !roadLayer && !loading && webmap && (
-                  <Card size="small" style={{
-                    position: 'absolute',
-                    top: theme.margin,
-                    right: theme.margin,
-                    width: 300,
-                    background: theme.colorWarningBg,
-                    borderColor: theme.colorWarningBorder
-                  }}>
-                    <p style={{ margin: 0, color: theme.colorWarningText }}>
-                      Cannot show filters: Road layer not found
-                    </p>
-                    <p style={{ margin: `${theme.marginXS}px 0 0 0`, fontSize: theme.fontSizeSM, color: theme.colorWarningText }}>
-                      Looking for layer: &quot;{CONFIG.roadNetworkLayerTitle}&quot;
-                    </p>
-                    <p style={{ margin: `${theme.marginXXS}px 0 0 0`, fontSize: theme.fontSizeSM, color: theme.colorWarningText }}>
-                      Available layers: {webmap.layers.map(l => l.title).join(', ') || 'None'}
-                    </p>
-                  </Card>
-                )}
-              </>
-            )}
-
-            {/* Placeholder for other pages */}
-            {activePage !== 'future' && (
-              <div style={{ padding: 50, textAlign: 'center' }}>
-                <Typography.Title level={3}>'{activePage}' Page</Typography.Title>
-                <Typography.Text>This content will be built in the next steps.</Typography.Text>
-              </div>
-            )}
+            {renderActivePage()}
 
           </Content>
         </Layout>
