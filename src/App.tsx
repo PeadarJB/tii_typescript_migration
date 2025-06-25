@@ -18,15 +18,16 @@ import { ThemeProvider } from 'antd-style';
 
 import { lightTheme, darkTheme } from './config/themeConfig';
 
+// Page and Widget imports
+import { FutureHazardPage } from '@/pages';
+import MapWidgets from '@/components/MapWidgets'; // Import the new component
+
 // Store imports
 import { useAppStore, useMapState, useUIState, useFilterState, useThemeState } from '@/store/useAppStore';
 import type { AppPage } from '@/types';
 
 // Style imports
 import { useCommonStyles } from '@/styles/styled';
-
-// Page imports
-import { FutureHazardPage } from '@/pages';
 
 import 'antd/dist/reset.css';
 
@@ -294,6 +295,8 @@ function AppContent(): ReactElement {
                 <Spin size="large" />
               </div>
             )}
+
+            <MapWidgets />
             
             {renderActivePage()}
 
