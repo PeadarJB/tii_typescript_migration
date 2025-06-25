@@ -24,8 +24,10 @@ interface AppStore {
   mapView: MapView | null;
   webmap: WebMap | null;
   roadLayer: FeatureLayer | null;
+  roadLayerSwipe: FeatureLayer | null; // Layer for the right side of the swipe
   initialExtent: Extent | null;
   error: string | null;
+  preSwipeDefinitionExpression: string | null; // To restore filter state
 
   // UI state
   siderCollapsed: boolean;
@@ -41,9 +43,6 @@ interface AppStore {
   currentFilters: Partial<FilterState>;
   currentStats: NetworkStatistics | null;
   filterPanelKey: number;
-
-  // Swipe initial state
-  preSwipeDefinitionExpression: string | null;
 
   // Actions - Map
   initializeMap: (containerId: string) => Promise<void>;
@@ -62,6 +61,10 @@ interface AppStore {
   setFilters: (filters: Partial<FilterState>) => void;
   applyFilters: () => Promise<void>;
   clearAllFilters: () => void;
+
+  // Actions - Swipe
+  enterSwipeMode: () => void;
+  exitSwipeMode: () => void;
   
   // Actions - Statistics
   updateStatistics: (stats: NetworkStatistics | null) => void;
@@ -73,10 +76,6 @@ interface AppStore {
   // Reset actions
   resetFilterPanel: () => void;
   resetError: () => void;
-
-  // Swipe actions
-  enterSwipeMode: () => void;
-  exitSwipeMode: () => void;
 }
 
 // Create the store with persist middleware
@@ -90,8 +89,10 @@ export const useAppStore = create<AppStore>()(
           mapView: null,
           webmap: null,
           roadLayer: null,
+          roadLayerSwipe: null, // Initialize swipe layer as null
           initialExtent: null,
           error: null,
+          preSwipeDefinitionExpression: null,
           siderCollapsed: true,
           showFilters: true,
           showStats: false,
@@ -103,7 +104,6 @@ export const useAppStore = create<AppStore>()(
           currentFilters: {},
           currentStats: null,
           filterPanelKey: Date.now(),
-          preSwipeDefinitionExpression: null,
 
           // Map initialization
           initializeMap: async (containerId: string) => {
@@ -112,17 +112,27 @@ export const useAppStore = create<AppStore>()(
 
               const { view, webmap } = await initializeMapView(containerId);
               
-              const foundLayer = webmap.layers.find(
+              const mainLayer = webmap.layers.find(
                 (layer) => layer.title === CONFIG.roadNetworkLayerTitle
               );
+              const swipeLayer = webmap.layers.find(
+                (layer) => layer.title === CONFIG.roadNetworkLayerSwipeTitle
+              );
               
-              const roadLayer = foundLayer && isFeatureLayer(foundLayer) ? foundLayer : null;
+              const roadLayer = mainLayer && isFeatureLayer(mainLayer) ? mainLayer : null;
+              const roadLayerSwipe = swipeLayer && isFeatureLayer(swipeLayer) ? swipeLayer : null;
               
               if (roadLayer) {
                 await roadLayer.load();
                 roadLayer.visible = false;
               } else {
-                console.warn('Road network layer not found.');
+                console.warn('Main road network layer not found.');
+              }
+              if (roadLayerSwipe) {
+                await roadLayerSwipe.load();
+                roadLayerSwipe.visible = false;
+              } else {
+                console.warn('Swipe road network layer not found.');
               }
               
               const initialExtent = view.extent.clone();
@@ -131,6 +141,7 @@ export const useAppStore = create<AppStore>()(
                 mapView: view,
                 webmap,
                 roadLayer,
+                roadLayerSwipe,
                 initialExtent,
                 loading: false,
               });
@@ -249,6 +260,31 @@ export const useAppStore = create<AppStore>()(
             message.info('All filters have been cleared.');
           },
 
+          // Swipe Actions
+          enterSwipeMode: () => {
+            const { roadLayer } = get();
+            if (roadLayer) {
+              set({ preSwipeDefinitionExpression: roadLayer.definitionExpression || '1=1' });
+            }
+          },
+
+          exitSwipeMode: () => {
+            const { roadLayer, roadLayerSwipe, preSwipeDefinitionExpression } = get();
+            const expression = preSwipeDefinitionExpression || '1=1';
+            const visible = expression !== '1=1';
+            
+            if (roadLayer) {
+                roadLayer.definitionExpression = expression;
+                roadLayer.visible = visible;
+            }
+            if (roadLayerSwipe) {
+                roadLayerSwipe.definitionExpression = '1=0'; // Hide all features
+                roadLayerSwipe.visible = false;
+            }
+
+            set({ preSwipeDefinitionExpression: null });
+          },
+
           // Statistics Actions
           updateStatistics: (stats) => set({ currentStats: stats }),
 
@@ -277,29 +313,6 @@ export const useAppStore = create<AppStore>()(
             );
           },
 
-          // Swipe Actions
-          // Swipe Mode Actions
-          enterSwipeMode: () => {
-            const { roadLayer } = get();
-            if (roadLayer) {
-              set({ preSwipeDefinitionExpression: roadLayer.definitionExpression || '1=1' });
-            }
-          },
-
-          exitSwipeMode: () => {
-            const { roadLayer, preSwipeDefinitionExpression } = get();
-            if (roadLayer && preSwipeDefinitionExpression) {
-              roadLayer.definitionExpression = preSwipeDefinitionExpression;
-              // Make road layer visible only if the restored filter is not the default empty one
-              roadLayer.visible = preSwipeDefinitionExpression !== '1=1';
-            } else if (roadLayer) {
-              // Fallback if preSwipe state is null for some reason
-              roadLayer.definitionExpression = '1=1';
-              roadLayer.visible = false;
-            }
-            set({ preSwipeDefinitionExpression: null });
-          },
-
           // Reset actions
           resetFilterPanel: () => set({ filterPanelKey: Date.now() }),
           resetError: () => set({ error: null }),
@@ -322,6 +335,7 @@ export const useMapState = () => useAppStore((state) => ({
   mapView: state.mapView,
   webmap: state.webmap,
   roadLayer: state.roadLayer,
+  roadLayerSwipe: state.roadLayerSwipe, // Expose the swipe layer
   loading: state.loading,
   error: state.error,
 }));

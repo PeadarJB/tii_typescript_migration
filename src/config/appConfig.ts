@@ -8,6 +8,7 @@ import type { FilterConfigItem, ChartFeature, LayerConfig } from '@/types';
 interface AppConfiguration {
   readonly webMapId: string;
   readonly roadNetworkLayerTitle: string;
+  readonly roadNetworkLayerSwipeTitle: string; // Added for the duplicate layer
   readonly filterConfig: ReadonlyArray<FilterConfigItem>;
   readonly fields: Readonly<{
     object_id: string;
@@ -50,6 +51,7 @@ export const CONFIG: AppConfiguration = {
   // --- Core Application Settings ---
   webMapId: "bb27815620254e69819e7ce6b56f14b8",
   roadNetworkLayerTitle: "TII CAIP NM",
+  roadNetworkLayerSwipeTitle: "TII CAIP NM SWIPE", // Added new layer title
 
   // --- Centralized Filter Configuration ---
   filterConfig: [
@@ -240,7 +242,7 @@ export const CONFIG: AppConfiguration = {
         { title: "CFRAM f m 0010", label: "CFRAM Fluvial (10yr, RCP 4.5)", roadNetworkFieldName: "cfram_f_m_0010" },
         { title: "CFRAM c m 0010", label: "CFRAM Coastal (10yr, RCP 4.5)", roadNetworkFieldName: "cfram_c_m_0010" },
         { title: "NIFM f m 0020", label: "NIFM Fluvial (20yr, RCP 4.5)", roadNetworkFieldName: "nifm_f_m_0020" },
-        { title: "NCFHM c m 0010", label: "NCFHM Coastal (10yr, RCP 4.5)", roadNetworkFieldName: "ncfhm_c_m_0010" }
+        { title: "NCFHM c m 0010", label: "NCFHM Coastal (10yr, RCP Current)", roadNetworkFieldName: "ncfhm_c_m_0010" }
       ]
     },
     rightPanel: {
@@ -249,7 +251,7 @@ export const CONFIG: AppConfiguration = {
         { title: "CFRAM f h 0100", label: "CFRAM Fluvial (100yr, RCP 8.5)", roadNetworkFieldName: "cfram_f_h_0100" },
         { title: "CFRAM c h 0200", label: "CFRAM Coastal (200yr, RCP 8.5)", roadNetworkFieldName: "cfram_c_h_0200" },
         { title: "NIFM f h 0100", label: "NIFM Fluvial (100yr, RCP 8.5)", roadNetworkFieldName: "nifm_f_h_0100" },
-        { title: "NCFHM c c 0200", label: "NCFHM Coastal (200yr, RCP 8.5)", roadNetworkFieldName: "ncfhm_c_c_0200" }
+        { title: "NCFHM c c 0200", label: "NCFHM Coastal (200yr, Current)", roadNetworkFieldName: "ncfhm_c_c_0200" }
       ]
     }
   },

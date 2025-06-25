@@ -25,7 +25,7 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = () => {
   const { theme } = useCommonStyles();
 
   // Store hooks
-  const { mapView: view, webmap, roadLayer } = useMapState();
+  const { mapView: view, webmap, roadLayer, roadLayerSwipe } = useMapState();
   const { isSwipeActive } = useUIState();
   const setIsSwipeActive = useAppStore((state) => state.setIsSwipeActive);
   const enterSwipeMode = useAppStore((state) => state.enterSwipeMode);
@@ -64,9 +64,12 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = () => {
       
       setSwipeWidget(null);
       setIsSwipeActive(false);
-      message.info('Layer comparison deactivated');
+      // Only show message if it was previously active to avoid firing on component unmount
+      if (isSwipeActive) {
+          message.info('Layer comparison deactivated');
+      }
     }
-  }, [swipeWidget, view, leftLayers, rightLayers, setIsSwipeActive, exitSwipeMode]);
+  }, [swipeWidget, view, leftLayers, rightLayers, setIsSwipeActive, exitSwipeMode, isSwipeActive]);
 
   useEffect(() => {
     // Cleanup function to be called when the component unmounts
@@ -81,46 +84,47 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = () => {
   };
 
   const startSwipe = async () => {
-    if (!view || !webmap || !roadLayer) {
+    if (!view || !webmap || !roadLayer || !roadLayerSwipe) {
+      message.error("Swipe layers are not ready. Please try again.");
       return;
     }
 
     try {
-      const leftLayerObjects = leftLayers.map(title => findLayer(title)).filter((l): l is Layer => l !== undefined);
-      const rightLayerObjects = rightLayers.map(title => findLayer(title)).filter((l): l is Layer => l !== undefined);
+      const leftFloodLayers = leftLayers.map(title => findLayer(title)).filter((l): l is Layer => l !== undefined);
+      const rightFloodLayers = rightLayers.map(title => findLayer(title)).filter((l): l is Layer => l !== undefined);
 
-      if (leftLayerObjects.length === 0 || rightLayerObjects.length === 0) {
+      if (leftFloodLayers.length === 0 || rightFloodLayers.length === 0) {
         message.warning('Please select at least one layer for each side');
         return;
       }
       
-      // Save current filter state before applying swipe filters
       enterSwipeMode();
 
-      // Build definition expression for road network layer
-      const allSelectedLayerTitles = [...leftLayers, ...rightLayers];
-      const roadFilterFields = allSelectedLayerTitles
+      // --- Build definition expression for LEFT road layer ---
+      const leftFields = leftLayers
         .map(title => allSwipeLayers.find(l => l.title === title)?.roadNetworkFieldName)
         .filter((field): field is string => !!field);
-      
-      if (roadFilterFields.length > 0) {
-        const swipeDefinitionExpression = roadFilterFields.map(field => `${field} = 1`).join(' OR ');
-        roadLayer.definitionExpression = swipeDefinitionExpression;
-        roadLayer.visible = true;
-      } else {
-        roadLayer.visible = false;
-      }
+      roadLayer.definitionExpression = leftFields.length > 0 ? leftFields.map(f => `${f} = 1`).join(' OR ') : '1=0';
+      roadLayer.visible = true;
 
-      // Make selected swipe layers visible
-      [...leftLayerObjects, ...rightLayerObjects].forEach(layer => {
+      // --- Build definition expression for RIGHT road layer ---
+      const rightFields = rightLayers
+        .map(title => allSwipeLayers.find(l => l.title === title)?.roadNetworkFieldName)
+        .filter((field): field is string => !!field);
+      roadLayerSwipe.definitionExpression = rightFields.length > 0 ? rightFields.map(f => `${f} = 1`).join(' OR ') : '1=0';
+      roadLayerSwipe.visible = true;
+
+
+      // Make selected flood hazard layers visible
+      [...leftFloodLayers, ...rightFloodLayers].forEach(layer => {
         layer.visible = true;
       });
       
       const SwipeWidget = (await import('@arcgis/core/widgets/Swipe')).default;
       const swipe = new SwipeWidget({
         view: view,
-        leadingLayers: leftLayerObjects,
-        trailingLayers: rightLayerObjects,
+        leadingLayers: [...leftFloodLayers, roadLayer],
+        trailingLayers: [...rightFloodLayers, roadLayerSwipe],
         direction: direction,
         position: position,
       });
@@ -133,7 +137,6 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = () => {
     } catch (error) {
       console.error('Failed to create swipe:', error);
       message.error('Failed to activate layer comparison');
-      // Restore state on failure
       exitSwipeMode();
     }
   };
