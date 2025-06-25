@@ -8,9 +8,9 @@ import type { FilterConfigItem, ChartFeature, LayerConfig, AppPage } from '@/typ
 interface AppConfiguration {
   readonly webMapId: string;
   readonly roadNetworkLayerTitle: string;
-  readonly roadNetworkLayerSwipeTitle: string; // Added for the duplicate layer
+  readonly roadNetworkLayerSwipeTitle: string;
+  readonly defaultLayerVisibility: Record<AppPage, string[]>;
   readonly filterConfig: ReadonlyArray<FilterConfigItem>;
-  readonly pageLayerVisibility: Record<AppPage, string[]>; // New config for widget
   readonly fields: Readonly<{
     object_id: string;
     route: string;
@@ -52,17 +52,22 @@ export const CONFIG: AppConfiguration = {
   // --- Core Application Settings ---
   webMapId: "bb27815620254e69819e7ce6b56f14b8",
   roadNetworkLayerTitle: "TII CAIP NM",
-  roadNetworkLayerSwipeTitle: "TII CAIP NM SWIPE", // Added new layer title
+  roadNetworkLayerSwipeTitle: "TII CAIP NM SWIPE",
 
-  // --- Page-Specific Layer List Configuration ---
-  // Defines which layers are visible in the LayerList widget on each page.
-  pageLayerVisibility: {
-    future: ["TII CAIP NM", "TII CAIP NM SWIPE"],
-    // NOTE: These layer titles for the 'past' page are placeholders based on the methodology document.
-    // They may need to be updated to match the exact titles in the Web Map.
-    past: ["OPW Historic Flood Points", "TII DMS Defects", "Motorway Operations Control Centre (MOCC)"],
-    precipitation: [], // To be defined
-    explore: [], // No layers needed for a statistics-only page
+  // --- Page-Specific Default Layer Visibility ---
+  // Defines which layers are visible by default when a page is selected.
+  defaultLayerVisibility: {
+    future: ["TII Network Model"],
+    past: [
+        "Combined_MOCC_Flood_Event_R", 
+        "OPW past flood within100m", 
+        "GSI 2015 2016 Surface Water Flood Map", 
+        "GSI Historic Groundwater Flood Map", 
+        "JBA Historic Flooding NRA Points within100m", 
+        "TII Network Model"
+    ],
+    precipitation: [], 
+    explore: [], 
   },
 
   // --- Centralized Filter Configuration ---
@@ -254,7 +259,7 @@ export const CONFIG: AppConfiguration = {
         { title: "CFRAM f m 0010", label: "CFRAM Fluvial (10yr, RCP 4.5)", roadNetworkFieldName: "cfram_f_m_0010" },
         { title: "CFRAM c m 0010", label: "CFRAM Coastal (10yr, RCP 4.5)", roadNetworkFieldName: "cfram_c_m_0010" },
         { title: "NIFM f m 0020", label: "NIFM Fluvial (20yr, RCP 4.5)", roadNetworkFieldName: "nifm_f_m_0020" },
-        { title: "NCFHM c m 0010", label: "NCFHM Coastal (10yr, RCP Current)", roadNetworkFieldName: "ncfhm_c_m_0010" }
+        { title: "NCFHM c m 0010", label: "NCFHM Coastal (10yr, RCP 4.5)", roadNetworkFieldName: "ncfhm_c_m_0010" }
       ]
     },
     rightPanel: {
@@ -263,7 +268,7 @@ export const CONFIG: AppConfiguration = {
         { title: "CFRAM f h 0100", label: "CFRAM Fluvial (100yr, RCP 8.5)", roadNetworkFieldName: "cfram_f_h_0100" },
         { title: "CFRAM c h 0200", label: "CFRAM Coastal (200yr, RCP 8.5)", roadNetworkFieldName: "cfram_c_h_0200" },
         { title: "NIFM f h 0100", label: "NIFM Fluvial (100yr, RCP 8.5)", roadNetworkFieldName: "nifm_f_h_0100" },
-        { title: "NCFHM c c 0200", label: "NCFHM Coastal (200yr, Current)", roadNetworkFieldName: "ncfhm_c_c_0200" }
+        { title: "NCFHM c c 0200", label: "NCFHM Coastal (200yr, RCP 8.5)", roadNetworkFieldName: "ncfhm_c_c_0200" }
       ]
     }
   },

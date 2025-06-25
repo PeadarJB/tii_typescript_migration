@@ -9,7 +9,7 @@ import { CONFIG } from '@/config/appConfig';
 
 const MapWidgets = () => {
     const { mapView } = useMapState();
-    const { activePage } = useUIState();
+    const { activePage, isSwipeActive } = useUIState();
 
     // Use refs to hold widget instances to prevent re-creation on every render
     const legendRef = useRef<Expand | null>(null);
@@ -17,78 +17,62 @@ const MapWidgets = () => {
     const basemapGalleryRef = useRef<Expand | null>(null);
 
     useEffect(() => {
-        if (!mapView) {
+        if (!mapView?.map) {
             return;
         }
 
-        // --- Cleanup previous widgets before creating new ones ---
+        // Set default layer visibility for the current page
+        // This runs whenever the activePage changes, but not if a swipe session is active.
+        if (!isSwipeActive) {
+            const defaultVisibleLayers = CONFIG.defaultLayerVisibility[activePage] || [];
+            
+            // ** CORRECTED LOGIC **
+            // Iterate only over the map's operational layers, not allLayers (which includes the basemap).
+            mapView.map.layers.forEach(layer => {
+                const layerTitle = layer.title;
+                // Type guard to ensure layer.title is a string before using it
+                if (typeof layerTitle === 'string') {
+                    // The layer's title must be in the default list to be visible.
+                    layer.visible = defaultVisibleLayers.includes(layerTitle);
+                } else {
+                    // If a layer has no title, it cannot be in the list, so ensure it's not visible.
+                    layer.visible = false;
+                }
+            });
+        }
+
+        // --- Cleanup previous UI widgets before creating new ones ---
         const cleanup = () => {
-            if (legendRef.current) {
-                mapView.ui.remove(legendRef.current);
-                legendRef.current.destroy();
-                legendRef.current = null;
-            }
-            if (layerListRef.current) {
-                mapView.ui.remove(layerListRef.current);
-                layerListRef.current.destroy();
-                layerListRef.current = null;
-            }
-            if (basemapGalleryRef.current) {
-                mapView.ui.remove(basemapGalleryRef.current);
-                basemapGalleryRef.current.destroy();
-                basemapGalleryRef.current = null;
-            }
+            if (legendRef.current) mapView.ui.remove(legendRef.current);
+            if (layerListRef.current) mapView.ui.remove(layerListRef.current);
+            if (basemapGalleryRef.current) mapView.ui.remove(basemapGalleryRef.current);
         };
         cleanup();
 
-        // --- Create and add new widgets ---
+        // --- Create and add new UI widgets ---
 
         // Basemap Gallery
-        const basemapGallery = new BasemapGallery({ view: mapView });
         basemapGalleryRef.current = new Expand({
             view: mapView,
-            content: basemapGallery,
+            content: new BasemapGallery({ view: mapView }),
             expandIcon: 'basemap',
             group: 'top-left',
         });
         mapView.ui.add(basemapGalleryRef.current, 'top-left');
 
         // Legend
-        const legend = new Legend({ view: mapView });
         legendRef.current = new Expand({
             view: mapView,
-            content: legend,
+            content: new Legend({ view: mapView }),
             expandIcon: 'legend',
             group: 'top-left',
         });
         mapView.ui.add(legendRef.current, 'top-left');
         
-        // Get the list of allowed layer titles for the current page from the config
-        const allowedLayersForPage = CONFIG.pageLayerVisibility[activePage] || [];
-        
-        // Layer List (Context-Aware)
-        const layerList = new LayerList({
-            view: mapView,
-            listItemCreatedFunction: (event) => {
-                const item = event.item;
-                const layerTitle = item.layer.title;
-
-                // Only show layers that are in the allowed list for the current page
-                if (typeof layerTitle === 'string' && allowedLayersForPage.includes(layerTitle)) {
-                    // This layer is allowed, configure it
-                    item.panel = {
-                        content: 'legend',
-                        open: false,
-                    };
-                } else {
-                    // This layer is not in the allowed list, so hide it completely from the widget
-                    item.visible = false;
-                }
-            },
-        });
+        // Layer List
         layerListRef.current = new Expand({
             view: mapView,
-            content: layerList,
+            content: new LayerList({ view: mapView }),
             expandIcon: 'layers',
             group: 'top-left',
         });
@@ -98,7 +82,7 @@ const MapWidgets = () => {
         // Return a cleanup function to run when the component unmounts or deps change
         return cleanup;
 
-    }, [mapView, activePage]); // Re-run this effect if the map or the active page changes
+    }, [mapView, activePage, isSwipeActive]); // Re-run effect if map, page, or swipe state changes
 
     return null; // This component does not render any JSX itself
 };
