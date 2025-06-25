@@ -38,16 +38,16 @@ export class StatisticsService {
       const totalSegments = totalStats.total_count || 0;
       const totalLengthKm = totalSegments * CONFIG.defaultSettings.segmentLengthKm;
 
-      // Calculate statistics for each scenario
-      const [rcp45Stats, rcp85Stats] = await Promise.all([
-        this.calculateScenarioStatistics(layer, definitionExpression, 'rcp45', totalSegments),
-        this.calculateScenarioStatistics(layer, definitionExpression, 'rcp85', totalSegments)
+      // Calculate statistics for each scenario, with RCP 8.5 first.
+      const [rcp85Stats, rcp45Stats] = await Promise.all([
+        this.calculateScenarioStatistics(layer, definitionExpression, 'rcp85', totalSegments),
+        this.calculateScenarioStatistics(layer, definitionExpression, 'rcp45', totalSegments)
       ]);
 
       return {
         totalSegments,
         totalLengthKm,
-        scenarios: [rcp45Stats, rcp85Stats],
+        scenarios: [rcp85Stats, rcp45Stats],
         lastUpdated: new Date()
       };
     } catch (error) {
@@ -65,6 +65,7 @@ export class StatisticsService {
     scenario: ClimateScenarioType,
     totalSegments: number
   ): Promise<ScenarioStatistics> {
+    const TOTAL_NETWORK_LENGTH_KM = 5338.2; // Fixed total network length
     const fields = this.getScenarioFields(scenario);
     const modelBreakdown: SegmentStatistic[] = [];
     let totalAffectedCount = 0;
@@ -100,7 +101,7 @@ export class StatisticsService {
 
     const totalAffectedLengthKm = totalAffectedCount * CONFIG.defaultSettings.segmentLengthKm;
     const totalAffectedPercentage = totalSegments > 0 
-      ? (totalAffectedCount / totalSegments) * 100 
+      ? (totalAffectedLengthKm / TOTAL_NETWORK_LENGTH_KM) * 100 
       : 0;
 
     return {
@@ -164,8 +165,7 @@ export class StatisticsService {
   private static calculateRiskLevel(percentage: number): RiskLevelType {
     if (percentage < 5) return 'low';
     if (percentage < 15) return 'medium';
-    if (percentage < 25) return 'high';
-    return 'extreme';
+    return 'high';
   }
 
   /**

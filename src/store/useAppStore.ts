@@ -9,7 +9,7 @@ import type MapView from '@arcgis/core/views/MapView';
 import type WebMap from '@arcgis/core/WebMap';
 import type FeatureLayer from '@arcgis/core/layers/FeatureLayer';
 import type Extent from '@arcgis/core/geometry/Extent';
-import type { FilterState, NetworkStatistics } from '@/types/index';
+import type { FilterState, NetworkStatistics, AppPage } from '@/types/index';
 import { isFeatureLayer } from '@/types/index';
 
 // Service imports
@@ -24,11 +24,14 @@ interface AppStore {
   mapView: MapView | null;
   webmap: WebMap | null;
   roadLayer: FeatureLayer | null;
+  roadLayerSwipe: FeatureLayer | null;
   initialExtent: Extent | null;
   error: string | null;
+  preSwipeDefinitionExpression: string | null;
 
   // UI state
   siderCollapsed: boolean;
+  activePage: AppPage; // New state for navigation
   showFilters: boolean;
   showStats: boolean;
   showChart: boolean;
@@ -47,6 +50,7 @@ interface AppStore {
   
   // Actions - UI
   setSiderCollapsed: (collapsed: boolean) => void;
+  setActivePage: (page: AppPage) => void; // New action for navigation
   setShowFilters: (show: boolean) => void;
   setShowStats: (show: boolean) => void;
   setShowChart: (show: boolean) => void;
@@ -59,6 +63,10 @@ interface AppStore {
   setFilters: (filters: Partial<FilterState>) => void;
   applyFilters: () => Promise<void>;
   clearAllFilters: () => void;
+
+  // Actions - Swipe
+  enterSwipeMode: () => void;
+  exitSwipeMode: () => void;
   
   // Actions - Statistics
   updateStatistics: (stats: NetworkStatistics | null) => void;
@@ -83,16 +91,19 @@ export const useAppStore = create<AppStore>()(
           mapView: null,
           webmap: null,
           roadLayer: null,
+          roadLayerSwipe: null,
           initialExtent: null,
           error: null,
+          preSwipeDefinitionExpression: null,
           siderCollapsed: true,
+          activePage: 'future', // Set default page
           showFilters: true,
           showStats: false,
           showChart: false,
           showSwipe: false,
           showReportModal: false,
           isSwipeActive: false,
-          themeMode: 'light', // Default theme
+          themeMode: 'light',
           currentFilters: {},
           currentStats: null,
           filterPanelKey: Date.now(),
@@ -104,17 +115,27 @@ export const useAppStore = create<AppStore>()(
 
               const { view, webmap } = await initializeMapView(containerId);
               
-              const foundLayer = webmap.layers.find(
+              const mainLayer = webmap.layers.find(
                 (layer) => layer.title === CONFIG.roadNetworkLayerTitle
               );
+              const swipeLayer = webmap.layers.find(
+                (layer) => layer.title === CONFIG.roadNetworkLayerSwipeTitle
+              );
               
-              const roadLayer = foundLayer && isFeatureLayer(foundLayer) ? foundLayer : null;
+              const roadLayer = mainLayer && isFeatureLayer(mainLayer) ? mainLayer : null;
+              const roadLayerSwipe = swipeLayer && isFeatureLayer(swipeLayer) ? swipeLayer : null;
               
               if (roadLayer) {
                 await roadLayer.load();
                 roadLayer.visible = false;
               } else {
-                console.warn('Road network layer not found.');
+                console.warn('Main road network layer not found.');
+              }
+              if (roadLayerSwipe) {
+                await roadLayerSwipe.load();
+                roadLayerSwipe.visible = false;
+              } else {
+                console.warn('Swipe road network layer not found.');
               }
               
               const initialExtent = view.extent.clone();
@@ -123,6 +144,7 @@ export const useAppStore = create<AppStore>()(
                 mapView: view,
                 webmap,
                 roadLayer,
+                roadLayerSwipe,
                 initialExtent,
                 loading: false,
               });
@@ -141,6 +163,7 @@ export const useAppStore = create<AppStore>()(
 
           // UI Actions
           setSiderCollapsed: (collapsed) => set({ siderCollapsed: collapsed }),
+          setActivePage: (page) => set({ activePage: page }), // New page setter
           setShowFilters: (show) => set({ showFilters: show }),
           setShowStats: (show) => set({ showStats: show }),
           setShowChart: (show) => set({ showChart: show }),
@@ -241,6 +264,31 @@ export const useAppStore = create<AppStore>()(
             message.info('All filters have been cleared.');
           },
 
+          // Swipe Actions
+          enterSwipeMode: () => {
+            const { roadLayer } = get();
+            if (roadLayer) {
+              set({ preSwipeDefinitionExpression: roadLayer.definitionExpression || '1=1' });
+            }
+          },
+
+          exitSwipeMode: () => {
+            const { roadLayer, roadLayerSwipe, preSwipeDefinitionExpression } = get();
+            const expression = preSwipeDefinitionExpression || '1=1';
+            const visible = expression !== '1=1';
+            
+            if (roadLayer) {
+                roadLayer.definitionExpression = expression;
+                roadLayer.visible = visible;
+            }
+            if (roadLayerSwipe) {
+                roadLayerSwipe.definitionExpression = '1=0'; // Hide all features
+                roadLayerSwipe.visible = false;
+            }
+
+            set({ preSwipeDefinitionExpression: null });
+          },
+
           // Statistics Actions
           updateStatistics: (stats) => set({ currentStats: stats }),
 
@@ -291,6 +339,7 @@ export const useMapState = () => useAppStore((state) => ({
   mapView: state.mapView,
   webmap: state.webmap,
   roadLayer: state.roadLayer,
+  roadLayerSwipe: state.roadLayerSwipe,
   loading: state.loading,
   error: state.error,
 }));
@@ -303,6 +352,7 @@ export const useUIState = () => useAppStore((state) => ({
   showSwipe: state.showSwipe,
   showReportModal: state.showReportModal,
   isSwipeActive: state.isSwipeActive,
+  activePage: state.activePage,
 }));
 
 export const useFilterState = () => useAppStore((state) => ({

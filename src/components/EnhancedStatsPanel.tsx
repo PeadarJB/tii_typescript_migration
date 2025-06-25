@@ -1,20 +1,20 @@
 // src/components/EnhancedStatsPanel.tsx - Refactored with consolidated styling
 
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Card, 
-  Statistic, 
-  Progress, 
-  Space, 
-  Tag, 
-  Spin, 
-  Empty, 
-  Carousel, 
-  Typography, 
-  Row, 
-  Col, 
-  Tooltip, 
-  Button 
+import {
+  Card,
+  Statistic,
+  Progress,
+  Space,
+  Tag,
+  Spin,
+  Empty,
+  Carousel,
+  Typography,
+  Row,
+  Col,
+  Tooltip,
+  Button
 } from 'antd';
 import {
   WarningOutlined,
@@ -69,9 +69,9 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
     if (!roadLayer) return;
 
     const handleFilterChange = async (): Promise<void> => {
-      const isFiltered = roadLayer.definitionExpression && 
+      const isFiltered = roadLayer.definitionExpression &&
                         roadLayer.definitionExpression !== '1=1';
-      
+
       if (isFiltered) {
         setLoading(true);
         try {
@@ -86,18 +86,16 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
 
     // Initial calculation
     void handleFilterChange();
-    
+
     // Watch for changes
     const handle = roadLayer.watch('definitionExpression', handleFilterChange);
-    
+
     return () => handle.remove();
   }, [roadLayer, calculateStatistics, updateStatistics]);
 
   const getRiskInfo = (percent: number): RiskInfo => {
-    if (percent < 5) return { level: 'low', color: 'success', icon: '✓' };
-    if (percent < 15) return { level: 'medium', color: 'warning', icon: '!' };
-    if (percent < 25) return { level: 'high', color: 'error', icon: '!!' };
-    return { level: 'extreme', color: 'error', icon: '!!!' };
+    // Per user request, always return a medium-risk style to maintain a consistent yellow background
+    return { level: 'medium', color: 'warning', icon: '!' };
   };
 
   const getModelIcon = (modelType?: string): React.ReactNode => {
@@ -107,7 +105,7 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
 
   const renderScenarioSlide = (scenario: ScenarioStatistics): React.ReactNode => {
     const riskInfo = getRiskInfo(scenario.totalAffected.percentage);
-    
+
     return (
       <div style={{ padding: `0 ${theme.margin}px ${theme.margin}px` }}>
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
@@ -130,7 +128,7 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
               {scenario.returnPeriod}
             </Text>
           </div>
-          
+
           {/* Overall Risk Summary */}
           <Card
             size="small"
@@ -146,12 +144,9 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
                 />
               </Col>
               <Col span={12} style={{ textAlign: 'right' }}>
-                <Tag color={riskInfo.color} style={{ fontSize: 14, padding: '4px 12px' }}>
-                  {riskInfo.icon} {riskInfo.level.toUpperCase()} Risk
-                </Tag>
                 <div style={{ marginTop: theme.marginXS }}>
-                  <Text strong style={{ 
-                    fontSize: 20, 
+                  <Text strong style={{
+                    fontSize: 20,
                     color: styleUtils.getRiskColor(riskInfo.level, theme)
                   }}>
                     {scenario.totalAffected.percentage.toFixed(1)}%
@@ -161,7 +156,7 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
               </Col>
             </Row>
           </Card>
-          
+
           {/* Detailed Model Breakdown */}
           <div>
             <Text strong style={{ display: 'block', marginBottom: theme.marginXS }}>
@@ -169,13 +164,13 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
             </Text>
             <Space direction="vertical" style={{ width: '100%' }} size="small">
               {scenario.modelBreakdown.map((modelData, index) => (
-                <div 
-                  key={index} 
-                  style={{ 
-                    padding: `${theme.marginXS}px ${theme.marginSM}px`, 
-                    background: theme.colorBgContainer, 
-                    borderRadius: theme.borderRadius, 
-                    border: `1px solid ${theme.colorBorderSecondary}` 
+                <div
+                  key={index}
+                  style={{
+                    padding: `${theme.marginXS}px ${theme.marginSM}px`,
+                    background: theme.colorBgContainer,
+                    borderRadius: theme.borderRadius,
+                    border: `1px solid ${theme.colorBorderSecondary}`
                   }}
                 >
                   <Row align="middle">
@@ -204,14 +199,14 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
           </div>
 
           {/* Network Summary */}
-          <div style={{ 
-            padding: theme.marginXS, 
-            background: theme.colorBgLayout, 
-            borderRadius: theme.borderRadius, 
-            textAlign: 'center' 
+          <div style={{
+            padding: theme.marginXS,
+            background: theme.colorBgLayout,
+            borderRadius: theme.borderRadius,
+            textAlign: 'center'
           }}>
             <Text type="secondary" style={{ fontSize: theme.fontSizeSM }}>
-              Total Network Analyzed: {currentStats?.totalLengthKm.toFixed(1)} km 
+              Total Network Analyzed: {currentStats?.totalLengthKm.toFixed(1)} km
               ({currentStats?.totalSegments.toLocaleString()} segments)
             </Text>
           </div>
@@ -280,7 +275,7 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
           <div key={index}>{renderScenarioSlide(scenario)}</div>
         ))}
       </Carousel>
-      
+
       {/* Navigation Arrows */}
       <Button
         type="text"
@@ -298,17 +293,17 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
         className="navigation-button next"
         disabled={currentSlide === currentStats.scenarios.length - 1}
       />
-      
+
       {/* Slide Indicator */}
       <div className="slide-indicators">
         <Space size="small">
           {currentStats.scenarios.map((scenario, index) => (
-            <Tag 
+            <Tag
               key={index}
-              color={currentSlide === index ? 
+              color={currentSlide === index ?
                 (scenario.scenario === 'rcp45' ? 'blue' : 'red') : 'default'
-              } 
-              style={{ cursor: 'pointer' }} 
+              }
+              style={{ cursor: 'pointer' }}
               onClick={() => carouselRef.current?.goTo(index)}
             >
               {scenario.scenario === 'rcp45' ? 'RCP 4.5' : 'RCP 8.5'}
