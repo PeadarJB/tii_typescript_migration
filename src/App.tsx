@@ -1,6 +1,6 @@
 // App.tsx - Refactored for Multi-Page Structure
 
-import { useEffect, useRef, lazy, Suspense, FC } from 'react';
+import { useEffect, useRef, FC } from 'react';
 import type { ReactElement } from 'react';
 import { Layout, Menu, Button, Space, Spin, Card, Switch, Tooltip, Typography } from 'antd';
 import type { MenuProps } from 'antd';
@@ -21,6 +21,7 @@ import { lightTheme, darkTheme } from './config/themeConfig';
 // Page and Widget imports
 import { FutureHazardPage } from '@/pages';
 import MapWidgets from '@/components/MapWidgets'; // Import the new component
+import { PAGE_CONFIG } from './config/appConfig'; // Import the new page config
 
 // Store imports
 import { useAppStore, useMapState, useUIState, useFilterState, useThemeState } from '@/store/useAppStore';
@@ -151,6 +152,8 @@ function AppContent(): ReactElement {
     setActivePage(e.key as AppPage);
   };
 
+  const pageTitle = PAGE_CONFIG[activePage]?.title || 'Dashboard';
+
   const menuItems: MenuProps['items'] = [
     { key: 'future', icon: <WarningOutlined />, label: 'Future Flood Hazard' },
     { key: 'past', icon: <FieldTimeOutlined />, label: 'Past Flood Events' },
@@ -178,11 +181,11 @@ function AppContent(): ReactElement {
         case 'future':
             return <FutureHazardPage />;
         case 'past':
-            return <PlaceholderPage pageName="Past Flood Events" />;
+            return <PlaceholderPage pageName={PAGE_CONFIG.past.title} />;
         case 'precipitation':
-            return <PlaceholderPage pageName="Precipitation" />;
+            return <PlaceholderPage pageName={PAGE_CONFIG.precipitation.title} />;
         case 'explore':
-            return <PlaceholderPage pageName="Explore Statistics" />;
+            return <PlaceholderPage pageName={PAGE_CONFIG.explore.title} />;
         default:
             return <FutureHazardPage />;
     }
@@ -220,7 +223,7 @@ function AppContent(): ReactElement {
             justifyContent: 'space-between',
             borderBottom: `1px solid ${theme.colorBorderSecondary}`
           }}>
-            <h2 style={{ margin: 0 }}>TII Flood Risk Dashboard</h2>
+            <h2 style={{ margin: 0 }}>{`TII Flood Risk Dashboard - ${pageTitle}`}</h2>
             <Space>
               {activePage === 'future' && (
                 <Space size="small">

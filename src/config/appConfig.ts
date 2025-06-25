@@ -5,6 +5,14 @@ import type { FilterConfigItem, ChartFeature, LayerConfig, AppPage } from '@/typ
  * Central configuration for the TII Flood Risk Dashboard
  */
 
+// New configuration for page-specific metadata
+export const PAGE_CONFIG: Record<AppPage, { title: string }> = {
+  future: { title: 'Future Flood Hazard' },
+  past: { title: 'Past Flood Events' },
+  precipitation: { title: 'Precipitation' },
+  explore: { title: 'Explore Statistics' },
+};
+
 interface AppConfiguration {
   readonly webMapId: string;
   readonly roadNetworkLayerTitle: string;
@@ -57,14 +65,16 @@ export const CONFIG: AppConfiguration = {
   // --- Page-Specific Default Layer Visibility ---
   // Defines which layers are visible by default when a page is selected.
   defaultLayerVisibility: {
-    future: ["TII Network Model"],
+    future: ["TII Network Model", "Local_Authority_Boundaries"],
     past: [
-        "Combined_MOCC_Flood_Event_R", 
-        "OPW past flood within100m", 
+        "MOCC flood events", 
+        "DMS Drainage 2015-2023",
+        "OPW past flood events", 
         "GSI 2015 2016 Surface Water Flood Map", 
         "GSI Historic Groundwater Flood Map", 
-        "JBA Historic Flooding NRA Points within100m", 
-        "TII Network Model"
+        "JBA Historic Flooding NRA flood points", 
+        "TII Network Model",
+        "Local_Authority_Boundaries"
     ],
     precipitation: [], 
     explore: [], 
