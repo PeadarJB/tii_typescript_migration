@@ -122,9 +122,9 @@ export interface ActiveFilter {
 export interface FilterState {
   scenarios: string[];
   counties: string[];
-  criticality: [number, number];
-  subnet: string[];
-  lifeline: boolean | null;
+  criticality: number[];
+  subnet: number[];
+  lifeline: number[];
 }
 
 export interface AppliedFilters {

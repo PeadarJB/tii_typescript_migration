@@ -9,7 +9,7 @@ import type MapView from '@arcgis/core/views/MapView';
 import type WebMap from '@arcgis/core/WebMap';
 import type FeatureLayer from '@arcgis/core/layers/FeatureLayer';
 import type Extent from '@arcgis/core/geometry/Extent';
-import type { FilterState, NetworkStatistics, AppPage, PastEventStatistics, FilterConfigItem } from '@/types/index';
+import type { FilterState, NetworkStatistics, AppPage, PastEventStatistics } from '@/types/index';
 import { isFeatureLayer } from '@/types/index';
 
 // Service imports
@@ -271,6 +271,8 @@ export const useAppStore = create<AppStore>()(
               set({ pastEventStats: null, loading: false });
             }
           },
+
+          calculateStatistics: () => get().calculateFutureStatistics(),
 
           // Computed values
           hasActiveFilters: (page) => {
