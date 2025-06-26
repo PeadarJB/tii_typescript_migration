@@ -10,27 +10,26 @@ import {
   Tag,
   Tooltip,
   Modal,
-  message
+  message,
+  Row,
+  Col
 } from 'antd';
 import {
   BarChartOutlined,
-  ReloadOutlined,
-  PieChartOutlined,
-  DownloadOutlined,
   ClearOutlined,
+  DownloadOutlined,
   ExpandOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  PieChartOutlined
 } from '@ant-design/icons';
-import type { RadioChangeEvent } from 'antd';
+import type { ChartConfiguration } from 'chart.js';
 import Chart from 'chart.js/auto';
-import type { ChartConfiguration, ChartType as ChartJSType } from 'chart.js';
+import Query from '@arcgis/core/rest/support/Query';
 import { useMapState } from '@/store/useAppStore';
-import { usePanelStyles, useCommonStyles, styleUtils } from '@/styles/styled';
+import { usePanelStyles, styleUtils } from '@/styles/styled';
 import type { ChartConfig, ChartDataPoint, FilterOption, ChartFeature } from '@/types';
 import { CONFIG } from '@/config/appConfig';
-import Query from '@arcgis/core/rest/support/Query';
 
-// Updated props to accept a dynamic list of features
 interface EnhancedChartPanelProps {
   chartingFeatures: ReadonlyArray<ChartFeature>;
 }
@@ -41,56 +40,48 @@ interface ProcessedChartData {
   features: string[];
 }
 
-interface GroupByOption extends FilterOption {
-  icon: string;
+interface GroupByOption extends FilterOption<string> {
+  icon?: string;
 }
 
 const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = ({ chartingFeatures }) => {
-  const { styles: panelStyles } = usePanelStyles();
-  const { theme } = useCommonStyles();
+  const { styles, theme } = usePanelStyles();
   const { roadLayer } = useMapState();
 
   const [loading, setLoading] = useState(false);
   const [chartConfig, setChartConfig] = useState<ChartConfig>({
     features: [],
-    groupBy: '',
-    metric: 'segmentCount',
+    groupBy: 'COUNTY',
+    metric: 'totalLength',
     maxCategories: 10,
-    type: 'bar'
+    type: 'bar',
   });
-  const [groupByOptions, setGroupByOptions] = useState<GroupByOption[]>([]);
   const [chartData, setChartData] = useState<ProcessedChartData | null>(null);
   const [expandedView, setExpandedView] = useState(false);
-  
+
   const chartRef = useRef<HTMLCanvasElement>(null);
   const expandedChartRef = useRef<HTMLCanvasElement>(null);
   const chartInstance = useRef<Chart | null>(null);
   const expandedChartInstance = useRef<Chart | null>(null);
 
-  // Use the 'chartingFeatures' prop instead of a hardcoded config
   const featureOptions = chartingFeatures.map(feature => ({
     label: feature.label,
     value: feature.field,
-    description: feature.description,
-    scenario: feature.scenario
+    scenario: feature.scenario,
   }));
 
-  const staticGroupByOptions: GroupByOption[] = [
-    { label: 'County', value: 'COUNTY', icon: '🏛️' },
-    { label: 'Criticality Rating', value: 'Criticality_Rating_Num1', icon: '⚠️' },
-    { label: 'Road Subnet', value: 'Subnet', icon: '🛣️' },
-    { label: 'Lifeline Route', value: 'Lifeline', icon: '🚨' },
-    { label: 'Route', value: 'Route', icon: '📍' }
+  const groupByOptions: GroupByOption[] = [
+    { label: 'County', value: 'COUNTY' },
+    { label: 'Criticality Rating', value: 'Criticality_Rating_Num1' },
+    { label: 'Road Subnet', value: 'Subnet' },
   ];
 
   const maxCategoriesOptions: FilterOption<number>[] = [
-    { label: 'Top 10', value: 10 }, { label: 'Top 20', value: 20 },
-    { label: 'Top 50', value: 50 }, { label: 'No limit', value: 999 }
+    { label: 'Top 5', value: 5 },
+    { label: 'Top 10', value: 10 },
+    { label: 'Top 20', value: 20 },
+    { label: 'Show All', value: 9999 },
   ];
-
-  useEffect(() => {
-    setGroupByOptions(staticGroupByOptions);
-  }, []);
 
   useEffect(() => {
     return () => {
@@ -103,38 +94,33 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = ({ chartingFeature
     if (chartData) {
       renderChart();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartData, chartConfig.type, expandedView]);
-
+  
   const getLabelForValue = (field: string, value: string | number): string => {
     const filter = CONFIG.filterConfig.find(f => f.field === field);
-    if (filter && 'options' in filter) {
-        const option = filter.options?.find(opt => String(opt.value) === String(value));
-        return option?.label ?? String(value);
+    if (filter?.options) {
+      const option = filter.options.find(opt => String(opt.value) === String(value));
+      return option?.label ?? String(value);
     }
     return String(value);
   };
-
-  const generateChart = async (): Promise<void> => {
+  
+  const generateChart = async () => {
     const { features, groupBy, metric, maxCategories } = chartConfig;
-    
-    if (!roadLayer || features.length === 0 || !groupBy) {
-      message.warning('Please select features and group by field');
+    if (!roadLayer) return;
+    if (features.length === 0 || !groupBy) {
+      message.warning('Please select features and a grouping field.');
       return;
     }
-
     setLoading(true);
     try {
-      const baseWhere = '1=1'; // Always query the entire layer for charts
       const allData: ChartDataPoint[] = [];
-      
       for (const featureField of features) {
         const feature = chartingFeatures.find(f => f.field === featureField);
         if (!feature) continue;
-
-        const whereClause = `(${baseWhere}) AND (${featureField} >= 1)`;
-        
         const query = new Query({
-          where: whereClause,
+          where: `${featureField} = 1`,
           groupByFieldsForStatistics: [groupBy],
           outStatistics: [{
             statisticType: 'count',
@@ -143,193 +129,181 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = ({ chartingFeature
           }],
           orderByFields: ['segment_count DESC']
         });
-
         const results = await roadLayer.queryFeatures(query);
-        
-        results.features.forEach((f) => {
-          const rawGroupValue = f.attributes[groupBy];
-          const groupValue = rawGroupValue !== null && rawGroupValue !== undefined 
-            ? rawGroupValue : 'Unknown';
+        results.features.forEach(f => {
+          const groupValue = f.attributes[groupBy] ?? 'Unknown';
           const count = f.attributes.segment_count || 0;
-          
           allData.push({
             category: String(groupValue),
             feature: feature.label,
-            featureField: featureField,
+            featureField,
             scenario: feature.scenario,
             value: metric === 'totalLength' ? count * CONFIG.defaultSettings.segmentLengthKm : count,
-            type: feature.scenario === 'rcp85' ? 'RCP 8.5' : 'RCP 4.5'
+            type: feature.scenario,
           });
         });
       }
-
       setChartData(processChartData(allData, maxCategories));
-      message.success('Chart generated successfully');
       setExpandedView(true);
-    } catch (error) {
-      console.error('Failed to generate chart:', error);
-      message.error('Failed to generate chart');
-      setChartData(null);
+    } catch (err) {
+      message.error('Failed to generate chart data.');
     } finally {
       setLoading(false);
     }
   };
 
-  const processChartData = (
-    rawData: ChartDataPoint[], maxCategories: number
-  ): ProcessedChartData => {
+  const processChartData = (rawData: ChartDataPoint[], maxCategories: number): ProcessedChartData => {
     const categoryTotals: Record<string, number> = {};
     rawData.forEach(item => {
       categoryTotals[item.category] = (categoryTotals[item.category] || 0) + item.value;
     });
+
+    const topCategories = Object.keys(categoryTotals)
+      .sort((a, b) => categoryTotals[b] - categoryTotals[a])
+      .slice(0, maxCategories);
     
-    const sortedCategories = Object.entries(categoryTotals).sort(([, a], [, b]) => b - a);
-    const topCategories = sortedCategories.slice(0, maxCategories).map(([category]) => category);
-    
-    const hasOther = sortedCategories.length > maxCategories && maxCategories < 999;
-    if (hasOther) {
-      topCategories.push('Other');
-    }
-    
-    const dataByCategory: Record<string, ChartDataPoint[]> = {};
-    rawData.forEach(item => {
-        const categoryKey = topCategories.includes(item.category) ? item.category : 'Other';
-        if (!dataByCategory[categoryKey]) dataByCategory[categoryKey] = [];
-        dataByCategory[categoryKey].push(item);
-    });
-
-    const finalData: ChartDataPoint[] = [];
-    topCategories.forEach(category => {
-        chartConfig.features.forEach(featureField => {
-            const feature = chartingFeatures.find(f => f.field === featureField);
-            if (!feature) return;
-
-            const items = dataByCategory[category]?.filter(d => d.featureField === featureField) || [];
-            const totalValue = items.reduce((sum, item) => sum + item.value, 0);
-
-            if(totalValue > 0){
-                finalData.push({
-                    category,
-                    value: totalValue,
-                    feature: feature.label,
-                    featureField,
-                    scenario: feature.scenario,
-                    type: feature.scenario === 'rcp85' ? 'RCP 8.5' : 'RCP 4.5'
-                });
-            }
-        });
-    });
-
     return {
       categories: topCategories,
-      data: finalData,
-      features: chartConfig.features.map(f => chartingFeatures.find(cf => cf.field === f)?.label || f)
+      data: rawData.filter(d => topCategories.includes(d.category)),
+      features: [...new Set(rawData.map(d => d.feature))],
     };
   };
 
-  const renderChart = (): void => {
-    const ctx = chartRef.current;
-    const expandedCtx = expandedChartRef.current;
-    if (!ctx || !chartData) return;
+  const renderChart = () => {
+    const targetRef = expandedView ? expandedChartRef : chartRef;
+    const targetInstance = expandedView ? expandedChartInstance : chartInstance;
+    if (!targetRef.current || !chartData) return;
 
-    chartInstance.current?.destroy();
-    expandedChartInstance.current?.destroy();
+    targetInstance.current?.destroy();
+    
+    const { type, metric, groupBy } = chartConfig;
+    const labels = chartData.categories.map(cat => getLabelForValue(groupBy, cat));
+    
+    const datasets = chartData.features.map((featureLabel, i) => ({
+      label: featureLabel,
+      data: chartData.categories.map(category =>
+        chartData.data.find(d => d.category === category && d.feature === featureLabel)?.value || 0
+      ),
+      backgroundColor: styleUtils.getChartColor(i, 0.7),
+      borderColor: styleUtils.getChartColor(i, 1),
+      borderWidth: 1,
+    }));
 
-    const createChartConfig = (): ChartConfiguration => {
-      const { type, metric, groupBy } = chartConfig;
-      const chartLabels = chartData.categories.map(cat => getLabelForValue(groupBy, cat));
-
-      if (type === 'pie') {
-        const aggregatedData: Record<string, number> = {};
-        chartData.data.forEach(item => {
-          const label = getLabelForValue(groupBy, item.category);
-          aggregatedData[label] = (aggregatedData[label] || 0) + item.value;
-        });
-
-        return { /* Pie chart config... */ } as ChartConfiguration;
-      } else { // Bar chart
-        const datasets = chartData.features.map((featureLabel, index) => {
-          const data = chartData.categories.map(category =>
-            chartData.data.find(d => d.category === category && d.feature === featureLabel)?.value || 0
-          );
-          return {
-            label: featureLabel, data,
-            backgroundColor: styleUtils.getChartColor(index, 0.7),
-            borderColor: styleUtils.getChartColor(index, 1),
-            borderWidth: 1
-          };
-        });
-
-        return {
-          type: 'bar',
-          data: { labels: chartLabels, datasets },
-          options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: {
-              legend: { display: chartData.features.length > 1, position: 'bottom', labels: { padding: 20, font: { size: 11 } } },
-              title: { display: true, text: `${metric === 'totalLength' ? 'Road Length' : 'Segment Count'} by ${groupByOptions.find(o => o.value === groupBy)?.label || groupBy}` },
-              tooltip: {
-                callbacks: {
-                  label: (context) => `${context.dataset.label || ''}: ${(context.parsed.y as number).toFixed(1)} ${metric === 'totalLength' ? 'km' : 'segments'}`
-                }
-              }
-            },
-            scales: {
-              y: { beginAtZero: true, title: { display: true, text: metric === 'totalLength' ? 'Length (km)' : 'Segment Count' } },
-              x: { ticks: { maxRotation: 90, minRotation: 70, font: { size: 10 }, autoSkip: false } }
-            }
-          }
-        };
-      }
+    const config: ChartConfiguration = {
+      type: type as 'bar' | 'pie' | 'line',
+      data: { labels, datasets },
+      options: {
+        indexAxis: type === 'bar' ? 'y' : 'x',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: datasets.length > 1, position: 'bottom' },
+          title: { display: true, text: `Chart of ${metric === 'totalLength' ? 'Road Length' : 'Segment Count'}` },
+        },
+      },
     };
+    
+    targetInstance.current = new Chart(targetRef.current, config);
+  };
 
-    const config = createChartConfig();
-    chartInstance.current = new Chart(ctx, config);
-    if (expandedCtx && expandedView) {
-      expandedChartInstance.current = new Chart(expandedCtx, config);
+  const downloadChart = () => {
+    const canvas = expandedView ? expandedChartRef.current : chartRef.current;
+    if (canvas) {
+      const link = document.createElement('a');
+      link.href = canvas.toDataURL('image/png');
+      link.download = 'tii-chart.png';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 
-  // ... (downloadChart, clearChart, handlers, etc.)
+  const clearChart = () => {
+    setChartData(null);
+    chartInstance.current?.destroy();
+    setChartConfig(prev => ({ ...prev, features: [] }));
+  };
 
   return (
     <>
-      <Card /* ...props... */ >
-        <Space direction="vertical" style={{ width: '100%' }} size="small" className="chart-config">
-          <div>
-            <label /* ... */>Feature(s) to Analyze: <span style={{ color: theme.colorError }}>*</span></label>
-            <Select
-              mode="multiple"
-              style={{ width: '100%' }}
-              placeholder="Select features to analyze..."
-              value={chartConfig.features}
-              onChange={(value) => setChartConfig({ ...chartConfig, features: value })}
-              options={featureOptions.map(opt => ({
-                label: (
-                  <Space size={4}>
-                    <Tag 
-                      color={opt.scenario === 'rcp85' ? 'red' : 'blue'} 
-                      style={{ margin: 0, fontSize: 11 }}
-                    >
-                      {opt.scenario === 'rcp85' ? '8.5' : '4.5'}
-                    </Tag>
-                    <span style={{ fontSize: theme.fontSizeSM }}>{opt.label}</span>
-                  </Space>
-                ),
-                value: opt.value
-              }))}
-              maxTagCount={2}
-              maxTagPlaceholder={(omitted) => `+${omitted.length} more`}
-            />
-          </div>
-          {/* ... (rest of the form controls) ... */}
+      <Card
+        className={styles.chartPanel}
+        title={
+          <Space>
+            <BarChartOutlined /> Advanced Analysis
+            <Tooltip title="Create charts by grouping features against road network attributes."><InfoCircleOutlined /></Tooltip>
+          </Space>
+        }
+        extra={
+          <Space>
+            <Tooltip title="Clear Chart & Selections"><Button icon={<ClearOutlined />} onClick={clearChart} size="small" /></Tooltip>
+            <Tooltip title="Download as PNG"><Button icon={<DownloadOutlined />} onClick={downloadChart} size="small" disabled={!chartData} /></Tooltip>
+            <Tooltip title="Expand View"><Button icon={<ExpandOutlined />} onClick={() => setExpandedView(true)} size="small" disabled={!chartData} /></Tooltip>
+            <Button type="primary" onClick={generateChart} loading={loading}>Generate</Button>
+          </Space>
+        }
+      >
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Row gutter={[16, 16]}>
+            <Col span={24}>
+              <label>Feature(s) to Analyze: <span style={{ color: theme.colorError }}>*</span></label>
+              <Select
+                mode="multiple"
+                style={{ width: '100%' }}
+                placeholder="Select features..."
+                value={chartConfig.features}
+                onChange={value => setChartConfig(c => ({ ...c, features: value }))}
+                maxTagCount="responsive"
+              >
+                {featureOptions.map(opt => (
+                  <Select.Option key={opt.value} value={opt.value}>
+                    <Tag color={opt.scenario === 'rcp85' ? 'volcano' : 'blue'}>{opt.scenario}</Tag> {opt.label}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Col>
+            <Col span={12}>
+              <label>Group by: <span style={{ color: theme.colorError }}>*</span></label>
+              <Select
+                style={{ width: '100%' }}
+                value={chartConfig.groupBy}
+                onChange={value => setChartConfig(c => ({ ...c, groupBy: value }))}
+                options={groupByOptions}
+              />
+            </Col>
+            <Col span={12}>
+              <label>Maximum categories:</label>
+              <Select
+                style={{ width: '100%' }}
+                value={chartConfig.maxCategories}
+                onChange={value => setChartConfig(c => ({ ...c, maxCategories: value }))}
+                options={maxCategoriesOptions}
+              />
+            </Col>
+            <Col span={12}>
+              <label>Measure by:</label>
+              <Radio.Group value={chartConfig.metric} onChange={e => setChartConfig(c => ({...c, metric: e.target.value}))}>
+                <Radio.Button value="segmentCount">Segments</Radio.Button>
+                <Radio.Button value="totalLength">Length (km)</Radio.Button>
+              </Radio.Group>
+            </Col>
+             <Col span={12}>
+              <label>Chart type:</label>
+              <Radio.Group value={chartConfig.type} onChange={e => setChartConfig(c => ({...c, type: e.target.value}))}>
+                <Radio.Button value="bar"><BarChartOutlined /></Radio.Button>
+                <Radio.Button value="pie"><PieChartOutlined /></Radio.Button>
+              </Radio.Group>
+            </Col>
+          </Row>
         </Space>
-        <div className="chart-area">
-          {/* ... (chart canvas or empty state) ... */}
+        <div className="chart-area" style={{ marginTop: 16, height: 300, position: 'relative' }}>
+          {loading && <Spin style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}/>}
+          {!loading && !chartData && <Empty description="Configure and generate a chart." />}
+          {!loading && chartData && <canvas ref={chartRef}></canvas>}
         </div>
       </Card>
-      <Modal /* ...props... */ >
-        {/* ... */}
+      <Modal open={expandedView} onCancel={() => setExpandedView(false)} width="90vw" footer={null} destroyOnClose>
+        <div style={{ height: '75vh' }}><canvas ref={expandedChartRef}></canvas></div>
       </Modal>
     </>
   );

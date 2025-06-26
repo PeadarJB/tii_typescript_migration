@@ -296,6 +296,8 @@ export const useAppStore = create<AppStore>()(
   )
 );
 
+const emptyFilters = {};
+
 // Selectors for common use cases
 export const useMapState = () => useAppStore((state) => ({
   mapView: state.mapView,
@@ -318,7 +320,7 @@ export const useUIState = () => useAppStore((state) => ({
 }));
 
 export const useFilterState = (page: AppPage) => useAppStore((state) => ({
-  currentFilters: state.currentFilters[page] || {},
+  currentFilters: state.currentFilters[page] || emptyFilters,
   hasActiveFilters: state.hasActiveFilters(page),
   filterPanelKey: state.filterPanelKey,
 }));
