@@ -5,12 +5,46 @@ import type { FilterConfigItem, ChartFeature, LayerConfig, AppPage } from '@/typ
  * Central configuration for the TII Flood Risk Dashboard
  */
 
+// New configuration for page-specific metadata
+export const PAGE_CONFIG: Record<AppPage, { title: string }> = {
+  future: { title: 'Future Flood Hazard' },
+  past: { title: 'Past Flood Events' },
+  precipitation: { title: 'Precipitation' },
+  explore: { title: 'Explore Statistics' },
+};
+
+export const PAST_EVENTS_FILTER_CONFIG: ReadonlyArray<FilterConfigItem> = [
+  {
+    id: 'past-event-type',
+    label: 'Past Flood Event Type',
+    type: 'scenario-select', // Using scenario-select for a similar UI experience
+    description: 'Filter road sections based on the presence of historical flood or drainage data.',
+    items: [
+      { label: 'OPW Flood Event', field: 'opw_jba_flood_points', value: 1 },
+      { label: 'MOCC Flood Event', field: 'MOCC_100m', value: 1 },
+      { label: 'DMS Drainage Defects', field: 'DMS_Defects_2015_2023', value: 1 },
+      { label: 'JBA Historic NRA Flood Event', field: 'JBA_Hist_Floods_NRA_Points', value: 1 },
+      { label: 'GSI Historic Groundwater', field: 'GSI_Hist_Groundwater', value: 1 },
+      { label: 'GSI 2015-2016 Surface Water', field: 'GSI_2015_2016_SurfWater', value: 1 },
+    ],
+  },
+];
+
+export const PAST_EVENTS_CHARTING_FEATURES: ReadonlyArray<ChartFeature> = [
+    { label: 'OPW Flood Event', field: 'opw_jba_flood_points', description: 'Road segments with OPW flood points.', scenario: 'rcp45' }, // scenario is just for color-coding
+    { label: 'MOCC Flood Event', field: 'MOCC_100m', description: 'Road segments with MOCC flood events.', scenario: 'rcp85' },
+    { label: 'DMS Drainage Defects', field: 'DMS_Defects_2015_2023', description: 'Road segments with DMS drainage defects.', scenario: 'rcp45' },
+    { label: 'JBA Historic NRA Flood Event', field: 'JBA_Hist_Floods_NRA_Points', description: 'Road segments with JBA/NRA flood points.', scenario: 'rcp85' },
+    { label: 'GSI Historic Groundwater', field: 'GSI_Hist_Groundwater', description: 'Road segments with GSI groundwater flood data.', scenario: 'rcp45' },
+    { label: 'GSI 2015-2016 Surface Water', field: 'GSI_2015_2016_SurfWater', description: 'Road segments with GSI surface water flood data.', scenario: 'rcp85' }
+];
+
 interface AppConfiguration {
   readonly webMapId: string;
   readonly roadNetworkLayerTitle: string;
-  readonly roadNetworkLayerSwipeTitle: string; // Added for the duplicate layer
+  readonly roadNetworkLayerSwipeTitle: string;
+  readonly defaultLayerVisibility: Record<AppPage, string[]>;
   readonly filterConfig: ReadonlyArray<FilterConfigItem>;
-  readonly pageLayerVisibility: Record<AppPage, string[]>; // New config for widget
   readonly fields: Readonly<{
     object_id: string;
     route: string;
@@ -26,6 +60,7 @@ interface AppConfiguration {
     ncfhm_c_c_0200: string;
     historic_intersection_m: string;
     historic_intersection_h: string;
+    historic_flooding_any: string;
   }>;
   readonly chartingFeatures: ReadonlyArray<ChartFeature>;
   readonly swipeLayerConfig: Readonly<{
@@ -52,17 +87,24 @@ export const CONFIG: AppConfiguration = {
   // --- Core Application Settings ---
   webMapId: "bb27815620254e69819e7ce6b56f14b8",
   roadNetworkLayerTitle: "TII CAIP NM",
-  roadNetworkLayerSwipeTitle: "TII CAIP NM SWIPE", // Added new layer title
+  roadNetworkLayerSwipeTitle: "TII CAIP NM SWIPE",
 
-  // --- Page-Specific Layer List Configuration ---
-  // Defines which layers are visible in the LayerList widget on each page.
-  pageLayerVisibility: {
-    future: ["TII CAIP NM", "TII CAIP NM SWIPE"],
-    // NOTE: These layer titles for the 'past' page are placeholders based on the methodology document.
-    // They may need to be updated to match the exact titles in the Web Map.
-    past: ["OPW Historic Flood Points", "TII DMS Defects", "Motorway Operations Control Centre (MOCC)"],
-    precipitation: [], // To be defined
-    explore: [], // No layers needed for a statistics-only page
+  // --- Page-Specific Default Layer Visibility ---
+  // Defines which layers are visible by default when a page is selected.
+  defaultLayerVisibility: {
+    future: ["TII Network Model", "Local_Authority_Boundaries"],
+    past: [
+        "MOCC flood events", 
+        "DMS Drainage 2015-2023",
+        "OPW past flood events", 
+        "GSI 2015 2016 Surface Water Flood Map", 
+        "GSI Historic Groundwater Flood Map", 
+        "JBA Historic Flooding NRA flood points", 
+        "TII Network Model",
+        "Local_Authority_Boundaries"
+    ],
+    precipitation: [], 
+    explore: [], 
   },
 
   // --- Centralized Filter Configuration ---
@@ -102,7 +144,12 @@ export const CONFIG: AppConfiguration = {
           label: 'Historic Only (High-Range, RCP 8.5%)', 
           field: 'hist_no_future_h', 
           value: 1 
-        }
+        },
+       {
+           label: 'Any Historic Flooding',
+           field: 'historic_flooding_any',
+           value: 1
+       },
       ]
     },
     {
@@ -174,6 +221,7 @@ export const CONFIG: AppConfiguration = {
     ncfhm_c_c_0200: "ncfhm_c_c_0200",
     historic_intersection_m: "historic_intersection_m",
     historic_intersection_h: "historic_intersection_h",
+    historic_flooding_any: "historic_flooding_any",
   },
 
   // --- Charting Features ---
@@ -201,6 +249,12 @@ export const CONFIG: AppConfiguration = {
       field: "historic_intersection_h",
       description: "Segments affected by both future and historic flood models under RCP 8.5.",
       scenario: 'rcp85'
+    },
+    {
+      label: "Any Historic Flooding",
+      field: "historic_flooding_any",
+      description: "Any segment affected by a recorded historic flood event.",
+      scenario: 'rcp45' // Assigned to a scenario for color-coding purposes
     },
     {
       label: "CFRAM Fluvial Model (4.5%)",
@@ -254,7 +308,7 @@ export const CONFIG: AppConfiguration = {
         { title: "CFRAM f m 0010", label: "CFRAM Fluvial (10yr, RCP 4.5)", roadNetworkFieldName: "cfram_f_m_0010" },
         { title: "CFRAM c m 0010", label: "CFRAM Coastal (10yr, RCP 4.5)", roadNetworkFieldName: "cfram_c_m_0010" },
         { title: "NIFM f m 0020", label: "NIFM Fluvial (20yr, RCP 4.5)", roadNetworkFieldName: "nifm_f_m_0020" },
-        { title: "NCFHM c m 0010", label: "NCFHM Coastal (10yr, RCP Current)", roadNetworkFieldName: "ncfhm_c_m_0010" }
+        { title: "NCFHM c m 0010", label: "NCFHM Coastal (10yr, RCP 4.5)", roadNetworkFieldName: "ncfhm_c_m_0010" }
       ]
     },
     rightPanel: {
@@ -263,7 +317,7 @@ export const CONFIG: AppConfiguration = {
         { title: "CFRAM f h 0100", label: "CFRAM Fluvial (100yr, RCP 8.5)", roadNetworkFieldName: "cfram_f_h_0100" },
         { title: "CFRAM c h 0200", label: "CFRAM Coastal (200yr, RCP 8.5)", roadNetworkFieldName: "cfram_c_h_0200" },
         { title: "NIFM f h 0100", label: "NIFM Fluvial (100yr, RCP 8.5)", roadNetworkFieldName: "nifm_f_h_0100" },
-        { title: "NCFHM c c 0200", label: "NCFHM Coastal (200yr, Current)", roadNetworkFieldName: "ncfhm_c_c_0200" }
+        { title: "NCFHM c c 0200", label: "NCFHM Coastal (200yr, RCP 8.5)", roadNetworkFieldName: "ncfhm_c_c_0200" }
       ]
     }
   },
