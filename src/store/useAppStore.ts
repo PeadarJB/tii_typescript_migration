@@ -9,12 +9,12 @@ import type MapView from '@arcgis/core/views/MapView';
 import type WebMap from '@arcgis/core/WebMap';
 import type FeatureLayer from '@arcgis/core/layers/FeatureLayer';
 import type Extent from '@arcgis/core/geometry/Extent';
-import type { FilterState, NetworkStatistics, AppPage, PastEventStatistics } from '@/types/index';
+import type { FilterState, NetworkStatistics, AppPage, PastEventStatistics, FilterConfigItem } from '@/types/index';
 import { isFeatureLayer } from '@/types/index';
 
 // Service imports
 import { initializeMapView } from '@/components/MapView';
-import { CONFIG } from '@/config/appConfig';
+import { CONFIG, PAST_EVENTS_FILTER_CONFIG } from '@/config/appConfig';
 import { StatisticsService } from '@/services/StatisticsService';
 
 // Store state interface
@@ -28,12 +28,10 @@ interface AppStore {
   initialExtent: Extent | null;
   error: string | null;
   preSwipeDefinitionExpression: string | null;
-  pastEventStats: PastEventStatistics | null;
-  calculatePastEventStatistics: () => Promise<void>;
-
+  
   // UI state
   siderCollapsed: boolean;
-  activePage: AppPage; // New state for navigation
+  activePage: AppPage;
   showFilters: boolean;
   showStats: boolean;
   showChart: boolean;
@@ -43,16 +41,15 @@ interface AppStore {
   themeMode: 'light' | 'dark';
 
   // Data state
-  currentFilters: Partial<FilterState>;
+  currentFilters: { [key in AppPage]?: Partial<FilterState> };
   currentStats: NetworkStatistics | null;
+  pastEventStats: PastEventStatistics | null;
   filterPanelKey: number;
 
-  // Actions - Map
+  // Actions
   initializeMap: (containerId: string) => Promise<void>;
-  
-  // Actions - UI
   setSiderCollapsed: (collapsed: boolean) => void;
-  setActivePage: (page: AppPage) => void; // New action for navigation
+  setActivePage: (page: AppPage) => void;
   setShowFilters: (show: boolean) => void;
   setShowStats: (show: boolean) => void;
   setShowChart: (show: boolean) => void;
@@ -61,24 +58,17 @@ interface AppStore {
   setIsSwipeActive: (active: boolean) => void;
   setThemeMode: (mode: 'light' | 'dark') => void;
   
-  // Actions - Filters
-  setFilters: (filters: Partial<FilterState>) => void;
-  applyFilters: () => Promise<void>;
-  clearAllFilters: () => void;
+  setFilters: (page: AppPage, filters: Partial<FilterState>) => void;
+  applyFilters: (page: AppPage) => Promise<void>;
+  clearAllFilters: (page: AppPage) => void;
 
-  // Actions - Swipe
   enterSwipeMode: () => void;
   exitSwipeMode: () => void;
   
-  // Actions - Statistics
-  updateStatistics: (stats: NetworkStatistics | null) => void;
-  calculateStatistics: () => Promise<void>;
+  calculateFutureStatistics: () => Promise<void>;
+  calculatePastEventStatistics: () => Promise<void>;
   
-  // Computed values
-  hasActiveFilters: () => boolean;
-  
-  // Reset actions
-  resetFilterPanel: () => void;
+  hasActiveFilters: (page: AppPage) => boolean;
   resetError: () => void;
 }
 
@@ -98,7 +88,7 @@ export const useAppStore = create<AppStore>()(
           error: null,
           preSwipeDefinitionExpression: null,
           siderCollapsed: true,
-          activePage: 'future', // Set default page
+          activePage: 'future',
           showFilters: true,
           showStats: false,
           showChart: false,
@@ -108,64 +98,43 @@ export const useAppStore = create<AppStore>()(
           themeMode: 'light',
           currentFilters: {},
           currentStats: null,
+          pastEventStats: null,
           filterPanelKey: Date.now(),
 
           // Map initialization
           initializeMap: async (containerId: string) => {
             try {
               set({ loading: true, error: null });
-
               const { view, webmap } = await initializeMapView(containerId);
               
-              const mainLayer = webmap.layers.find(
-                (layer) => layer.title === CONFIG.roadNetworkLayerTitle
-              );
-              const swipeLayer = webmap.layers.find(
-                (layer) => layer.title === CONFIG.roadNetworkLayerSwipeTitle
-              );
+              const mainLayer = webmap.layers.find(layer => layer.title === CONFIG.roadNetworkLayerTitle);
+              const swipeLayer = webmap.layers.find(layer => layer.title === CONFIG.roadNetworkLayerSwipeTitle);
               
               const roadLayer = mainLayer && isFeatureLayer(mainLayer) ? mainLayer : null;
               const roadLayerSwipe = swipeLayer && isFeatureLayer(swipeLayer) ? swipeLayer : null;
               
-              if (roadLayer) {
-                await roadLayer.load();
-                roadLayer.visible = false;
-              } else {
-                console.warn('Main road network layer not found.');
-              }
-              if (roadLayerSwipe) {
-                await roadLayerSwipe.load();
-                roadLayerSwipe.visible = false;
-              } else {
-                console.warn('Swipe road network layer not found.');
-              }
-              
-              const initialExtent = view.extent.clone();
+              if (roadLayer) await roadLayer.load();
+              if (roadLayerSwipe) await roadLayerSwipe.load();
               
               set({
                 mapView: view,
                 webmap,
                 roadLayer,
                 roadLayerSwipe,
-                initialExtent,
+                initialExtent: view.extent.clone(),
                 loading: false,
               });
-              
               message.success('Application loaded successfully');
             } catch (err) {
               console.error('Failed to initialize:', err);
               const errorMessage = err instanceof Error ? err.message : 'Failed to initialize map';
-              
-              set({
-                error: errorMessage,
-                loading: false,
-              });
+              set({ error: errorMessage, loading: false });
             }
           },
 
           // UI Actions
           setSiderCollapsed: (collapsed) => set({ siderCollapsed: collapsed }),
-          setActivePage: (page) => set({ activePage: page }), // New page setter
+          setActivePage: (page) => set({ activePage: page, showStats: false, currentStats: null, pastEventStats: null }),
           setShowFilters: (show) => set({ showFilters: show }),
           setShowStats: (show) => set({ showStats: show }),
           setShowChart: (show) => set({ showChart: show }),
@@ -175,175 +144,146 @@ export const useAppStore = create<AppStore>()(
           setThemeMode: (mode) => set({ themeMode: mode }),
 
           // Filter Actions
-          setFilters: (filters) => {
-            set({ currentFilters: filters });
-            
-            const hasFilters = Object.values(filters).some(
-              (value) => Array.isArray(value) && value.length > 0
-            );
-            
-            if (!hasFilters) {
-              set({ showStats: false });
-            }
+          setFilters: (page, filters) => {
+            set(state => ({
+              currentFilters: { ...state.currentFilters, [page]: filters }
+            }));
+            const hasFilters = Object.values(filters).some(val => Array.isArray(val) && val.length > 0);
+            if (!hasFilters) set({ showStats: false });
           },
 
-          applyFilters: async () => {
+          applyFilters: async (page) => {
             const state = get();
-            const { roadLayer, mapView, initialExtent, currentFilters } = state;
+            const { roadLayer, mapView } = state;
+            const filtersForPage = state.currentFilters[page] || {};
+            const filterConfig = page === 'past' ? PAST_EVENTS_FILTER_CONFIG : CONFIG.filterConfig;
             
             if (!roadLayer || !mapView) return;
 
             try {
-              const whereClauses: string[] = [];
+                const whereClauses: string[] = [];
+                Object.entries(filtersForPage).forEach(([key, values]) => {
+                    if (!values || !Array.isArray(values) || values.length === 0) return;
 
-              Object.entries(currentFilters).forEach(([key, values]) => {
-                if (!values || !Array.isArray(values) || values.length === 0) return;
+                    const configItem = filterConfig.find(f => f.id === key);
+                    if (!configItem) return;
 
-                if (key === 'flood-scenario') {
-                  const scenarioClauses = values.map(field => `${field} = 1`);
-                  whereClauses.push(`(${scenarioClauses.join(' OR ')})`);
+                    if (configItem.type === 'scenario-select') {
+                        const scenarioClauses = (values as string[]).map(field => `${field} = 1`);
+                        if (scenarioClauses.length > 0) whereClauses.push(`(${scenarioClauses.join(' OR ')})`);
+                    } else if ('field' in configItem && configItem.field) {
+                        const formattedValues = (values as (string|number)[]).map(val => 
+                            configItem.dataType === 'string' ? `'${val}'` : val
+                        ).join(',');
+                        if(formattedValues) whereClauses.push(`${configItem.field} IN (${formattedValues})`);
+                    }
+                });
+
+                const finalWhereClause = whereClauses.length > 0 ? whereClauses.join(' AND ') : '1=1';
+                roadLayer.definitionExpression = finalWhereClause;
+
+                if (finalWhereClause !== '1=1') {
+                    roadLayer.visible = true;
+                    set({ showStats: true });
+                    message.success('Filters applied successfully');
+
+                    const Query = (await import('@arcgis/core/rest/support/Query.js')).default;
+                    const query = new Query({ where: finalWhereClause });
+                    const extentResult = await roadLayer.queryExtent(query);
+                    if (extentResult?.extent) {
+                      await mapView.goTo(extentResult.extent.expand(1.2));
+                    }
+
+                    if (page === 'future') await get().calculateFutureStatistics();
+                    if (page === 'past') await get().calculatePastEventStatistics();
+
                 } else {
-                  const filterConfig = CONFIG.filterConfig.find(f => f.id === key);
-                  if (filterConfig && 'field' in filterConfig && filterConfig.field) {
-                    const formattedValues = values.map(val => 
-                      filterConfig.dataType === 'string' ? `'${val}'` : val
-                    ).join(',');
-                    whereClauses.push(`${filterConfig.field} IN (${formattedValues})`);
-                  }
+                    roadLayer.visible = false;
+                    message.info('No filters applied');
+                    if(state.initialExtent) await mapView.goTo(state.initialExtent);
                 }
-              });
-
-              const finalWhereClause = whereClauses.length > 0 ? whereClauses.join(' AND ') : '1=1';
-              roadLayer.definitionExpression = finalWhereClause;
-
-              if (whereClauses.length > 0) {
-                roadLayer.visible = true;
-                set({ showStats: true });
-                message.success('Filters applied successfully');
-
-                const Query = (await import('@arcgis/core/rest/support/Query.js')).default;
-                const query = new Query({ where: finalWhereClause });
-                const extentResult = await roadLayer.queryExtent(query);
-                
-                if (extentResult?.extent) {
-                  await mapView.goTo(extentResult.extent.expand(1.2));
-                }
-
-                await get().calculateStatistics();
-              } else {
-                roadLayer.visible = false;
-                message.info('No filters applied - road layer hidden');
-                
-                if (initialExtent) {
-                  await mapView.goTo(initialExtent);
-                }
-              }
             } catch (error) {
-              console.error('Failed to apply filters:', error);
-              message.error('Failed to apply filters');
+                console.error('Failed to apply filters:', error);
+                message.error('Failed to apply filters');
             }
           },
 
-          clearAllFilters: () => {
+          clearAllFilters: (page) => {
             const { roadLayer, mapView, initialExtent } = get();
-            
             if (roadLayer) {
               roadLayer.definitionExpression = '1=1';
               roadLayer.visible = false;
             }
+            if (mapView && initialExtent) void mapView.goTo(initialExtent);
             
-            if (mapView && initialExtent) {
-              void mapView.goTo(initialExtent);
-            }
-            
-            set({
-              currentFilters: {},
+            set(state => ({
+              currentFilters: { ...state.currentFilters, [page]: {} },
               showStats: false,
               currentStats: null,
+              pastEventStats: null,
               filterPanelKey: Date.now(),
-            });
-            
+            }));
             message.info('All filters have been cleared.');
           },
 
           // Swipe Actions
           enterSwipeMode: () => {
             const { roadLayer } = get();
-            if (roadLayer) {
-              set({ preSwipeDefinitionExpression: roadLayer.definitionExpression || '1=1' });
-            }
+            if (roadLayer) set({ preSwipeDefinitionExpression: roadLayer.definitionExpression || '1=1' });
           },
 
           exitSwipeMode: () => {
             const { roadLayer, roadLayerSwipe, preSwipeDefinitionExpression } = get();
             const expression = preSwipeDefinitionExpression || '1=1';
-            const visible = expression !== '1=1';
-            
             if (roadLayer) {
                 roadLayer.definitionExpression = expression;
-                roadLayer.visible = visible;
+                roadLayer.visible = expression !== '1=1';
             }
             if (roadLayerSwipe) {
-                roadLayerSwipe.definitionExpression = '1=0'; // Hide all features
+                roadLayerSwipe.definitionExpression = '1=0';
                 roadLayerSwipe.visible = false;
             }
-
             set({ preSwipeDefinitionExpression: null });
           },
 
-          // Statistics Actions
-          updateStatistics: (stats) => set({ currentStats: stats }),
-
-          calculateStatistics: async () => {
+          // Statistics Actions (Renamed for clarity)
+          calculateFutureStatistics: async () => {
             const { roadLayer } = get();
             if (!roadLayer) return;
-
+            set({ loading: true });
             try {
-              const stats = await StatisticsService.calculateNetworkStatistics(
-                roadLayer,
-                roadLayer.definitionExpression || '1=1'
-              );
-              
-              set({ currentStats: stats });
+              const stats = await StatisticsService.calculateNetworkStatistics(roadLayer, roadLayer.definitionExpression || '1=1');
+              set({ currentStats: stats, loading: false });
             } catch (error) {
-              console.error('Failed to calculate statistics:', error);
-              set({ currentStats: null });
+              set({ currentStats: null, loading: false });
             }
           },
-
-          // Computed values
-          hasActiveFilters: () => {
-            const filters = get().currentFilters;
-            return Object.values(filters).some(
-              (value) => Array.isArray(value) && value.length > 0
-            );
-          },
-
-          // Past Event Statistics
-          pastEventStats: null,
           
           calculatePastEventStatistics: async () => {
             const { roadLayer } = get();
             if (!roadLayer) return;
+            set({ loading: true });
             try {
-              set({ loading: true });
               const stats = await StatisticsService.calculatePastEventStatistics(roadLayer, roadLayer.definitionExpression || '1=1');
-              set({ pastEventStats: stats });
+              set({ pastEventStats: stats, loading: false });
             } catch (error) {
-              console.error('Failed to calculate past event stats:', error);
-            } finally {
-              set({ loading: false });
+              set({ pastEventStats: null, loading: false });
             }
           },
 
+          // Computed values
+          hasActiveFilters: (page) => {
+            const filters = get().currentFilters[page] || {};
+            return Object.values(filters).some(f => Array.isArray(f) && f.length > 0);
+          },
+
           // Reset actions
-          resetFilterPanel: () => set({ filterPanelKey: Date.now() }),
           resetError: () => set({ error: null }),
         }),
         {
           name: 'tii-app-storage',
           storage: createJSONStorage(() => localStorage),
-          partialize: (state) => ({ themeMode: state.themeMode }),
+          partialize: (state) => ({ themeMode: state.themeMode, activePage: state.activePage }),
         }
       )
     ),
@@ -365,18 +305,18 @@ export const useMapState = () => useAppStore((state) => ({
 
 export const useUIState = () => useAppStore((state) => ({
   siderCollapsed: state.siderCollapsed,
+  activePage: state.activePage,
   showFilters: state.showFilters,
   showStats: state.showStats,
   showChart: state.showChart,
   showSwipe: state.showSwipe,
   showReportModal: state.showReportModal,
   isSwipeActive: state.isSwipeActive,
-  activePage: state.activePage,
 }));
 
-export const useFilterState = () => useAppStore((state) => ({
-  currentFilters: state.currentFilters,
-  hasActiveFilters: state.hasActiveFilters(),
+export const useFilterState = (page: AppPage) => useAppStore((state) => ({
+  currentFilters: state.currentFilters[page] || {},
+  hasActiveFilters: state.hasActiveFilters(page),
   filterPanelKey: state.filterPanelKey,
 }));
 

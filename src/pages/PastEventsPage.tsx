@@ -20,7 +20,7 @@ const LoadingFallback: FC = () => {
 
 const PastEventsPage: FC = () => {
     const { showFilters, showStats, showChart } = useUIState();
-    const { roadLayer } = useMapState();
+    const { roadLayer, loading } = useMapState();
 
     return (
         <Suspense fallback={<LoadingFallback />}>
@@ -30,7 +30,7 @@ const PastEventsPage: FC = () => {
             {showStats && roadLayer && (
                 <PastEventsStatsPanel />
             )}
-            {showChart && roadLayer && (
+            {showChart && roadLayer && !loading && (
                 <EnhancedChartPanel chartingFeatures={PAST_EVENTS_CHARTING_FEATURES} />
             )}
         </Suspense>
