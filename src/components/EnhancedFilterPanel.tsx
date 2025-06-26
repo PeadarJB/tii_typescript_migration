@@ -21,7 +21,7 @@ import { usePanelStyles, useCommonStyles } from '@/styles/styled';
 
 // Type imports
 import type FeatureSet from '@arcgis/core/rest/support/FeatureSet';
-import type { FilterConfigItem, FilterOption, ScenarioItem, AppPage } from '@/types';
+import type { FilterConfigItem, FilterOption, FloodScenarioItem, AppPage, FilterState } from '@/types';
 
 
 // --- Component Props Interface ---
@@ -52,7 +52,10 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = ({ config, page }) => 
   const [applyingFilters, setApplyingFilters] = useState<boolean>(false);
   const [dynamicOptions, setDynamicOptions] = useState<DynamicOptions>({ county: [] });
   const [filterValues, setFilterValues] = useState<Record<string, string[]>>({});
-  const [expandedPanels, setExpandedPanels] = useState<string[]>([config[0]?.id ?? '']);
+  const [expandedPanels, setExpandedPanels] = useState<string[]>(() => {
+    const firstId = config && config.length > 0 ? config[0].id : '';
+    return firstId ? [firstId] : [];
+  });
   
   const loadDynamicOptions = useCallback(async (): Promise<void> => {
     if (!roadLayer) return;
@@ -108,7 +111,20 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = ({ config, page }) => 
   const handleFilterChange = (id: string, value: string[]): void => {
     const newFilterValues = { ...filterValues, [id]: value };
     setFilterValues(newFilterValues);
-    setFilters(page, newFilterValues);
+    // Convert to the expected format for setFilters
+    const filterState: Partial<FilterState> = {};
+    Object.entries(newFilterValues).forEach(([key, val]) => {
+      if (key === 'scenarios') filterState.scenarios = val;
+      else if (key === 'counties') filterState.counties = val;
+      else if (key === 'subnet') filterState.subnet = val;
+      else if (key === 'criticality' && val.length === 2) {
+        filterState.criticality = [Number(val[0]), Number(val[1])];
+      }
+      else if (key === 'lifeline' && val.length > 0) {
+        filterState.lifeline = val[0] === '1';
+      }
+    });
+    setFilters(page, filterState);
   };
   
   const handleApplyFilters = async (): Promise<void> => {
@@ -138,7 +154,7 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = ({ config, page }) => 
   const collapseItems: CollapseProps['items'] = config.map(filter => {
     const selected = filterValues[filter.id] ?? [];
     
-    let options: readonly (FilterOption | ScenarioItem)[];
+    let options: readonly (FilterOption | FloodScenarioItem)[];
     if (filter.id === 'county') {
       options = dynamicOptions.county;
     } else if (filter.type === 'multi-select' && 'options' in filter) {

@@ -67,6 +67,7 @@ interface AppStore {
   
   calculateFutureStatistics: () => Promise<void>;
   calculatePastEventStatistics: () => Promise<void>;
+  calculateStatistics: () => Promise<void>; // Alias for backward compatibility
   
   hasActiveFilters: (page: AppPage) => boolean;
   resetError: () => void;
