@@ -1,6 +1,6 @@
 import { useEffect, useRef, FC, lazy, Suspense } from 'react';
 import type { ReactElement } from 'react';
-import { Layout, Menu, Button, Space, Spin, Card, Switch, Tooltip, Typography } from 'antd';
+import { Layout, Menu, Button, Space, Spin, Card, Switch, Tooltip, Typography, App as AntApp } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   WarningOutlined,
@@ -76,7 +76,9 @@ function App(): ReactElement {
 
   return (
     <ThemeProvider theme={themeMode === 'dark' ? darkTheme : lightTheme}>
-      <AppContent />
+      <AntApp>
+        <AppContent />
+      </AntApp>
     </ThemeProvider>
   );
 }

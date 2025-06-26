@@ -1,6 +1,4 @@
-// src/components/EnhancedStatsPanel.tsx - Refactored with consolidated styling
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import {
   Card,
   Statistic,
@@ -28,18 +26,12 @@ import {
 import type { CarouselRef } from 'antd/lib/carousel';
 import classNames from 'classnames';
 
-// Store imports
-import { useAppStore, useMapState, useStatisticsState } from '@/store/useAppStore';
-
-// Style imports
+import { useStatisticsState } from '@/store/useAppStore';
 import { usePanelStyles, useCommonStyles, styleUtils } from '@/styles/styled';
-
-// Type imports
 import type { ScenarioStatistics } from '@/types';
 
 const { Title, Text } = Typography;
 
-// No props needed anymore!
 interface EnhancedStatsPanelProps {}
 
 interface RiskInfo {
@@ -49,52 +41,13 @@ interface RiskInfo {
 }
 
 const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
-  // Style hooks
   const { styles: panelStyles } = usePanelStyles();
   const { styles: commonStyles, theme } = useCommonStyles();
-
-  // Store hooks
-  const { roadLayer } = useMapState();
-  const { currentStats } = useStatisticsState();
-  const calculateStatistics = useAppStore((state) => state.calculateFutureStatistics);
-
-  // Local state
-  const [loading, setLoading] = useState(false);
-  const [currentSlide, setCurrentSlide] = useState(0);
+  const { currentStats, loading } = useStatisticsState();
+  const [currentSlide, setCurrentSlide] = React.useState(0);
   const carouselRef = useRef<CarouselRef>(null);
 
-  // Watch for filter changes on the road layer
-  useEffect(() => {
-    if (!roadLayer) return;
-
-    const handleFilterChange = async (): Promise<void> => {
-      const isFiltered = roadLayer.definitionExpression &&
-                        roadLayer.definitionExpression !== '1=1';
-
-      if (isFiltered) {
-        setLoading(true);
-        try {
-          await calculateStatistics();
-        } finally {
-          setLoading(false);
-        }
-      } else {
-        // No filters applied - clear statistics
-        setLoading(false);
-      }
-    };
-
-    // Initial calculation
-    void handleFilterChange();
-
-    // Watch for changes
-    const handle = roadLayer.watch('definitionExpression', handleFilterChange);
-
-    return () => handle.remove();
-  }, [roadLayer, calculateStatistics]);
-
   const getRiskInfo = (percent: number): RiskInfo => {
-    // Per user request, always return a medium-risk style to maintain a consistent yellow background
     return { level: 'medium', color: 'warning', icon: '!' };
   };
 
@@ -109,7 +62,6 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
     return (
       <div style={{ padding: `0 ${theme.margin}px ${theme.margin}px` }}>
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
-          {/* Header */}
           <div style={{ textAlign: 'center' }}>
             <Title level={4} style={{ margin: 0 }}>
               {scenario.scenario === 'rcp45' ? (
@@ -128,8 +80,6 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
               {scenario.returnPeriod}
             </Text>
           </div>
-
-          {/* Overall Risk Summary */}
           <Card
             size="small"
             className={classNames(commonStyles.statsCard, `risk-${riskInfo.level}`)}
@@ -156,8 +106,6 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
               </Col>
             </Row>
           </Card>
-
-          {/* Detailed Model Breakdown */}
           <div>
             <Text strong style={{ display: 'block', marginBottom: theme.marginXS }}>
               Model Breakdown:
@@ -197,8 +145,6 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
               ))}
             </Space>
           </div>
-
-          {/* Network Summary */}
           <div style={{
             padding: theme.marginXS,
             background: theme.colorBgLayout,
@@ -276,7 +222,6 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
         ))}
       </Carousel>
 
-      {/* Navigation Arrows */}
       <Button
         type="text"
         shape="circle"
@@ -293,8 +238,6 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
         className="navigation-button next"
         disabled={currentSlide === currentStats.scenarios.length - 1}
       />
-
-      {/* Slide Indicator */}
       <div className="slide-indicators">
         <Space size="small">
           {currentStats.scenarios.map((scenario, index) => (

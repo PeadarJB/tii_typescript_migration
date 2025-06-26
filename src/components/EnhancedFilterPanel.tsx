@@ -51,7 +51,7 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = ({ config, page }) => 
   const [loading, setLoading] = useState<boolean>(false);
   const [applyingFilters, setApplyingFilters] = useState<boolean>(false);
   const [dynamicOptions, setDynamicOptions] = useState<DynamicOptions>({ county: [] });
-  const [filterValues, setFilterValues] = useState<Record<string, string[]>>({});
+  const [filterValues, setFilterValues] = useState<Partial<FilterState>>({});
   const [expandedPanels, setExpandedPanels] = useState<string[]>(() => {
     const firstId = config && config.length > 0 ? config[0].id : '';
     return firstId ? [firstId] : [];
@@ -109,22 +109,17 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = ({ config, page }) => 
   }, [showFilters, hasActiveFilters, clearAllFilters, page]);
   
   const handleFilterChange = (id: string, value: string[]): void => {
-    const newFilterValues = { ...filterValues, [id]: value };
+    const newFilterValues = { ...filterValues };
+    const numericFields = ['criticality', 'subnet', 'lifeline'];
+
+    if(numericFields.includes(id)) {
+        (newFilterValues as any)[id] = value.map(Number);
+    } else {
+        (newFilterValues as any)[id] = value;
+    }
+
     setFilterValues(newFilterValues);
-    // Convert to the expected format for setFilters
-    const filterState: Partial<FilterState> = {};
-    Object.entries(newFilterValues).forEach(([key, val]) => {
-      if (key === 'scenarios') filterState.scenarios = val;
-      else if (key === 'counties') filterState.counties = val;
-      else if (key === 'subnet') filterState.subnet = val;
-      else if (key === 'criticality' && val.length === 2) {
-        filterState.criticality = [Number(val[0]), Number(val[1])];
-      }
-      else if (key === 'lifeline' && val.length > 0) {
-        filterState.lifeline = val[0] === '1';
-      }
-    });
-    setFilters(page, filterState);
+    setFilters(page, newFilterValues);
   };
   
   const handleApplyFilters = async (): Promise<void> => {
@@ -137,7 +132,10 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = ({ config, page }) => 
   };
   
   const clearFilterGroup = (id: string): void => {
-    handleFilterChange(id, []);
+    const newFilters = { ...filterValues };
+    delete (newFilters as any)[id];
+    setFilterValues(newFilters);
+    setFilters(page, newFilters);
   };
 
   const activeFilterCount = Object.values(filterValues).filter(v => Array.isArray(v) && v.length > 0).length;
@@ -152,7 +150,7 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = ({ config, page }) => 
   };
 
   const collapseItems: CollapseProps['items'] = config.map(filter => {
-    const selected = filterValues[filter.id] ?? [];
+    const selectedValues = (filterValues[filter.id as keyof FilterState] as any[]) ?? [];
     
     let options: readonly (FilterOption | FloodScenarioItem)[];
     if (filter.id === 'county') {
@@ -173,10 +171,10 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = ({ config, page }) => 
         <Space>
           {icons[filter.id] || <FilterOutlined />}
           <span>{filter.label}</span>
-          {selected.length > 0 && <Badge count={selected.length} className="filter-badge" />}
+          {selectedValues.length > 0 && <Badge count={selectedValues.length} className="filter-badge" />}
         </Space>
       ),
-      extra: selected.length > 0 ? (
+      extra: selectedValues.length > 0 ? (
         <Button 
           type="link" 
           size="small" 
@@ -200,7 +198,7 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = ({ config, page }) => 
               mode="multiple"
               style={{ width: '100%' }}
               placeholder={`Select ${filter.label.toLowerCase()}...`}
-              value={selected}
+              value={selectedValues.map(String)}
               onChange={(value: string[]) => handleFilterChange(filter.id, value)}
               options={options.map((opt: any) => ({
                 label: opt.label,
