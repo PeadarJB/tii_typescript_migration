@@ -56,8 +56,7 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
   // Store hooks
   const { roadLayer } = useMapState();
   const { currentStats } = useStatisticsState();
-  const updateStatistics = useAppStore((state) => state.updateStatistics);
-  const calculateStatistics = useAppStore((state) => state.calculateStatistics);
+  const calculateStatistics = useAppStore((state) => state.calculateFutureStatistics);
 
   // Local state
   const [loading, setLoading] = useState(false);
@@ -80,7 +79,8 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
           setLoading(false);
         }
       } else {
-        updateStatistics(null);
+        // No filters applied - clear statistics
+        setLoading(false);
       }
     };
 
@@ -91,7 +91,7 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
     const handle = roadLayer.watch('definitionExpression', handleFilterChange);
 
     return () => handle.remove();
-  }, [roadLayer, calculateStatistics, updateStatistics]);
+  }, [roadLayer, calculateStatistics]);
 
   const getRiskInfo = (percent: number): RiskInfo => {
     // Per user request, always return a medium-risk style to maintain a consistent yellow background

@@ -32,7 +32,7 @@ const FutureHazardPage: FC = () => {
         showSwipe, 
         showReportModal 
     } = useUIState();
-    const { hasActiveFilters, filterPanelKey } = useFilterState();
+    const { hasActiveFilters, filterPanelKey } = useFilterState('future');
     const { theme } = useCommonStyles();
 
     return (
@@ -45,13 +45,13 @@ const FutureHazardPage: FC = () => {
             
             {showFilters && roadLayer && mapView && (
                 <Suspense fallback={<LoadingFallback />}>
-                <EnhancedFilterPanel key={filterPanelKey} />
+                <EnhancedFilterPanel key={filterPanelKey} config={CONFIG.filterConfig} page="future" />
                 </Suspense>
             )}
             
             {showChart && roadLayer && !loading && (
                 <Suspense fallback={<LoadingFallback />}>
-                <EnhancedChartPanel />
+                <EnhancedChartPanel chartingFeatures={CONFIG.chartingFeatures} />
                 </Suspense>
             )}
             
