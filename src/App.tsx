@@ -19,7 +19,7 @@ import { ThemeProvider } from 'antd-style';
 import { lightTheme, darkTheme } from './config/themeConfig';
 
 // Page and Widget imports
-import { FutureHazardPage } from '@/pages';
+import { FutureHazardPage, PastFloodPage } from '@/pages';
 import MapWidgets from '@/components/MapWidgets'; // Import the new component
 import { PAGE_CONFIG } from './config/appConfig'; // Import the new page config
 
