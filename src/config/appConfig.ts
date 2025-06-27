@@ -121,6 +121,44 @@ export const CONFIG: AppConfiguration = {
       ]
     },
     {
+      id: 'past-flood-event',
+      label: 'Past Flood Event',
+      type: 'scenario-select',
+      description: 'Select one or more past flood event types to analyze.',
+      items: [
+        { 
+          label: 'DMS Drainage Defects (2015-2023)', 
+          field: 'DMS_Defects_2015_2023', 
+          value: 1 
+        },
+        { 
+          label: 'OPW Past Flood Events', 
+          field: 'opw_jba_flood_points', 
+          value: 1 
+        },
+        { 
+          label: 'GSI Surface Water Flood Map (2015-2016)', 
+          field: 'GSI_2015_2016_SurfWater', 
+          value: 1 
+        },
+        { 
+          label: 'GSI Historic Groundwater Flood Map', 
+          field: 'GSI_Hist_Groundwater', 
+          value: 1 
+        },
+        { 
+          label: 'JBA Historic Flooding (NRA Points)', 
+          field: 'JBA_Hist_Floods_NRA_Points', 
+          value: 1 
+        },
+        { 
+          label: 'MOCC Flood Events', 
+          field: 'MOCC_100m', 
+          value: 1 
+        }
+      ]
+    },
+    {
       id: 'county',
       label: 'County',
       type: 'multi-select',
