@@ -1,13 +1,16 @@
 import type { 
   NetworkStatistics,
   ScenarioStatistics,
+  PastEventStatistics,
   SegmentStatistic,
+  EventCountStatistic,
   ClimateScenarioType,
   RiskLevelType
 } from '@/types';
 import FeatureLayer from '@arcgis/core/layers/FeatureLayer';
 import { CONFIG } from '@/config/appConfig';
 import { QueryService } from './QueryService';
+import { useAppStore } from '@/store/useAppStore';
 
 /**
  * Service for calculating flood risk statistics
