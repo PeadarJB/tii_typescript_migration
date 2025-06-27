@@ -158,6 +158,7 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
   // Store hooks
   const { roadLayer } = useMapState();
   const { currentFilters, hasActiveFilters } = useFilterState();
+  const { activePage } = useUIState();
   const showFilters = useAppStore((state) => state.showFilters);
   const setFilters = useAppStore((state) => state.setFilters);
   const applyFilters = useAppStore((state) => state.applyFilters);
