@@ -24,7 +24,7 @@ import MapWidgets from '@/components/MapWidgets'; // Import the new component
 import { PAGE_CONFIG } from './config/appConfig'; // Import the new page config
 
 // Store imports
-import { useAppStore, useMapState, useUIState, useFilterState, useThemeState } from '@/store/useAppStore';
+import { useAppStore, useMapState, useUIState, useStatisticsState, useFilterState, useThemeState } from '@/store/useAppStore';
 import type { AppPage } from '@/types';
 
 // Style imports
