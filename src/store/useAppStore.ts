@@ -187,7 +187,7 @@ export const useAppStore = create<AppStore>()(
 
           applyFilters: async () => {
             const state = get();
-            const { roadLayer, mapView, initialExtent, currentFilters } = state;
+            const { roadLayer, mapView, initialExtent, currentFilters, activePage } = state;
             
             if (!roadLayer || !mapView) return;
 
@@ -197,7 +197,7 @@ export const useAppStore = create<AppStore>()(
               Object.entries(currentFilters).forEach(([key, values]) => {
                 if (!values || !Array.isArray(values) || values.length === 0) return;
 
-                if (key === 'flood-scenario') {
+                if (key === 'flood-scenario' || key === 'past-flood-event') {
                   const scenarioClauses = values.map(field => `${field} = 1`);
                   whereClauses.push(`(${scenarioClauses.join(' OR ')})`);
                 } else {

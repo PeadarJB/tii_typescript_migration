@@ -152,10 +152,26 @@ export interface ScenarioStatistics {
   riskLevel: RiskLevelType;
 }
 
+export interface EventCountStatistic {
+  label: string;
+  count: number;
+  field: string;
+}
+
+export interface PastEventStatistics {
+  title: string;
+  description: string;
+  totalAffected: SegmentStatistic;
+  eventCounts: EventCountStatistic[];
+  eventBreakdown: SegmentStatistic[];
+  riskLevel: RiskLevelType;
+}
+
 export interface NetworkStatistics {
   totalSegments: number;
   totalLengthKm: number;
-  scenarios: ScenarioStatistics[];
+  scenarios?: ScenarioStatistics[];
+  pastEvents?: PastEventStatistics;
   lastUpdated: Date;
 }
 
