@@ -116,7 +116,9 @@ export const CONFIG: AppConfiguration = {
     // Default layers for the new precipitation page
     precipitation: [
         'Rx1day CMIP5 rcp45 2021 2050 ensmean chg ANNUAL Intersection',
-        'CFRAM dep f m 10pc Projected'
+        'CFRAM dep f m 10pc Projected',
+        "TII Network Model",
+        "Local_Authority_Boundaries"
     ],
     explore: [], 
   },
