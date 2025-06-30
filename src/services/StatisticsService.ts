@@ -1,16 +1,13 @@
 import type { 
   NetworkStatistics,
   ScenarioStatistics,
-  PastEventStatistics,
   SegmentStatistic,
-  EventCountStatistic,
   ClimateScenarioType,
   RiskLevelType
 } from '@/types';
 import FeatureLayer from '@arcgis/core/layers/FeatureLayer';
 import { CONFIG } from '@/config/appConfig';
 import { QueryService } from './QueryService';
-import { useAppStore } from '@/store/useAppStore';
 
 /**
  * Service for calculating flood risk statistics
@@ -213,27 +210,29 @@ export class StatisticsService {
     const headers = ['Scenario', 'Model', 'Affected Segments', 'Length (km)', 'Percentage'];
     const rows: string[][] = [];
 
-    statistics.scenarios.forEach(scenario => {
-      // Add total row for scenario
-      rows.push([
-        scenario.title,
-        'Total',
-        scenario.totalAffected.count.toString(),
-        scenario.totalAffected.lengthKm.toFixed(2),
-        scenario.totalAffected.percentage.toFixed(2) + '%'
-      ]);
-
-      // Add model breakdown
-      scenario.modelBreakdown.forEach(model => {
-        rows.push([
-          scenario.title,
-          model.label,
-          model.count.toString(),
-          model.lengthKm.toFixed(2),
-          model.percentage.toFixed(2) + '%'
-        ]);
-      });
-    });
+    if (statistics?.scenarios) {
+        statistics.scenarios.forEach(scenario => {
+          // Add total row for scenario
+          rows.push([
+            scenario.title,
+            'Total',
+            scenario.totalAffected.count.toString(),
+            scenario.totalAffected.lengthKm.toFixed(2),
+            scenario.totalAffected.percentage.toFixed(2) + '%'
+          ]);
+    
+          // Add model breakdown
+          scenario.modelBreakdown.forEach(model => {
+            rows.push([
+              scenario.title,
+              model.label,
+              model.count.toString(),
+              model.lengthKm.toFixed(2),
+              model.percentage.toFixed(2) + '%'
+            ]);
+          });
+        });
+    }
 
     // Convert to CSV
     const csvContent = [
