@@ -187,7 +187,7 @@ export const useAppStore = create<AppStore>()(
 
           applyFilters: async () => {
             const state = get();
-            const { roadLayer, mapView, initialExtent, currentFilters, activePage } = state;
+            const { roadLayer, mapView, initialExtent, currentFilters } = state;
             
             if (!roadLayer || !mapView) return;
 
