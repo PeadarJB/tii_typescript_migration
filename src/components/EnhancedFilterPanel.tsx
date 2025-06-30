@@ -12,7 +12,8 @@ import {
   EnvironmentOutlined,
   SafetyCertificateOutlined,
   CarOutlined,
-  HeartOutlined
+  HeartOutlined,
+  CloudOutlined // Import for precipitation icon
 } from '@ant-design/icons';
 
 // Store imports
@@ -23,6 +24,7 @@ import { usePanelStyles, useCommonStyles } from '@/styles/styled';
 
 // Type imports
 import type FeatureSet from '@arcgis/core/rest/support/FeatureSet';
+import { CONFIG } from '@/config/appConfig';
 
 // Component Props Interface
 interface EnhancedFilterPanelProps {
@@ -42,143 +44,10 @@ interface ScenarioItem {
   value: number;
 }
 
-// Base Filter Config
-interface BaseFilterConfig {
-  id: string;
-  label: string;
-  description: string;
-}
-
-// Scenario Filter Config
-interface ScenarioFilterConfig extends BaseFilterConfig {
-  type: 'scenario-select';
-  items: readonly ScenarioItem[];
-}
-
-// Multi-select Filter Config
-interface MultiSelectFilterConfig extends BaseFilterConfig {
-  type: 'multi-select';
-  field: string;
-  dataType: 'string' | 'number';
-  options: readonly FilterOption[];
-}
-
-// Union type for all filter configs
-type FilterConfigItem = ScenarioFilterConfig | MultiSelectFilterConfig;
-
 // Dynamic Options Interface
 interface DynamicOptions {
   county: FilterOption[];
 }
-
-// Filter Configuration
-const CONFIG: { filterConfig: readonly FilterConfigItem[] } = {
-  filterConfig: [
-    {
-      id: 'flood-scenario',
-      label: 'Flood Scenario',
-      type: 'scenario-select',
-      description: 'Select one or more flood scenarios to analyze.',
-      items: [
-        { label: 'Future Flooding (Mid-Range, RCP 4.5)', field: 'future_flood_intersection_m', value: 1 },
-        { label: 'Future Flooding (High-Range, RCP 8.5)', field: 'future_flood_intersection_h', value: 1 },
-        { label: 'Historic & Future (Mid-Range, RCP 4.5)', field: 'historic_intersection_m', value: 1 },
-        { label: 'Historic & Future (High-Range, RCP 8.5)', field: 'historic_intersection_h', value: 1 },
-        { label: 'Historic Only (Mid-Range, RCP 4.5)', field: 'hist_no_future_m', value: 1 },
-        { label: 'Historic Only (High-Range, RCP 8.5)', field: 'hist_no_future_h', value: 1 }
-      ]
-    } satisfies ScenarioFilterConfig,
-    {
-        id: 'past-flood-event',
-        label: 'Past Flood Event',
-        type: 'scenario-select',
-        description: 'Select one or more past flood event types to analyze.',
-        items: [
-          { 
-            label: 'DMS Drainage Defects (2015-2023)', 
-            field: 'DMS_Defects_2015_2023', 
-            value: 1 
-          },
-          { 
-            label: 'OPW Past Flood Events', 
-            field: 'opw_jba_flood_points', 
-            value: 1 
-          },
-          { 
-            label: 'GSI Surface Water Flood Map (2015-2016)', 
-            field: 'GSI_2015_2016_SurfWater', 
-            value: 1 
-          },
-          { 
-            label: 'GSI Historic Groundwater Flood Map', 
-            field: 'GSI_Hist_Groundwater', 
-            value: 1 
-          },
-          { 
-            label: 'JBA Historic Flooding (NRA Points)', 
-            field: 'JBA_Hist_Floods_NRA_Points', 
-            value: 1 
-          },
-          { 
-            label: 'MOCC Flood Events', 
-            field: 'MOCC_100m', 
-            value: 1 
-          }
-        ]
-      },
-    {
-      id: 'county',
-      label: 'County',
-      type: 'multi-select',
-      field: 'COUNTY',
-      dataType: 'string',
-      description: 'Filter by administrative county boundaries.',
-      options: []
-    } satisfies MultiSelectFilterConfig,
-    {
-      id: 'criticality',
-      label: 'Criticality Rating',
-      type: 'multi-select',
-      field: 'Criticality_Rating_Num1',
-      dataType: 'number',
-      description: 'Infrastructure criticality assessment based on usage and importance.',
-      options: [
-        { label: "Very High (5)", value: "5" },
-        { label: "High (4)", value: "4" },
-        { label: "Medium (3)", value: "3" },
-        { label: "Low (2)", value: "2" },
-        { label: "Very Low (1)", value: "1" }
-      ]
-    } satisfies MultiSelectFilterConfig,
-    {
-      id: 'subnet',
-      label: 'Road Subnet',
-      type: 'multi-select',
-      field: 'Subnet',
-      dataType: 'number',
-      description: 'Classification of road infrastructure by construction and traffic patterns.',
-      options: [
-        { label: "Motorway/Dual Carriageway (0)", value: "0" },
-        { label: "Engineered Pavements (1)", value: "1" },
-        { label: "Urban Roads (2)", value: "2" },
-        { label: "Legacy Pavements - High Traffic (3)", value: "3" },
-        { label: "Legacy Pavements - Low Traffic (4)", value: "4" }
-      ]
-    } satisfies MultiSelectFilterConfig,
-    {
-      id: 'lifeline',
-      label: 'Lifeline Route',
-      type: 'multi-select',
-      field: 'Lifeline',
-      dataType: 'number',
-      description: 'Critical routes essential for emergency services and vital community functions.',
-      options: [
-        { label: "Lifeline Route", value: "1" },
-        { label: "Non-lifeline Route", value: "0" }
-      ]
-    } satisfies MultiSelectFilterConfig
-  ]
-} as const;
 
 // Helper to get initial state for filter values
 const getInitialFilterState = (): Record<string, string[]> => {
@@ -213,33 +82,39 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
       setExpandedPanels(['flood-scenario']);
     } else if (activePage === 'past') {
       setExpandedPanels(['past-flood-event']);
+    } else if (activePage === 'precipitation') {
+        setExpandedPanels(['rainfall-absolute-cat', 'rainfall-change-cat']);
     }
   }, [activePage]);
   
   const loadDynamicOptions = useCallback(async (): Promise<void> => {
     if (!roadLayer) return;
+
+    const countyConfig = CONFIG.filterConfig.find(f => f.id === 'county');
     
+    if (!countyConfig || !countyConfig.field) {
+        console.error('County filter configuration or its field is missing.');
+        return;
+    }
+    
+    // Assign to a new constant to guarantee the type for the rest of the function
+    const fieldName = countyConfig.field;
+
     try {
       setLoading(true);
       const Query = (await import('@arcgis/core/rest/support/Query.js')).default;
       
-      const countyConfig = CONFIG.filterConfig.find(f => f.id === 'county') as MultiSelectFilterConfig | undefined;
-      
-      if (!countyConfig || countyConfig.field.length === 0) {
-        throw new Error('County field not found in configuration');
-      }
-      
       const query = new Query({
         where: '1=1',
-        outFields: [countyConfig.field],
+        outFields: [fieldName],
         returnDistinctValues: true,
-        orderByFields: [countyConfig.field]
+        orderByFields: [fieldName]
       });
 
       const results: FeatureSet = await roadLayer.queryFeatures(query);
 
       const counties = results.features
-        .map(f => f.attributes[countyConfig.field])
+        .map(f => f.attributes[fieldName])
         .filter((c): c is string => typeof c === 'string' && c.trim() !== '')
         .map(c => ({ label: c, value: c }));
       
@@ -300,7 +175,11 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
     'county': <EnvironmentOutlined />,
     'criticality': <SafetyCertificateOutlined />,
     'subnet': <CarOutlined />,
-    'lifeline': <HeartOutlined />
+    'lifeline': <HeartOutlined />,
+    'rainfall-absolute-cat': <CloudOutlined />,
+    'rainfall-change-cat': <CloudOutlined />,
+    'inundation-depth-45-cat': <CloudOutlined />,
+    'inundation-depth-85-cat': <CloudOutlined />,
   };
 
   const getVisibleFilters = () => {
@@ -309,6 +188,16 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
       return CONFIG.filterConfig.filter(
         f => f.id === 'past-flood-event' || commonFilterIds.includes(f.id)
       );
+    }
+    if (activePage === 'precipitation') {
+        const precipitationFilters = [
+            'rainfall-absolute-cat',
+            'rainfall-change-cat',
+            'inundation-depth-45-cat',
+            'inundation-depth-85-cat',
+            'county' // Only include county as a common filter here
+        ];
+        return CONFIG.filterConfig.filter(f => precipitationFilters.includes(f.id));
     }
     // Default to 'future' page filters
     return CONFIG.filterConfig.filter(
@@ -319,14 +208,13 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
   const collapseItems: CollapseProps['items'] = getVisibleFilters().map(filter => {
     const selected = filterValues[filter.id] ?? [];
     
-    // Determine options based on filter type and id
-    let options: readonly (FilterOption | ScenarioItem)[];
-    if (filter.id === 'county') {
-      options = dynamicOptions.county;
+    let options: readonly (FilterOption | ScenarioItem)[] | undefined;
+    if (filter.type === 'multi-select' && filter.id === 'county') {
+        options = dynamicOptions.county;
     } else if (filter.type === 'multi-select') {
-      options = filter.options;
-    } else {
-      options = filter.items;
+        options = filter.options;
+    } else if (filter.type === 'scenario-select') {
+        options = filter.items;
     }
     
     const valueProp = filter.type === 'scenario-select' ? 'field' : 'value';
@@ -366,13 +254,14 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
               placeholder={`Select ${filter.label.toLowerCase()}...`}
               value={selected}
               onChange={(value: string[]) => handleFilterChange(filter.id, value)}
-              options={options.map((opt: FilterOption | ScenarioItem) => ({
+              options={options?.map((opt: any) => ({
                 label: opt.label,
-                value: valueProp === 'field' ? (opt as ScenarioItem).field : (opt as FilterOption).value
+                value: opt[valueProp]
               }))}
               showSearch={filter.id === 'county'}
               maxTagCount={3}
               maxTagPlaceholder={omitted => `+${omitted.length} more`}
+              disabled={!options || options.length === 0}
             />
           </Col>
         </Row>
