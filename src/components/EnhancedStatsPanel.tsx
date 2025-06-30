@@ -229,7 +229,7 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
     );
   }
 
-  if (!currentStats || currentStats.scenarios.length === 0) {
+  if (!currentStats || currentStats.scenarios?.length === 0) {
     return (
       <Card
         size="small"
@@ -271,7 +271,7 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
         afterChange={setCurrentSlide}
         adaptiveHeight
       >
-        {currentStats.scenarios.map((scenario, index) => (
+        {currentStats.scenarios?.map((scenario, index) => (
           <div key={index}>{renderScenarioSlide(scenario)}</div>
         ))}
       </Carousel>
@@ -291,13 +291,13 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
         icon={<RightOutlined />}
         onClick={() => carouselRef.current?.next()}
         className="navigation-button next"
-        disabled={currentSlide === currentStats.scenarios.length - 1}
+        disabled={currentSlide === (currentStats.scenarios?.length ?? 0) - 1}
       />
 
       {/* Slide Indicator */}
       <div className="slide-indicators">
         <Space size="small">
-          {currentStats.scenarios.map((scenario, index) => (
+          {currentStats.scenarios?.map((scenario, index) => (
             <Tag
               key={index}
               color={currentSlide === index ?
