@@ -274,7 +274,7 @@ const SimpleReportGenerator: FC<SimpleReportGeneratorProps> = ({ onClose }) => {
     },
   ];
 
-  const previewStatData = statistics?.scenarios.flatMap((scenario, index) => [
+  const previewStatData = statistics?.scenarios?.flatMap((scenario, index) => [
     {
       key: `total-${index}`,
       scenario: scenario.title,
