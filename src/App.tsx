@@ -19,7 +19,7 @@ import { ThemeProvider } from 'antd-style';
 import { lightTheme, darkTheme } from './config/themeConfig';
 
 // Page and Widget imports
-import { FutureHazardPage } from '@/pages';
+import { FutureHazardPage, PastFloodPage } from '@/pages';
 import MapWidgets from '@/components/MapWidgets'; // Import the new component
 import { PAGE_CONFIG } from './config/appConfig'; // Import the new page config
 
@@ -181,7 +181,7 @@ function AppContent(): ReactElement {
         case 'future':
             return <FutureHazardPage />;
         case 'past':
-            return <PlaceholderPage pageName={PAGE_CONFIG.past.title} />;
+            return <PastFloodPage />;
         case 'precipitation':
             return <PlaceholderPage pageName={PAGE_CONFIG.precipitation.title} />;
         case 'explore':
@@ -225,7 +225,7 @@ function AppContent(): ReactElement {
           }}>
             <h2 style={{ margin: 0 }}>{`TII Flood Risk Dashboard - ${pageTitle}`}</h2>
             <Space>
-              {activePage === 'future' && (
+              {(activePage === 'future' || activePage === 'past') && (
                 <Space size="small">
                     <span>Panels:</span>
                     <Tooltip title={isSwipeActive ? 'Disable layer comparison to use filters' : 'Show/Hide the data filtering panel'}>
