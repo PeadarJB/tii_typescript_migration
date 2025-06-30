@@ -1,3 +1,5 @@
+// src/types/index.ts
+
 /**
  * Core type definitions for TII Flood Risk Dashboard
  * Consolidated single source of truth for all application types.
@@ -184,7 +186,7 @@ export interface ChartFeature {
   label: string;
   field: string;
   description: string;
-  scenario: ClimateScenarioType;
+  scenario: ClimateScenarioType | 'past';
 }
 
 export interface ChartDataPoint {
