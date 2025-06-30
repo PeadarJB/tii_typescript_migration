@@ -1,6 +1,6 @@
 // src/components/EnhancedChartPanel.tsx - Refactored with consolidated styling
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Card,
   Select,
@@ -28,7 +28,7 @@ import Chart from 'chart.js/auto';
 import type { ChartConfiguration, ChartType as ChartJSType } from 'chart.js';
 
 // Store imports
-import { useMapState } from '@/store/useAppStore';
+import { useMapState, useUIState } from '@/store/useAppStore';
 
 // Style imports
 import { usePanelStyles, useCommonStyles, styleUtils } from '@/styles/styled';
@@ -39,7 +39,7 @@ import type {
   ChartDataPoint,
   FilterOption
 } from '@/types';
-import { CONFIG } from '@/config/appConfig';
+import { CONFIG, PAST_EVENT_CHARTING_FEATURES } from '@/config/appConfig';
 import Query from '@arcgis/core/rest/support/Query';
 
 // No props needed anymore!
@@ -62,6 +62,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
 
   // Store hooks
   const { roadLayer } = useMapState();
+  const { activePage } = useUIState();
 
   // Local state
   const [loading, setLoading] = useState(false);
@@ -81,8 +82,13 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
   const chartInstance = useRef<Chart | null>(null);
   const expandedChartInstance = useRef<Chart | null>(null);
 
+  // Determine which charting features to use based on the active page
+  const availableChartingFeatures = useMemo(() => {
+    return activePage === 'past' ? PAST_EVENT_CHARTING_FEATURES : CONFIG.chartingFeatures;
+  }, [activePage]);
+
   // Feature options from config
-  const featureOptions = CONFIG.chartingFeatures.map(feature => ({
+  const featureOptions = availableChartingFeatures.map(feature => ({
     label: feature.label,
     value: feature.field,
     description: feature.description,
@@ -128,6 +134,11 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
       renderChart();
     }
   }, [chartData, chartConfig.type, expandedView]);
+  
+  // Clear chart and features when page changes
+  useEffect(() => {
+    clearChart();
+  }, [activePage]);
 
   const loadDynamicGroupByOptions = (): void => {
     try {
@@ -156,7 +167,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
 
       // Query for each selected feature
       for (const featureField of features) {
-        const feature = CONFIG.chartingFeatures.find(f => f.field === featureField);
+        const feature = availableChartingFeatures.find(f => f.field === featureField);
         if (!feature) continue;
 
         const whereClause = `(${baseWhere}) AND (${featureField} = 1)`;
@@ -188,7 +199,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
             featureField: featureField,
             scenario: feature.scenario,
             value: metric === 'totalLength' ? count * CONFIG.defaultSettings.segmentLengthKm : count,
-            type: feature.scenario === 'rcp85' ? 'RCP 8.5' : 'RCP 4.5'
+            type: feature.scenario === 'rcp85' ? 'RCP 8.5' : (feature.scenario === 'rcp45' ? 'RCP 4.5' : 'Past Event')
           });
         });
       }
@@ -246,7 +257,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
     if (hasOther && categoryTotals['Other'] > 0) {
       const otherData = sortedCategories.slice(maxCategories);
       chartConfig.features.forEach(featureField => {
-        const feature = CONFIG.chartingFeatures.find(f => f.field === featureField);
+        const feature = availableChartingFeatures.find(f => f.field === featureField);
         if (!feature) return;
 
         let otherValue = 0;
@@ -267,7 +278,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
             featureField: featureField,
             scenario: feature.scenario,
             value: otherValue,
-            type: feature.scenario === 'rcp85' ? 'RCP 8.5' : 'RCP 4.5'
+            type: feature.scenario === 'rcp85' ? 'RCP 8.5' : (feature.scenario === 'rcp45' ? 'RCP 4.5' : 'Past Event')
           });
         }
       });
@@ -277,7 +288,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
       categories: topCategories,
       data: filteredData,
       features: chartConfig.features.map(f => {
-        const feature = CONFIG.chartingFeatures.find(cf => cf.field === f);
+        const feature = availableChartingFeatures.find(cf => cf.field === f);
         return feature ? feature.label : f;
       })
     };
@@ -477,6 +488,19 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
     setChartConfig(prev => ({ ...prev, metric: e.target.value }));
   };
 
+  const renderTag = (scenario: string) => {
+    switch (scenario) {
+      case 'rcp85':
+        return <Tag color="red" style={{ margin: 0, fontSize: 11 }}>8.5</Tag>;
+      case 'rcp45':
+        return <Tag color="blue" style={{ margin: 0, fontSize: 11 }}>4.5</Tag>;
+      case 'past':
+        return <Tag color="purple" style={{ margin: 0, fontSize: 11 }}>Past</Tag>;
+      default:
+        return null;
+    }
+  };
+
   if (!roadLayer) return null;
 
   return (
@@ -551,12 +575,7 @@ const EnhancedChartPanel: React.FC<EnhancedChartPanelProps> = () => {
               options={featureOptions.map(opt => ({
                 label: (
                   <Space size={4}>
-                    <Tag
-                      color={opt.scenario === 'rcp85' ? 'red' : 'blue'}
-                      style={{ margin: 0, fontSize: 11 }}
-                    >
-                      {opt.scenario === 'rcp85' ? '8.5' : '4.5'}
-                    </Tag>
+                    {renderTag(opt.scenario)}
                     <span style={{ fontSize: theme.fontSizeSM }}>{opt.label}</span>
                   </Space>
                 ),
