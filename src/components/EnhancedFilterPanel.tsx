@@ -16,7 +16,7 @@ import {
 } from '@ant-design/icons';
 
 // Store imports
-import { useAppStore, useMapState, useFilterState } from '@/store/useAppStore';
+import { useAppStore, useMapState, useFilterState, useUIState } from '@/store/useAppStore';
 
 // Style imports
 import { usePanelStyles, useCommonStyles } from '@/styles/styled';
@@ -158,8 +158,7 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
   // Store hooks
   const { roadLayer } = useMapState();
   const { currentFilters, hasActiveFilters } = useFilterState();
-  const { activePage } = useUIState();
-  const showFilters = useAppStore((state) => state.showFilters);
+  const { showFilters } = useUIState();
   const setFilters = useAppStore((state) => state.setFilters);
   const applyFilters = useAppStore((state) => state.applyFilters);
   const clearAllFilters = useAppStore((state) => state.clearAllFilters);
