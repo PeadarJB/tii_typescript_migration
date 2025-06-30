@@ -163,7 +163,16 @@ export const useAppStore = create<AppStore>()(
 
           // UI Actions
           setSiderCollapsed: (collapsed) => set({ siderCollapsed: collapsed }),
-          setActivePage: (page) => set({ activePage: page }), // New page setter
+          setActivePage: (page) => {
+            get().clearAllFilters();
+            set({
+              activePage: page,
+              showFilters: true, // Default to showing filters on new page
+              showStats: false,
+              showChart: false,
+              showSwipe: false,
+            });
+          },
           setShowFilters: (show) => set({ showFilters: show }),
           setShowStats: (show) => set({ showStats: show }),
           setShowChart: (show) => set({ showChart: show }),
