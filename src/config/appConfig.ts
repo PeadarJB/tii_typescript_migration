@@ -13,6 +13,30 @@ export const PAGE_CONFIG: Record<AppPage, { title: string }> = {
   explore: { title: 'Explore Statistics' },
 };
 
+// NEW: Configuration for the Precipitation page swipe tool
+export const PRECIPITATION_SWIPE_CONFIG = {
+    rainfallLayers: {
+        rcp45: {
+          change: 'Rx1day CMIP5 rcp45 2021 2050 ensmean chg ANNUAL Intersection',
+          absolute: 'Rx1day CMIP5 rcp45 2021 2050 ensmean final ANNUAL Intersection'
+        },
+        rcp85: {
+          change: 'Rx1day CMIP5 rcp85 2021 2050 ensmean chg ANNUAL Intersection',
+          absolute: 'Rx1day CMIP5 rcp85 2021 2050 ensmean final ANNUAL Intersection'
+        },
+    },
+    inundationLayers: {
+        rcp45: {
+            fluvial: 'CFRAM dep f m 10pc Projected',
+            coastal: 'CFRAM dep c m 10pc Projected'
+        },
+        rcp85: {
+            fluvial: 'CFRAM dep f h 1pc Projected',
+            coastal: 'CFRAM dep c h 0 5pc Projected'
+        }
+    }
+} as const;
+
 interface AppConfiguration {
   readonly webMapId: string;
   readonly roadNetworkLayerTitle: string;
@@ -42,6 +66,11 @@ interface AppConfiguration {
     gsi_groundwater: string;
     jba_historic_floods: string;
     mocc_events: string;
+    // Precipitation Fields
+    rainfall_absolute_cat: string;
+    rainfall_change_cat: string;
+    inundation_depth_rcp45_cat: string; // Placeholder
+    inundation_depth_rcp85_cat: string; // Placeholder
   }>;
   readonly chartingFeatures: ReadonlyArray<ChartFeature>;
   readonly swipeLayerConfig: Readonly<{
@@ -84,7 +113,11 @@ export const CONFIG: AppConfiguration = {
         "TII Network Model",
         "Local_Authority_Boundaries"
     ],
-    precipitation: [], 
+    // Default layers for the new precipitation page
+    precipitation: [
+        'Rx1day CMIP5 rcp45 2021 2050 ensmean chg ANNUAL Intersection',
+        'CFRAM dep f m 10pc Projected'
+    ],
     explore: [], 
   },
 
@@ -171,6 +204,51 @@ export const CONFIG: AppConfiguration = {
         }
       ]
     },
+    // New Filters for Precipitation Page
+    {
+      id: 'rainfall-absolute-cat',
+      label: 'Rainfall Absolute Category',
+      type: 'multi-select',
+      field: 'Rainfall_Absolute_category',
+      dataType: 'number',
+      description: 'Filter road segments by their predicted absolute rainfall category (1-5).',
+      options: [
+        { label: "Very High (5)", value: "5" }, { label: "High (4)", value: "4" },
+        { label: "Medium (3)", value: "3" }, { label: "Low (2)", value: "2" },
+        { label: "Very Low (1)", value: "1" }
+      ]
+    },
+    {
+        id: 'rainfall-change-cat',
+        label: 'Rainfall Change Category',
+        type: 'multi-select',
+        field: 'Rainfall_Change_category',
+        dataType: 'number',
+        description: 'Filter road segments by their predicted rainfall change category (1-5).',
+        options: [
+            { label: "Very High (5)", value: "5" }, { label: "High (4)", value: "4" },
+            { label: "Medium (3)", value: "3" }, { label: "Low (2)", value: "2" },
+            { label: "Very Low (1)", value: "1" }
+        ]
+    },
+    {
+        id: 'inundation-depth-45-cat',
+        label: 'Inundation Depth Category (RCP 4.5)',
+        type: 'multi-select',
+        field: 'inundation_depth_rcp45_cat',
+        dataType: 'number',
+        description: 'Filter by inundation depth. (Placeholder - data field to be calculated).',
+        options: [] // Placeholder
+    },
+    {
+        id: 'inundation-depth-85-cat',
+        label: 'Inundation Depth Category (RCP 8.5)',
+        type: 'multi-select',
+        field: 'inundation_depth_rcp85_cat',
+        dataType: 'number',
+        description: 'Filter by inundation depth. (Placeholder - data field to be calculated).',
+        options: [] // Placeholder
+    },
     {
       id: 'county',
       label: 'County',
@@ -248,6 +326,11 @@ export const CONFIG: AppConfiguration = {
     gsi_groundwater: 'GSI_Hist_Groundwater',
     jba_historic_floods: 'JBA_Hist_Floods_NRA_Points',
     mocc_events: 'MOCC_100m',
+    // Precipitation Fields
+    rainfall_absolute_cat: 'Rainfall_Absolute_category',
+    rainfall_change_cat: 'Rainfall_Change_category',
+    inundation_depth_rcp45_cat: 'inundation_depth_rcp45_cat',
+    inundation_depth_rcp85_cat: 'inundation_depth_rcp85_cat',
   },
 
   // --- Charting Features ---
