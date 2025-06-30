@@ -121,44 +121,89 @@ export const lightTheme: ThemeConfig = {
   },
 };
 
-// Dark Theme (New)
+// New, high-contrast Dark Theme inspired by UI/UX best practices
 export const darkTheme: ThemeConfig = {
   token: {
-    ...lightTheme.token,
-    // Override colors for dark mode
-    colorPrimary: '#1677ff',
-    colorBgLayout: '#001529',
-    colorBgContainer: '#001f3d',
-    colorBgElevated: '#001f3d',
-    colorText: 'rgba(255, 255, 255, 0.85)',
-    colorTextSecondary: 'rgba(255, 255, 255, 0.65)',
-    colorBorder: '#303030',
-    colorBorderSecondary: '#1f1f1f',
+    // Spacing, font, sizing, motion etc. are inherited from the light theme.
+    // We only need to override the colors and shadows.
+    ...lightTheme.token, 
+
+    // ---- PRIMARY & BRAND COLORS ----
+    // Use a brighter, more accessible blue for the primary action color.
+    // The original #003d82 is too dark for a dark background.
+    // #4096ff is an excellent choice from your light theme's hover state.
+    colorPrimary: '#4096ff',
+    colorPrimaryBg: 'rgba(64, 150, 255, 0.1)',    // Subtle background for primary elements
+    colorPrimaryBgHover: 'rgba(64, 150, 255, 0.2)', // Hover state
+    colorPrimaryBorder: 'rgba(64, 150, 255, 0.3)',  // Border color
+    colorPrimaryBorderHover: 'rgba(64, 150, 255, 0.5)',// Border hover
+    colorPrimaryHover: '#69b1ff',                  // A slightly lighter blue for hover
+    colorPrimaryActive: '#0958d9',                 // A slightly darker, more saturated blue for active/pressed
+    colorPrimaryTextHover: '#69b1ff',
+    colorPrimaryText: '#4096ff',
+    colorPrimaryTextActive: '#0958d9',
+
+    // ---- SEMANTIC COLORS (for dark background) ----
+    // These are slightly brightened/desaturated for better readability on dark surfaces.
+    colorSuccess: '#73d13d',                      // Brighter Green
+    colorWarning: '#ffc53d',                      // Brighter Orange/Yellow
+    colorError: '#ff7875',                        // Brighter, less intense Red
+    colorInfo: '#4096ff',                         // Align info color with the new primary color
+
+    // ---- BACKGROUND COLORS (Core of the Dark Theme) ----
+    // A scale of neutral grays creates depth and elevation. Avoids pure black (#000).
+    colorBgLayout: '#1a1a1a',                      // Deepest layer, the overall page background
+    colorBgContainer: '#2a2a2a',                   // Panel and component backgrounds (cards, sidebars)
+    colorBgElevated: '#3a3a3a',                    // For elevated elements like modals, dropdowns, popovers
+    colorBgSpotlight: 'rgba(0, 0, 0, 0.85)',      // Backdrop for modals
+
+    // ---- TEXT COLORS ----
+    // Using shades of white provides a clear hierarchy and is easier on the eyes than pure #FFFFFF.
+    colorText: 'rgba(255, 255, 255, 0.88)',        // Primary text - high emphasis
+    colorTextSecondary: 'rgba(255, 255, 255, 0.65)', // Secondary text - medium emphasis (labels)
+    colorTextTertiary: 'rgba(255, 255, 255, 0.45)',  // Tertiary text (placeholders, disabled)
+    colorTextQuaternary: 'rgba(255, 255, 255, 0.25)',// Quaternary text (e.g., visual dividers)
+
+    // ---- BORDER & OUTLINE COLORS ----
+    // Subtle borders to define component edges without adding visual noise.
+    colorBorder: '#424242',                        // Default border, slightly lighter than container
+    colorBorderSecondary: '#303030',               // Lighter border for subtle divisions on the darkest background
+
+    // ---- SHADOWS ----
+    // Shadows need to be redefined for dark mode to be visible.
+    // They are often created with transparent white layers or darker black layers.
+    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.2), 0 2px 6px 2px rgba(0, 0, 0, 0.15)',
+    boxShadowSecondary: '0 8px 16px 0 rgba(0, 0, 0, 0.25), 0 6px 8px -4px rgba(0, 0, 0, 0.3), 0 12px 28px 8px rgba(0, 0, 0, 0.2)',
   },
+  
   components: {
-    ...lightTheme.components,
+    // ---- COMPONENT-SPECIFIC OVERRIDES ----
     Layout: {
-      ...lightTheme.components?.Layout,
-      bodyBg: '#001529',
-      headerBg: '#001f3d',
-      headerColor: 'rgba(255, 255, 255, 0.85)',
-      siderBg: '#001f3d',
+      bodyBg: '#1a1a1a',
+      headerBg: '#2a2a2a', // Use the container background for the header
+      headerColor: 'rgba(255, 255, 255, 0.88)',
+      siderBg: '#2a2a2a',   // Use the container background for the sidebar
+      triggerBg: '#3a3a3a',
+      triggerColor: 'rgba(255, 255, 255, 0.88)',
     },
+    
     Card: {
-      ...lightTheme.components?.Card,
-      headerBg: 'transparent',
+      headerBg: 'transparent', // Make card header transparent to blend with the container BG
     },
+
     Select: {
-      optionSelectedBg: '#003d82',
+      optionSelectedBg: 'rgba(64, 150, 255, 0.2)', // Use a transparent primary color for selected options
     },
+
     Table: {
-      headerBg: '#012a4a',
-      rowHoverBg: '#012a4a',
+      headerBg: '#3a3a3a', // Use a slightly elevated color for the table header
+      rowHoverBg: '#353535',
     },
+
     Modal: {
-      headerBg: '#001f3d',
-      contentBg: '#001f3d',
-      footerBg: '#001f3d',
+      headerBg: '#2a2a2a',   // Use container BG for consistency
+      contentBg: '#2a2a2a',
+      footerBg: '#2a2a2a',
     }
   },
 };
