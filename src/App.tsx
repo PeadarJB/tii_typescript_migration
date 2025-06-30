@@ -12,6 +12,7 @@ import {
   FieldTimeOutlined,
   CloudOutlined,
   AreaChartOutlined,
+  SwapOutlined, // Import SwapOutlined for the Swipe button icon
 } from '@ant-design/icons';
 import { ErrorBoundary } from 'react-error-boundary';
 import { ThemeProvider } from 'antd-style';
@@ -258,15 +259,17 @@ function AppContent(): ReactElement {
                             disabled={isSwipeActive}
                         />
                     </Tooltip>
-                    <Tooltip title="Compare two sets of layers side-by-side">
-                        <Switch
-                            size="small"
-                            checked={showSwipe}
-                            onChange={handleSwipeToggle}
-                            checkedChildren="Swipe"
-                            unCheckedChildren="Swipe"
-                        />
-                    </Tooltip>
+                    {activePage === 'future' && (
+                        <Tooltip title="Compare two sets of layers side-by-side">
+                            <Switch
+                                size="small"
+                                checked={showSwipe}
+                                onChange={handleSwipeToggle}
+                                checkedChildren={<SwapOutlined />}
+                                unCheckedChildren={<SwapOutlined />}
+                            />
+                        </Tooltip>
+                    )}
                 </Space>
               )}
               <Tooltip title="Toggle Dark/Light Theme">
