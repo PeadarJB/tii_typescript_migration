@@ -89,6 +89,44 @@ const CONFIG: { filterConfig: readonly FilterConfigItem[] } = {
       ]
     } satisfies ScenarioFilterConfig,
     {
+        id: 'past-flood-event',
+        label: 'Past Flood Event',
+        type: 'scenario-select',
+        description: 'Select one or more past flood event types to analyze.',
+        items: [
+          { 
+            label: 'DMS Drainage Defects (2015-2023)', 
+            field: 'DMS_Defects_2015_2023', 
+            value: 1 
+          },
+          { 
+            label: 'OPW Past Flood Events', 
+            field: 'opw_jba_flood_points', 
+            value: 1 
+          },
+          { 
+            label: 'GSI Surface Water Flood Map (2015-2016)', 
+            field: 'GSI_2015_2016_SurfWater', 
+            value: 1 
+          },
+          { 
+            label: 'GSI Historic Groundwater Flood Map', 
+            field: 'GSI_Hist_Groundwater', 
+            value: 1 
+          },
+          { 
+            label: 'JBA Historic Flooding (NRA Points)', 
+            field: 'JBA_Hist_Floods_NRA_Points', 
+            value: 1 
+          },
+          { 
+            label: 'MOCC Flood Events', 
+            field: 'MOCC_100m', 
+            value: 1 
+          }
+        ]
+      },
+    {
       id: 'county',
       label: 'County',
       type: 'multi-select',
@@ -158,7 +196,7 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
   // Store hooks
   const { roadLayer } = useMapState();
   const { currentFilters, hasActiveFilters } = useFilterState();
-  const { showFilters } = useUIState();
+  const { showFilters, activePage } = useUIState();
   const setFilters = useAppStore((state) => state.setFilters);
   const applyFilters = useAppStore((state) => state.applyFilters);
   const clearAllFilters = useAppStore((state) => state.clearAllFilters);
@@ -168,7 +206,15 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
   const [applyingFilters, setApplyingFilters] = useState<boolean>(false);
   const [dynamicOptions, setDynamicOptions] = useState<DynamicOptions>({ county: [] });
   const [filterValues, setFilterValues] = useState<Record<string, string[]>>(getInitialFilterState());
-  const [expandedPanels, setExpandedPanels] = useState<string[]>(['flood-scenario']);
+  const [expandedPanels, setExpandedPanels] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (activePage === 'future') {
+      setExpandedPanels(['flood-scenario']);
+    } else if (activePage === 'past') {
+      setExpandedPanels(['past-flood-event']);
+    }
+  }, [activePage]);
   
   const loadDynamicOptions = useCallback(async (): Promise<void> => {
     if (!roadLayer) return;
@@ -250,13 +296,27 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
   
   const icons: Record<string, React.ReactNode> = {
     'flood-scenario': <WarningOutlined />,
+    'past-flood-event': <WarningOutlined />,
     'county': <EnvironmentOutlined />,
     'criticality': <SafetyCertificateOutlined />,
     'subnet': <CarOutlined />,
     'lifeline': <HeartOutlined />
   };
 
-  const collapseItems: CollapseProps['items'] = CONFIG.filterConfig.map(filter => {
+  const getVisibleFilters = () => {
+    const commonFilterIds = ['county', 'criticality', 'subnet', 'lifeline'];
+    if (activePage === 'past') {
+      return CONFIG.filterConfig.filter(
+        f => f.id === 'past-flood-event' || commonFilterIds.includes(f.id)
+      );
+    }
+    // Default to 'future' page filters
+    return CONFIG.filterConfig.filter(
+      f => f.id === 'flood-scenario' || commonFilterIds.includes(f.id)
+    );
+  };
+
+  const collapseItems: CollapseProps['items'] = getVisibleFilters().map(filter => {
     const selected = filterValues[filter.id] ?? [];
     
     // Determine options based on filter type and id
