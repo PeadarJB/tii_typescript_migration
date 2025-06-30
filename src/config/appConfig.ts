@@ -353,6 +353,46 @@ export const CONFIG: AppConfiguration = {
   }
 };
 
+// NEW: Charting features for the Past Events page
+export const PAST_EVENT_CHARTING_FEATURES: ReadonlyArray<ChartFeature> = [
+    {
+        label: "DMS Drainage Defects (2015-2023)",
+        field: CONFIG.fields.dms_defects,
+        description: "Segments affected by drainage defects identified between 2015 and 2023.",
+        scenario: 'past'
+    },
+    {
+        label: "OPW Past Flood Events",
+        field: CONFIG.fields.opw_jba_points,
+        description: "Segments affected by OPW past flood event data.",
+        scenario: 'past'
+    },
+    {
+        label: "GSI Surface Water Flood Map",
+        field: CONFIG.fields.gsi_surface_water,
+        description: "Segments affected by the GSI Surface Water Flood Map (2015-2016).",
+        scenario: 'past'
+    },
+    {
+        label: "GSI Historic Groundwater Flood Map",
+        field: CONFIG.fields.gsi_groundwater,
+        description: "Segments affected by the GSI Historic Groundwater Flood Map.",
+        scenario: 'past'
+    },
+    {
+        label: "JBA Historic Flooding (NRA Points)",
+        field: CONFIG.fields.jba_historic_floods,
+        description: "Segments affected by JBA historic flood data.",
+        scenario: 'past'
+    },
+    {
+        label: "MOCC Flood Events",
+        field: CONFIG.fields.mocc_events,
+        description: "Segments affected by MOCC flood events.",
+        scenario: 'past'
+    }
+];
+
 // Type-safe config getter functions
 export const getFilterConfig = (id: string): FilterConfigItem | undefined => {
   return CONFIG.filterConfig.find(config => config.id === id);
