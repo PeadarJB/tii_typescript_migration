@@ -34,6 +34,14 @@ interface AppConfiguration {
     ncfhm_c_c_0200: string;
     historic_intersection_m: string;
     historic_intersection_h: string;
+    historic_flooding_any: string;
+    // Past Event Fields
+    dms_defects: string;
+    opw_jba_points: string;
+    gsi_surface_water: string;
+    gsi_groundwater: string;
+    jba_historic_floods: string;
+    mocc_events: string;
   }>;
   readonly chartingFeatures: ReadonlyArray<ChartFeature>;
   readonly swipeLayerConfig: Readonly<{
@@ -117,7 +125,12 @@ export const CONFIG: AppConfiguration = {
           label: 'Historic Only (High-Range, RCP 8.5%)', 
           field: 'hist_no_future_h', 
           value: 1 
-        }
+        },
+        { 
+          label: 'Historic Any', 
+          field: 'historic_flooding_any', 
+          value: 1 
+        }        
       ]
     },
     {
@@ -227,6 +240,14 @@ export const CONFIG: AppConfiguration = {
     ncfhm_c_c_0200: "ncfhm_c_c_0200",
     historic_intersection_m: "historic_intersection_m",
     historic_intersection_h: "historic_intersection_h",
+    historic_flooding_any: "historic_flooding_any",
+    // Past Event Fields
+    dms_defects: 'DMS_Defects_2015_2023',
+    opw_jba_points: 'opw_jba_flood_points',
+    gsi_surface_water: 'GSI_2015_2016_SurfWater',
+    gsi_groundwater: 'GSI_Hist_Groundwater',
+    jba_historic_floods: 'JBA_Hist_Floods_NRA_Points',
+    mocc_events: 'MOCC_100m',
   },
 
   // --- Charting Features ---
