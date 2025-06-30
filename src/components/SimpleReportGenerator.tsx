@@ -119,8 +119,7 @@ const SimpleReportGenerator: FC<SimpleReportGeneratorProps> = ({ onClose }) => {
         const contentWidth = pageWidth - (margin * 2);
         const imageHeight = contentWidth * 0.75;
         
-        // Add a subtle border around the map
-        pdf.setDrawColor(217, 217, 217); // Border color
+        pdf.setDrawColor(217, 217, 217);
         pdf.setLineWidth(0.5);
         pdf.rect(margin - 1, yPosition - 1, contentWidth + 2, imageHeight + 2);
         
@@ -128,7 +127,6 @@ const SimpleReportGenerator: FC<SimpleReportGeneratorProps> = ({ onClose }) => {
         yPosition += imageHeight + 15;
       }
 
-      // Reset text color for content
       pdf.setTextColor(0, 0, 0);
 
       // Active Filters Section
@@ -157,83 +155,71 @@ const SimpleReportGenerator: FC<SimpleReportGeneratorProps> = ({ onClose }) => {
         yPosition += 6;
       }
       yPosition += 8;
-
-      // Check for page break before table
+      
       if (yPosition > pdf.internal.pageSize.getHeight() - 80) {
         pdf.addPage();
         yPosition = margin;
       }
 
       // Statistics Table
-      if (statistics?.scenarios) {
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Flood Risk Statistics Summary', margin, yPosition);
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      
+      if (statistics?.pastEvents) {
+        pdf.text('Past Event Statistics Summary', margin, yPosition);
+        yPosition += 7;
+        
+        const tableHead = [['Event Type', 'Affected Length (km)', 'Affected Segments']];
+        const tableBody: RowInput[] = [];
+
+        tableBody.push([
+            { content: 'Total Affected by Selection', styles: { fontStyle: 'bold' } },
+            { content: statistics.pastEvents.totalAffected.lengthKm.toFixed(1), styles: { fontStyle: 'bold', halign: 'right' } },
+            { content: statistics.pastEvents.totalAffected.count.toLocaleString(), styles: { fontStyle: 'bold', halign: 'right' } }
+        ]);
+
+        statistics.pastEvents.eventBreakdown.forEach(event => {
+            tableBody.push([
+                event.label,
+                { content: event.lengthKm.toFixed(1), styles: { halign: 'right' } },
+                { content: event.count.toLocaleString(), styles: { halign: 'right' } }
+            ]);
+        });
+        
+        autoTable(pdf, { head: tableHead, body: tableBody, startY: yPosition, margin: { left: margin, right: margin } });
+
+      } else if (statistics?.scenarios) {
+        pdf.text('Future Scenario Statistics Summary', margin, yPosition);
         yPosition += 7;
 
         const tableHead = [['Scenario', 'Flood Model', 'Affected Length (km)', 'Affected Segments']];
         const tableBody: RowInput[] = [];
 
         statistics.scenarios.forEach((scenario: ScenarioStatistics) => {
-          // Add a bold summary row for the scenario
           tableBody.push([
             { content: scenario.title, styles: { fontStyle: 'bold' } },
             { content: 'Total Affected', styles: { fontStyle: 'bold' } },
             { content: scenario.totalAffected.lengthKm.toFixed(1), styles: { fontStyle: 'bold', halign: 'right' } },
             { content: scenario.totalAffected.count.toLocaleString(), styles: { fontStyle: 'bold', halign: 'right' } },
-          ] as RowInput);
-
-          // Add breakdown rows
+          ]);
           scenario.modelBreakdown.forEach(model => {
-            tableBody.push([
-              '', // Empty cell for scenario title
-              model.label,
-              { content: model.lengthKm.toFixed(1), styles: { halign: 'right' } },
-              { content: model.count.toLocaleString(), styles: { halign: 'right' } }
-            ] as RowInput);
+            tableBody.push(['', model.label, { content: model.lengthKm.toFixed(1), styles: { halign: 'right' } }, { content: model.count.toLocaleString(), styles: { halign: 'right' } }]);
           });
         });
 
-        autoTable(pdf, {
-          head: tableHead,
-          body: tableBody,
-          startY: yPosition,
-          margin: { left: margin, right: margin },
-          theme: 'grid',
-          headStyles: { 
-            fillColor: [0, 61, 130], // TII Blue
-            textColor: [255, 255, 255],
-            fontStyle: 'bold'
-          },
-          bodyStyles: {
-            fontSize: 9,
-            cellPadding: 3,
-          },
-          alternateRowStyles: {
-            fillColor: [248, 248, 248]
-          },
-          didDrawPage: (data: any) => {
-            yPosition = data.cursor?.y ?? yPosition;
-          }
-        });
+        autoTable(pdf, { head: tableHead, body: tableBody, startY: yPosition, margin: { left: margin, right: margin } });
       }
 
-      // Add footer with generation info
+      // Add footer
       const pageCount = pdf.internal.pages.length - 1;
       for (let i = 1; i <= pageCount; i++) {
         pdf.setPage(i);
         pdf.setFontSize(8);
         pdf.setTextColor(102, 102, 102);
-        pdf.text(
-          `Generated by TII Flood Risk Dashboard - Page ${i} of ${pageCount}`,
-          pageWidth / 2,
-          pdf.internal.pageSize.getHeight() - 10,
-          { align: 'center' }
-        );
+        pdf.text(`Generated by TII Flood Risk Dashboard - Page ${i} of ${pageCount}`, pageWidth / 2, pdf.internal.pageSize.getHeight() - 10, { align: 'center' });
       }
 
-      const fileName = `TII_Flood_Report_${new Date().toISOString().split('T')[0]}.pdf`;
-      pdf.save(fileName);
+      pdf.save(`TII_Flood_Report_${new Date().toISOString().split('T')[0]}.pdf`);
       message.success('Report generated successfully!');
       onClose();
     } catch (error) {
@@ -245,51 +231,66 @@ const SimpleReportGenerator: FC<SimpleReportGeneratorProps> = ({ onClose }) => {
     }
   };
 
-  const previewStatColumns = [
-    { 
-      title: 'Scenario', 
-      dataIndex: 'scenario', 
-      key: 'scenario',
-      width: '25%'
-    },
-    { 
-      title: 'Flood Model', 
-      dataIndex: 'model', 
-      key: 'model',
-      width: '35%'
-    },
-    { 
-      title: 'Length (km)', 
-      dataIndex: 'length', 
-      key: 'length', 
-      align: 'right' as const,
-      width: '20%'
-    },
-    { 
-      title: 'Segments', 
-      dataIndex: 'segments', 
-      key: 'segments', 
-      align: 'right' as const,
-      width: '20%'
-    },
-  ];
+  const renderPreviewTable = () => {
+    if (!statistics) {
+        return (
+            <p style={{ margin: `${theme.marginXXS}px 0 0 ${theme.marginLG}px`, color: theme.colorTextSecondary, fontStyle: 'italic' }}>
+              No statistics available. Apply filters to generate statistics.
+            </p>
+        );
+    }
 
-  const previewStatData = statistics?.scenarios?.flatMap((scenario, index) => [
-    {
-      key: `total-${index}`,
-      scenario: scenario.title,
-      model: <strong style={{ color: theme.colorPrimary }}>Total Affected</strong>,
-      length: <strong>{scenario.totalAffected.lengthKm.toFixed(1)}</strong>,
-      segments: <strong>{scenario.totalAffected.count.toLocaleString()}</strong>,
-    },
-    ...scenario.modelBreakdown.map((model, modelIndex) => ({
-      key: `${index}-${modelIndex}`,
-      scenario: '',
-      model: model.label,
-      length: model.lengthKm.toFixed(1),
-      segments: model.count.toLocaleString(),
-    }))
-  ]) ?? [];
+    if (statistics.pastEvents) {
+        const pastEventColumns = [
+            { title: 'Event Type', dataIndex: 'event', key: 'event', width: '50%' },
+            { title: 'Length (km)', dataIndex: 'length', key: 'length', align: 'right' as const, width: '25%' },
+            { title: 'Segments', dataIndex: 'segments', key: 'segments', align: 'right' as const, width: '25%' },
+          ];
+          const pastEventData = [
+            {
+              key: 'total',
+              event: <strong style={{ color: theme.colorPrimary }}>Total Affected</strong>,
+              length: <strong>{statistics.pastEvents.totalAffected.lengthKm.toFixed(1)}</strong>,
+              segments: <strong>{statistics.pastEvents.totalAffected.count.toLocaleString()}</strong>,
+            },
+            ...statistics.pastEvents.eventBreakdown.map((event, index) => ({
+              key: index,
+              event: event.label,
+              length: event.lengthKm.toFixed(1),
+              segments: event.count.toLocaleString(),
+            }))
+          ];
+        return <Table columns={pastEventColumns} dataSource={pastEventData} pagination={false} size="small" bordered />;
+    }
+
+    if (statistics.scenarios) {
+        const scenarioColumns = [
+            { title: 'Scenario', dataIndex: 'scenario', key: 'scenario', width: '25%' },
+            { title: 'Flood Model', dataIndex: 'model', key: 'model', width: '35%' },
+            { title: 'Length (km)', dataIndex: 'length', key: 'length', align: 'right' as const, width: '20%' },
+            { title: 'Segments', dataIndex: 'segments', key: 'segments', align: 'right' as const, width: '20%' },
+        ];
+        const scenarioData = statistics.scenarios.flatMap((scenario, index) => [
+            {
+              key: `total-${index}`,
+              scenario: scenario.title,
+              model: <strong style={{ color: theme.colorPrimary }}>Total Affected</strong>,
+              length: <strong>{scenario.totalAffected.lengthKm.toFixed(1)}</strong>,
+              segments: <strong>{scenario.totalAffected.count.toLocaleString()}</strong>,
+            },
+            ...scenario.modelBreakdown.map((model, modelIndex) => ({
+              key: `${index}-${modelIndex}`,
+              scenario: '',
+              model: model.label,
+              length: model.lengthKm.toFixed(1),
+              segments: model.count.toLocaleString(),
+            }))
+        ]);
+        return <Table columns={scenarioColumns} dataSource={scenarioData} pagination={false} size="small" bordered />;
+    }
+
+    return null;
+  }
 
   const activeFilterCount = Object.values(currentFilters).filter(
     v => Array.isArray(v) && v.length > 0
@@ -424,27 +425,14 @@ const SimpleReportGenerator: FC<SimpleReportGeneratorProps> = ({ onClose }) => {
           <strong style={{ color: theme.colorText, marginBottom: theme.marginXS, display: 'block' }}>
             Statistics Summary:
           </strong>
-          {statistics ? (
-            <Table
-              columns={previewStatColumns}
-              dataSource={previewStatData}
-              pagination={false}
-              size="small"
-              bordered
-              style={{ 
+          <div
+            style={{ 
                 fontSize: theme.fontSizeSM,
                 backgroundColor: theme.colorBgContainer
-              }}
-            />
-          ) : (
-            <p style={{ 
-              margin: `${theme.marginXXS}px 0 0 ${theme.marginLG}px`, 
-              color: theme.colorTextSecondary,
-              fontStyle: 'italic'
-            }}>
-              No statistics available. Apply filters to generate statistics.
-            </p>
-          )}
+            }}
+          >
+            {renderPreviewTable()}
+          </div>
         </div>
       </Space>
     </Modal>
