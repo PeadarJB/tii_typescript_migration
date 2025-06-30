@@ -12,7 +12,7 @@ import {
   FieldTimeOutlined,
   CloudOutlined,
   AreaChartOutlined,
-  SwapOutlined, // Import SwapOutlined for the Swipe button icon
+  SwapOutlined,
 } from '@ant-design/icons';
 import { ErrorBoundary } from 'react-error-boundary';
 import { ThemeProvider } from 'antd-style';
@@ -20,7 +20,7 @@ import { ThemeProvider } from 'antd-style';
 import { lightTheme, darkTheme } from './config/themeConfig';
 
 // Page and Widget imports
-import { FutureHazardPage, PastFloodPage } from '@/pages';
+import { FutureHazardPage, PastFloodPage, PrecipitationPage } from '@/pages';
 import MapWidgets from '@/components/MapWidgets'; // Import the new component
 import { PAGE_CONFIG } from './config/appConfig'; // Import the new page config
 
@@ -184,7 +184,7 @@ function AppContent(): ReactElement {
         case 'past':
             return <PastFloodPage />;
         case 'precipitation':
-            return <PlaceholderPage pageName={PAGE_CONFIG.precipitation.title} />;
+            return <PrecipitationPage />;
         case 'explore':
             return <PlaceholderPage pageName={PAGE_CONFIG.explore.title} />;
         default:
@@ -226,7 +226,7 @@ function AppContent(): ReactElement {
           }}>
             <h2 style={{ margin: 0 }}>{`TII Flood Risk Dashboard - ${pageTitle}`}</h2>
             <Space>
-              {(activePage === 'future' || activePage === 'past') && (
+              {(activePage === 'future' || activePage === 'past' || activePage === 'precipitation') && (
                 <Space size="small">
                     <span>Panels:</span>
                     <Tooltip title={isSwipeActive ? 'Disable layer comparison to use filters' : 'Show/Hide the data filtering panel'}>
@@ -239,27 +239,33 @@ function AppContent(): ReactElement {
                         disabled={isSwipeActive}
                     />
                     </Tooltip>
-                    <Tooltip title={!hasActiveFilters ? 'Apply filters to view statistics' : ''}>
-                    <Switch
-                        size="small"
-                        checked={showStats}
-                        onChange={setShowStats}
-                        checkedChildren="Stats"
-                        unCheckedChildren="Stats"
-                        disabled={!hasActiveFilters || isSwipeActive}
-                    />
-                    </Tooltip>
-                     <Tooltip title="Show advanced data visualization and analysis">
-                        <Switch
-                            size="small"
-                            checked={showChart}
-                            onChange={handleChartToggle}
-                            checkedChildren="Chart"
-                            unCheckedChildren="Chart"
-                            disabled={isSwipeActive}
-                        />
-                    </Tooltip>
-                    {activePage === 'future' && (
+
+                    {(activePage === 'future' || activePage === 'past') && (
+                        <>
+                            <Tooltip title={!hasActiveFilters ? 'Apply filters to view statistics' : ''}>
+                            <Switch
+                                size="small"
+                                checked={showStats}
+                                onChange={setShowStats}
+                                checkedChildren="Stats"
+                                unCheckedChildren="Stats"
+                                disabled={!hasActiveFilters || isSwipeActive}
+                            />
+                            </Tooltip>
+                            <Tooltip title="Show advanced data visualization and analysis">
+                                <Switch
+                                    size="small"
+                                    checked={showChart}
+                                    onChange={handleChartToggle}
+                                    checkedChildren="Chart"
+                                    unCheckedChildren="Chart"
+                                    disabled={isSwipeActive}
+                                />
+                            </Tooltip>
+                        </>
+                    )}
+
+                    {(activePage === 'future' || activePage === 'precipitation') && (
                         <Tooltip title="Compare two sets of layers side-by-side">
                             <Switch
                                 size="small"
