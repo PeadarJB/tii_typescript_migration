@@ -120,7 +120,8 @@ export interface ActiveFilter {
 }
 
 export interface FilterState {
-  scenarios: string[];
+  'flood-scenario': string[];
+  'past-flood-event': string[];
   counties: string[];
   criticality: [number, number];
   subnet: string[];
