@@ -14,7 +14,8 @@ import {
   Row,
   Col,
   Tooltip,
-  Button
+  Button,
+  List,
 } from 'antd';
 import {
   WarningOutlined,
@@ -23,21 +24,24 @@ import {
   ThunderboltOutlined,
   InfoCircleOutlined,
   LeftOutlined,
-  RightOutlined
+  RightOutlined,
+  ToolOutlined,
+  PushpinOutlined,
+  EyeOutlined
 } from '@ant-design/icons';
 import type { CarouselRef } from 'antd/lib/carousel';
 import classNames from 'classnames';
 
 // Store imports
-import { useAppStore, useMapState, useStatisticsState } from '@/store/useAppStore';
+import { useAppStore, useMapState, useStatisticsState, useUIState } from '@/store/useAppStore';
 
 // Style imports
 import { usePanelStyles, useCommonStyles, styleUtils } from '@/styles/styled';
 
 // Type imports
-import type { ScenarioStatistics } from '@/types';
+import type { ScenarioStatistics, PastEventStatistics } from '@/types';
 
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
 
 // No props needed anymore!
 interface EnhancedStatsPanelProps {}
@@ -48,6 +52,90 @@ interface RiskInfo {
   icon: string;
 }
 
+const PastEventStats: React.FC<{ stats: PastEventStatistics }> = ({ stats }) => {
+    const { styles: commonStyles, theme } = useCommonStyles();
+  
+    const eventCountLabels: Record<string, { label: string, icon: React.ReactNode }> = {
+      drainageDefects: { label: 'Drainage Defects', icon: <ToolOutlined /> },
+      opwPoints: { label: 'OPW Flood Points', icon: <PushpinOutlined /> },
+      nraPoints: { label: 'NRA Flood Points', icon: <EyeOutlined /> },
+    };
+  
+    const getEventCount = (label: string): number => {
+      return stats.eventCounts.find(e => e.label === label)?.count ?? 0;
+    };
+  
+    return (
+      <div style={{ padding: `0 ${theme.margin}px ${theme.margin}px` }}>
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          {/* Header */}
+          <div style={{ textAlign: 'center' }}>
+            <Title level={4} style={{ margin: 0 }}>
+              <Space>
+                <Tag color="purple">Past Events</Tag>
+                <span>Impact Analysis</span>
+              </Space>
+            </Title>
+            <Text type="secondary" style={{ fontSize: theme.fontSizeSM, maxWidth: 350, display: 'inline-block' }}>
+              {stats.description}
+            </Text>
+          </div>
+  
+          {/* Overall Impact */}
+          <Card size="small" className={classNames(commonStyles.statsCard, `risk-high`)}>
+            <Statistic
+              title="Total Network Length Affected by Selected Past Events"
+              value={stats.totalAffected.lengthKm.toFixed(1)}
+              suffix="km"
+              prefix={<RiseOutlined />}
+            />
+          </Card>
+  
+          {/* Event Counts */}
+          <div>
+            <Text strong>Key Event Counts:</Text>
+            <Row gutter={8} style={{ marginTop: theme.marginXS }}>
+              {Object.keys(eventCountLabels).map(key => (
+                <Col span={8} key={key}>
+                  <Card size="small" style={{ textAlign: 'center' }}>
+                    <Statistic
+                      title={<Space size={4}>{eventCountLabels[key].icon} {eventCountLabels[key].label}</Space>}
+                      value={getEventCount(key)}
+                    />
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+          </div>
+          
+          {/* Breakdown */}
+          <div>
+            <Text strong>Network Impact Breakdown:</Text>
+            <List
+              size="small"
+              dataSource={stats.eventBreakdown}
+              renderItem={item => (
+                <List.Item style={{ padding: `${theme.marginXXS}px 0` }}>
+                  <Row style={{ width: '100%' }} align="middle">
+                    <Col span={14}>
+                        <Paragraph ellipsis={{ rows: 2, tooltip: item.label }} style={{ marginBottom: 0 }}>
+                            <Text style={{ fontSize: 13 }}>{item.label}</Text>
+                        </Paragraph>
+                    </Col>
+                    <Col span={10} style={{ textAlign: 'right' }}>
+                      <Text strong>{item.lengthKm.toFixed(1)} km</Text>
+                    </Col>
+                  </Row>
+                </List.Item>
+              )}
+              style={{ maxHeight: 200, overflowY: 'auto', marginTop: theme.marginXS, paddingRight: theme.marginXS }}
+            />
+          </div>
+        </Space>
+      </div>
+    );
+  };
+
 const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
   // Style hooks
   const { styles: panelStyles } = usePanelStyles();
@@ -56,6 +144,7 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
   // Store hooks
   const { roadLayer } = useMapState();
   const { currentStats } = useStatisticsState();
+  const { activePage } = useUIState();
   const updateStatistics = useAppStore((state) => state.updateStatistics);
   const calculateStatistics = useAppStore((state) => state.calculateStatistics);
 
@@ -215,28 +304,19 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
     );
   };
 
-  if (loading) {
-    return (
-      <Card
-        size="small"
-        className={panelStyles.statsPanel}
-      >
+  const renderContent = () => {
+    if (loading) {
+      return (
         <div className={commonStyles.loadingContainer} style={{ position: 'relative', background: 'transparent', height: 200 }}>
           <Spin size="large" />
           <p style={{ marginTop: theme.margin, color: theme.colorTextSecondary }}>Calculating statistics...</p>
         </div>
-      </Card>
-    );
-  }
-
-  if (!currentStats || currentStats.scenarios?.length === 0) {
-    return (
-      <Card
-        size="small"
-        className={panelStyles.statsPanel}
-        style={{ minHeight: '200px' }}
-      >
-        <div className={commonStyles.loadingContainer} style={{ position: 'relative', background: 'transparent' }}>
+      );
+    }
+  
+    if (!currentStats || (!currentStats.scenarios?.length && !currentStats.pastEvents)) {
+      return (
+        <div className={commonStyles.loadingContainer} style={{ position: 'relative', background: 'transparent', height: '100%' }}>
           <Empty
             image={<WarningOutlined style={{ fontSize: 48, color: theme.colorTextQuaternary }} />}
             description={
@@ -247,8 +327,63 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
             }
           />
         </div>
-      </Card>
-    );
+      );
+    }
+
+    if (activePage === 'past' && currentStats.pastEvents) {
+        return <PastEventStats stats={currentStats.pastEvents} />;
+    }
+
+    if (activePage === 'future' && currentStats.scenarios && currentStats.scenarios.length > 0) {
+        return (
+            <>
+                <Carousel
+                    ref={carouselRef}
+                    dots={false}
+                    afterChange={setCurrentSlide}
+                    adaptiveHeight
+                >
+                    {currentStats.scenarios.map((scenario, index) => (
+                    <div key={index}>{renderScenarioSlide(scenario)}</div>
+                    ))}
+                </Carousel>
+                <Button
+                    type="text"
+                    shape="circle"
+                    icon={<LeftOutlined />}
+                    onClick={() => carouselRef.current?.prev()}
+                    className="navigation-button prev"
+                    disabled={currentSlide === 0}
+                />
+                <Button
+                    type="text"
+                    shape="circle"
+                    icon={<RightOutlined />}
+                    onClick={() => carouselRef.current?.next()}
+                    className="navigation-button next"
+                    disabled={currentSlide === (currentStats.scenarios?.length ?? 0) - 1}
+                />
+                <div className="slide-indicators">
+                    <Space size="small">
+                    {currentStats.scenarios.map((scenario, index) => (
+                        <Tag
+                        key={index}
+                        color={currentSlide === index ?
+                            (scenario.scenario === 'rcp45' ? 'blue' : 'red') : 'default'
+                        }
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => carouselRef.current?.goTo(index)}
+                        >
+                        {scenario.scenario === 'rcp45' ? 'RCP 4.5' : 'RCP 8.5'}
+                        </Tag>
+                    ))}
+                    </Space>
+                </div>
+            </>
+        )
+    }
+
+    return null; // Fallback
   }
 
   return (
@@ -256,61 +391,17 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
       title={
         <Space>
           <WarningOutlined />
-          <span>Flood Risk Statistics</span>
-          <Tooltip title="Swipe to see different climate scenarios">
+          <span>Risk Statistics</span>
+          <Tooltip title={activePage === 'future' ? "Swipe to see different climate scenarios" : "Statistics based on selected past events"}>
             <InfoCircleOutlined style={{ fontSize: theme.fontSizeSM, color: theme.colorTextTertiary }} />
           </Tooltip>
         </Space>
       }
       size="small"
       className={panelStyles.statsPanel}
+      bodyStyle={{ padding: activePage === 'future' ? '8px 0 30px 0' : '8px', position: 'relative' }}
     >
-      <Carousel
-        ref={carouselRef}
-        dots={false}
-        afterChange={setCurrentSlide}
-        adaptiveHeight
-      >
-        {currentStats.scenarios?.map((scenario, index) => (
-          <div key={index}>{renderScenarioSlide(scenario)}</div>
-        ))}
-      </Carousel>
-
-      {/* Navigation Arrows */}
-      <Button
-        type="text"
-        shape="circle"
-        icon={<LeftOutlined />}
-        onClick={() => carouselRef.current?.prev()}
-        className="navigation-button prev"
-        disabled={currentSlide === 0}
-      />
-      <Button
-        type="text"
-        shape="circle"
-        icon={<RightOutlined />}
-        onClick={() => carouselRef.current?.next()}
-        className="navigation-button next"
-        disabled={currentSlide === (currentStats.scenarios?.length ?? 0) - 1}
-      />
-
-      {/* Slide Indicator */}
-      <div className="slide-indicators">
-        <Space size="small">
-          {currentStats.scenarios?.map((scenario, index) => (
-            <Tag
-              key={index}
-              color={currentSlide === index ?
-                (scenario.scenario === 'rcp45' ? 'blue' : 'red') : 'default'
-              }
-              style={{ cursor: 'pointer' }}
-              onClick={() => carouselRef.current?.goTo(index)}
-            >
-              {scenario.scenario === 'rcp45' ? 'RCP 4.5' : 'RCP 8.5'}
-            </Tag>
-          ))}
-        </Space>
-      </div>
+      {renderContent()}
     </Card>
   );
 };
