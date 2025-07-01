@@ -430,7 +430,7 @@ export const CONFIG: AppConfiguration = {
   // --- Default Settings ---
   defaultSettings: {
     mapCenter: [-8.2439, 53.4129], // Ireland center
-    mapZoom: 7,
+    mapZoom: 15,
     maxChartCategories: 10,
     segmentLengthKm: 0.1,
     debounceDelay: 300,

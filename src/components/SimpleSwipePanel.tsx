@@ -1,7 +1,7 @@
-// src/components/SimpleSwipePanel.tsx - Connected to Zustand Store
+// src/components/SimpleSwipePanel.tsx - Final Version
 
 import { useState, useEffect, useCallback, FC } from 'react';
-import { Card, Select, Button, Space, Slider, Radio, Tag, message, Divider, Tooltip } from 'antd';
+import { Card, Select, Button, Space, Slider, Radio, Tag, message, Tooltip, Divider } from 'antd';
 import { SwapOutlined, CloseOutlined } from '@ant-design/icons';
 
 // Store imports
@@ -15,26 +15,23 @@ import type Swipe from '@arcgis/core/widgets/Swipe';
 import type Layer from '@arcgis/core/layers/Layer';
 import { CONFIG, PRECIPITATION_SWIPE_CONFIG } from '@/config/appConfig';
 
-// No props needed anymore!
 interface SimpleSwipePanelProps {}
 
 const SimpleSwipePanel: FC<SimpleSwipePanelProps> = () => {
-  // Style hooks
   const { styles: panelStyles } = usePanelStyles();
   const { theme } = useCommonStyles();
 
-  // Store hooks
   const { mapView: view, webmap, roadLayer, roadLayerSwipe } = useMapState();
   const { isSwipeActive, activePage } = useUIState();
   const setIsSwipeActive = useAppStore((state) => state.setIsSwipeActive);
   const enterSwipeMode = useAppStore((state) => state.enterSwipeMode);
   const exitSwipeMode = useAppStore((state) => state.exitSwipeMode);
 
-  // Local state for Future page
+  // State for Future page
   const [leftLayers, setLeftLayers] = useState<string[]>([]);
   const [rightLayers, setRightLayers] = useState<string[]>([]);
   
-  // Local state for Precipitation page
+  // State for Precipitation page
   const [precipRcp, setPrecipRcp] = useState<'rcp45' | 'rcp85'>('rcp45');
   const [floodModel, setFloodModel] = useState<'fluvial' | 'coastal'>('fluvial');
   const [rainfallType, setRainfallType] = useState<'absolute' | 'change'>('change');
@@ -46,35 +43,22 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = () => {
   
   const stopSwipe = useCallback(() => {
     if (swipeWidget && view) {
-      // Hide all layers that were part of the swipe
       [...swipeWidget.leadingLayers, ...swipeWidget.trailingLayers].forEach(layer => {
-          if (layer) (layer as Layer).visible = false;
+        if (layer) (layer as Layer).visible = false;
       });
-
       view.ui.remove(swipeWidget);
       swipeWidget.destroy();
-
-      // Restore pre-swipe filter state if needed
       exitSwipeMode();
-      
       setSwipeWidget(null);
       setIsSwipeActive(false);
-      if (isSwipeActive) {
-          message.info('Layer comparison deactivated');
-      }
+      message.info('Layer comparison deactivated');
     }
-  }, [swipeWidget, view, setIsSwipeActive, exitSwipeMode, isSwipeActive]);
+  }, [swipeWidget, view, setIsSwipeActive, exitSwipeMode]);
 
   useEffect(() => {
-    // Cleanup on unmount
+    // This single cleanup hook correctly handles unmounting when the panel is closed or the page changes.
     return () => stopSwipe();
   }, [stopSwipe]);
-
-  // When switching pages, stop any active swipe
-  useEffect(() => {
-    stopSwipe();
-  }, [activePage, stopSwipe]);
-
 
   const findLayer = (title: string): Layer | undefined => {
     if (!webmap) return undefined;
@@ -101,30 +85,23 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = () => {
             }
             const leftFloodLayers = leftLayers.map(title => findLayer(title)).filter((l): l is Layer => !!l);
             const rightFloodLayers = rightLayers.map(title => findLayer(title)).filter((l): l is Layer => !!l);
-
             if (leftFloodLayers.length === 0 || rightFloodLayers.length === 0) {
                 message.warning('Please select at least one layer for each side');
                 exitSwipeMode();
                 return;
             }
-            
             const leftFields = CONFIG.swipeLayerConfig.leftPanel.layers.filter(l => leftLayers.includes(l.title)).map(l => l.roadNetworkFieldName).filter(Boolean);
-            if(roadLayer) {
-                roadLayer.definitionExpression = leftFields.length > 0 ? leftFields.map(f => `${f} = 1`).join(' OR ') : '1=0';
-                roadLayer.visible = true;
-            }
-
+            roadLayer.definitionExpression = leftFields.length > 0 ? leftFields.map(f => `${f} = 1`).join(' OR ') : '1=0';
+            roadLayer.visible = true;
             const rightFields = CONFIG.swipeLayerConfig.rightPanel.layers.filter(l => rightLayers.includes(l.title)).map(l => l.roadNetworkFieldName).filter(Boolean);
-            if(roadLayerSwipe){
-                roadLayerSwipe.definitionExpression = rightFields.length > 0 ? rightFields.map(f => `${f} = 1`).join(' OR ') : '1=0';
-                roadLayerSwipe.visible = true;
-            }
-            
-            leadingLayers = [...leftFloodLayers, roadLayer as Layer];
-            trailingLayers = [...rightFloodLayers, roadLayerSwipe as Layer];
+            roadLayerSwipe.definitionExpression = rightFields.length > 0 ? rightFields.map(f => `${f} = 1`).join(' OR ') : '1=0';
+            roadLayerSwipe.visible = true;
+            leadingLayers = [...leftFloodLayers, roadLayer];
+            trailingLayers = [...rightFloodLayers, roadLayerSwipe];
 
         } else if (activePage === 'precipitation') {
-            const rainfallLayerTitle = PRECIPITATION_SWIPE_CONFIG.rainfallLayers[precipRcp][rainfallType];
+            const rainfallConfig = PRECIPITATION_SWIPE_CONFIG.rainfallLayers[precipRcp];
+            const rainfallLayerTitle = rainfallType in rainfallConfig ? rainfallConfig[rainfallType as keyof typeof rainfallConfig] : rainfallConfig.change;
             const inundationLayerTitle = PRECIPITATION_SWIPE_CONFIG.inundationLayers[precipRcp][floodModel];
 
             const rainfallLayer = findLayer(rainfallLayerTitle);
@@ -160,6 +137,13 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = () => {
         exitSwipeMode();
     }
   };
+  
+  // When changing RCP scenario on precipitation page, default to 'change' if 'absolute' is not available
+  useEffect(() => {
+    if(activePage === 'precipitation' && precipRcp === 'rcp45' && rainfallType === 'absolute') {
+        setRainfallType('change');
+    }
+  }, [precipRcp, activePage, rainfallType]);
 
   const updatePosition = (value: number) => {
     setPosition(value);
@@ -210,9 +194,9 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = () => {
         </div>
         <div>
             <label style={{ display: 'block', marginBottom: theme.marginXS, fontWeight: 500 }}>Rainfall Data (Left Side):</label>
-            <Radio.Group value={rainfallType} onChange={(e) => setRainfallType(e.target.value)} disabled={isSwipeActive || precipRcp === 'rcp45'}>
+            <Radio.Group value={rainfallType} onChange={(e) => setRainfallType(e.target.value)} disabled={isSwipeActive}>
                 <Radio.Button value="change">Change</Radio.Button>
-                <Tooltip title="Absolute rainfall data is only available for RCP 8.5">
+                <Tooltip title={precipRcp === 'rcp45' ? "Absolute rainfall data is only available for RCP 8.5" : undefined}>
                     <Radio.Button value="absolute" disabled={precipRcp === 'rcp45'}>Absolute</Radio.Button>
                 </Tooltip>
             </Radio.Group>
