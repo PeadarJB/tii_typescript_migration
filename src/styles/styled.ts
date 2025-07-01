@@ -84,7 +84,7 @@ export const useCommonStyles = createStyles(({ token, css }: { token: any; css: 
   loadingContainer: css`
     ${mixins.flexCenter()}
     ${mixins.fullSize()}
-    background: rgba(255, 255, 255, 0.9);
+    background: transparent;
     position: absolute;
     top: 0;
     left: 0;
