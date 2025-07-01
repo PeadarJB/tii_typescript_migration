@@ -1,8 +1,8 @@
 // App.tsx - Refactored for Multi-Page Structure
 
-import { useEffect, useRef, FC } from 'react';
+import { useEffect, useRef } from 'react';
 import type { ReactElement } from 'react';
-import { Layout, Menu, Button, Space, Spin, Card, Switch, Tooltip, Typography } from 'antd';
+import { Layout, Menu, Button, Space, Spin, Card, Switch, Tooltip, } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   WarningOutlined,
@@ -20,7 +20,7 @@ import { ThemeProvider } from 'antd-style';
 import { lightTheme, darkTheme } from './config/themeConfig';
 
 // Page and Widget imports
-import { FutureHazardPage, PastFloodPage, PrecipitationPage } from '@/pages';
+import { FutureHazardPage, PastFloodPage, PrecipitationPage, ExploreStatisticsPage } from '@/pages';
 import MapWidgets from '@/components/MapWidgets'; // Import the new component
 import { PAGE_CONFIG } from './config/appConfig'; // Import the new page config
 
@@ -34,7 +34,6 @@ import { useCommonStyles } from '@/styles/styled';
 import 'antd/dist/reset.css';
 
 const { Header, Sider, Content } = Layout;
-const { Title, Text } = Typography;
 
 interface ErrorFallbackProps {
   error: Error;
@@ -71,13 +70,6 @@ function App(): ReactElement {
   );
 }
 
-// A simple placeholder for pages that are not yet built
-const PlaceholderPage: FC<{pageName: string}> = ({ pageName }) => (
-    <div style={{ padding: 50, textAlign: 'center' }}>
-        <Title level={3}>'{pageName}' Page</Title>
-        <Text>This content will be built in the next steps.</Text>
-    </div>
-);
 
 
 function AppContent(): ReactElement {
@@ -178,18 +170,35 @@ function AppContent(): ReactElement {
   }
   
   const renderActivePage = () => {
-    switch (activePage) {
-        case 'future':
-            return <FutureHazardPage />;
-        case 'past':
-            return <PastFloodPage />;
-        case 'precipitation':
-            return <PrecipitationPage />;
-        case 'explore':
-            return <PlaceholderPage pageName={PAGE_CONFIG.explore.title} />;
-        default:
-            return <FutureHazardPage />;
-    }
+    // Hide the map container for the explore page
+    const mapDisplay = activePage === 'explore' ? 'none' : 'block';
+
+    return (
+        <>
+            <div
+                ref={mapContainerRef}
+                id="viewDiv"
+                className={styles.mapContainer}
+                style={{ display: mapDisplay }}
+            />
+            {loading && mapDisplay === 'block' && (
+              <div className={styles.loadingContainer}>
+                <Spin size="large" />
+              </div>
+            )}
+
+            {activePage !== 'explore' && <MapWidgets />}
+            
+            {
+                {
+                    'future': <FutureHazardPage />,
+                    'past': <PastFloodPage />,
+                    'precipitation': <PrecipitationPage />,
+                    'explore': <ExploreStatisticsPage />
+                }[activePage] || <FutureHazardPage />
+            }
+        </>
+    );
   };
 
   return (
