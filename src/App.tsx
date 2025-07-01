@@ -74,7 +74,7 @@ function AppContent(): ReactElement {
   const { styles, theme } = useCommonStyles();
 
   // Store hooks
-  const { loading, error } = useMapState();
+  const { loading, error, mapView } = useMapState();
   const { siderCollapsed, activePage, isSwipeActive } = useUIState();
   const { hasActiveFilters } = useFilterState();
   const { themeMode, setThemeMode } = useThemeState();
@@ -92,21 +92,19 @@ function AppContent(): ReactElement {
 
   // Refs
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const initStarted = useRef<boolean>(false);
-
-  // Initialize map on mount
+  
+  // Handles map initialization and re-attachment
   useEffect(() => {
-    // Only initialize the map if it's not the explore page
-    if (activePage !== 'explore' && !initStarted.current && mapContainerRef.current) {
-        const init = async (): Promise<void> => {
-          if (initStarted.current) return;
-          initStarted.current = true;
-          await new Promise<void>(resolve => setTimeout(resolve, 100));
-          await initializeMap('viewDiv');
-        };
-        void init();
+    if (activePage !== 'explore') {
+        if (!mapView && mapContainerRef.current) {
+            // If no map view exists, initialize it
+            initializeMap('viewDiv');
+        } else if (mapView && mapContainerRef.current) {
+            // If map view exists but is detached, re-attach it to the container
+            mapView.container = mapContainerRef.current;
+        }
     }
-  }, [initializeMap, activePage]);
+  }, [activePage, mapView, initializeMap]);
 
   // Panel Toggles
   const { showFilters, showStats, showChart, showSwipe } = useUIState();
@@ -286,22 +284,20 @@ function AppContent(): ReactElement {
             </Space>
           </Header>
 
-          <Content style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
-            {activePage !== 'explore' ? (
-                <>
-                    <div
-                        ref={mapContainerRef}
-                        id="viewDiv"
-                        className={styles.mapContainer}
-                    />
-                    {loading && (
-                        <div className={styles.loadingContainer}>
-                            <Spin size="large" />
-                        </div>
-                    )}
-                    <MapWidgets />
-                </>
-            ) : null}
+          <Content style={{ position: 'relative' }}>
+            <div style={{ display: activePage === 'explore' ? 'none' : 'block', width: '100%', height: '100%', position: 'relative' }}>
+                <div
+                    ref={mapContainerRef}
+                    id="viewDiv"
+                    className={styles.mapContainer}
+                />
+                {loading && (
+                    <div className={styles.loadingContainer}>
+                        <Spin size="large" />
+                    </div>
+                )}
+                <MapWidgets />
+            </div>
             {renderPageContent()}
           </Content>
         </Layout>
