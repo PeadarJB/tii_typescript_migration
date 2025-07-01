@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import type { ReactElement } from 'react';
-import { Layout, Menu, Button, Space, Spin, Card, Switch, Tooltip, } from 'antd';
+import { Layout, Menu, Button, Space, Spin, Card, Switch, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   WarningOutlined,
@@ -70,8 +70,6 @@ function App(): ReactElement {
   );
 }
 
-
-
 function AppContent(): ReactElement {
   const { styles, theme } = useCommonStyles();
 
@@ -98,14 +96,17 @@ function AppContent(): ReactElement {
 
   // Initialize map on mount
   useEffect(() => {
-    const init = async (): Promise<void> => {
-      if (initStarted.current) return;
-      initStarted.current = true;
-      await new Promise<void>(resolve => setTimeout(resolve, 100));
-      await initializeMap('viewDiv');
-    };
-    void init();
-  }, [initializeMap]);
+    // Only initialize the map if it's not the explore page
+    if (activePage !== 'explore' && !initStarted.current && mapContainerRef.current) {
+        const init = async (): Promise<void> => {
+          if (initStarted.current) return;
+          initStarted.current = true;
+          await new Promise<void>(resolve => setTimeout(resolve, 100));
+          await initializeMap('viewDiv');
+        };
+        void init();
+    }
+  }, [initializeMap, activePage]);
 
   // Panel Toggles
   const { showFilters, showStats, showChart, showSwipe } = useUIState();
@@ -154,7 +155,7 @@ function AppContent(): ReactElement {
     { key: 'explore', icon: <AreaChartOutlined />, label: 'Explore Statistics' },
   ];
 
-  if (error) {
+  if (error && activePage !== 'explore') {
     return (
       <div className={styles.errorContainer}>
         <Card>
@@ -169,37 +170,15 @@ function AppContent(): ReactElement {
     );
   }
   
-  const renderActivePage = () => {
-    // Hide the map container for the explore page
-    const mapDisplay = activePage === 'explore' ? 'none' : 'block';
-
-    return (
-        <>
-            <div
-                ref={mapContainerRef}
-                id="viewDiv"
-                className={styles.mapContainer}
-                style={{ display: mapDisplay }}
-            />
-            {loading && mapDisplay === 'block' && (
-              <div className={styles.loadingContainer}>
-                <Spin size="large" />
-              </div>
-            )}
-
-            {activePage !== 'explore' && <MapWidgets />}
-            
-            {
-                {
-                    'future': <FutureHazardPage />,
-                    'past': <PastFloodPage />,
-                    'precipitation': <PrecipitationPage />,
-                    'explore': <ExploreStatisticsPage />
-                }[activePage] || <FutureHazardPage />
-            }
-        </>
-    );
-  };
+  const renderPageContent = () => {
+    switch (activePage) {
+        case 'future': return <FutureHazardPage />;
+        case 'past': return <PastFloodPage />;
+        case 'precipitation': return <PrecipitationPage />;
+        case 'explore': return <ExploreStatisticsPage />;
+        default: return <FutureHazardPage />;
+    }
+  }
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
@@ -295,32 +274,35 @@ function AppContent(): ReactElement {
                 unCheckedChildren={<SunOutlined />}
               />
               </Tooltip>
-              <Button
-                type="primary"
-                icon={<DownloadOutlined />}
-                onClick={() => setShowReportModal(true)}
-              >
-                Generate Report
-              </Button>
+              {activePage !== 'explore' && (
+                <Button
+                    type="primary"
+                    icon={<DownloadOutlined />}
+                    onClick={() => setShowReportModal(true)}
+                >
+                    Generate Report
+                </Button>
+              )}
             </Space>
           </Header>
 
-          <Content style={{ position: 'relative' }}>
-            <div
-              ref={mapContainerRef}
-              id="viewDiv"
-              className={styles.mapContainer}
-            />
-            {loading && (
-              <div className={styles.loadingContainer}>
-                <Spin size="large" />
-              </div>
-            )}
-
-            <MapWidgets />
-            
-            {renderActivePage()}
-
+          <Content style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
+            {activePage !== 'explore' ? (
+                <>
+                    <div
+                        ref={mapContainerRef}
+                        id="viewDiv"
+                        className={styles.mapContainer}
+                    />
+                    {loading && (
+                        <div className={styles.loadingContainer}>
+                            <Spin size="large" />
+                        </div>
+                    )}
+                    <MapWidgets />
+                </>
+            ) : null}
+            {renderPageContent()}
           </Content>
         </Layout>
       </Layout>
