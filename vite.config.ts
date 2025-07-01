@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import { visualizer } from 'rollup-plugin-visualizer';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 import type { UserConfig, PluginOption } from 'vite';
 
 // https://vitejs.dev/config/
@@ -11,11 +12,8 @@ export default defineConfig(({ mode }): UserConfig => {
   return {
     plugins: [
       react({
-        // Babel plugins for development
         babel: {
-          plugins: [
-            // Add any babel plugins here if needed
-          ],
+          plugins: [],
         },
       }),
       tsconfigPaths(),
@@ -25,6 +23,15 @@ export default defineConfig(({ mode }): UserConfig => {
         gzipSize: true,
         brotliSize: true,
       }) as PluginOption,
+      // v-- Add the static copy plugin configuration here
+      viteStaticCopy({
+        targets: [
+          {
+            src: 'node_modules/@arcgis/core/assets',
+            dest: 'assets'
+          }
+        ]
+      })
     ],
     
     base: './',
@@ -62,9 +69,6 @@ export default defineConfig(({ mode }): UserConfig => {
             
             // Ant Design
             'antd-vendor': ['antd', '@ant-design/icons', '@ant-design/pro-components'],
-            
-            // ArcGIS - This is a large library, consider dynamic imports
-            'arcgis-vendor': ['@arcgis/core'],
             
             // Charting and visualization
             'chart-vendor': ['chart.js'],

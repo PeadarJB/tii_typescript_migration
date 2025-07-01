@@ -10,25 +10,16 @@ import type { ChartConfiguration } from 'chart.js';
 
 // Direct, consistent imports for all ArcGIS types
 import type Extent from '@arcgis/core/geometry/Extent';
-import type Point from '@arcgis/core/geometry/Point';
 import type Graphic from '@arcgis/core/Graphic';
 import type FeatureLayer from '@arcgis/core/layers/FeatureLayer';
 import type Layer from '@arcgis/core/layers/Layer';
 import type MapView from '@arcgis/core/views/MapView';
 import type View from '@arcgis/core/views/View';
 import type WebMap from '@arcgis/core/WebMap';
-import type Widget from '@arcgis/core/widgets/Widget';
-import type Legend from '@arcgis/core/widgets/Legend';
-import type Swipe from '@arcgis/core/widgets/Swipe';
 import type Query from '@arcgis/core/rest/support/Query';
 import type FeatureSet from '@arcgis/core/rest/support/FeatureSet';
-import type LayerList from '@arcgis/core/widgets/LayerList';
-import type Basemap from '@arcgis/core/Basemap';
 import type * as esriConfig from "@arcgis/core/config";
 
-// Corrected imports for Popup and Action types
-import type Content from '@arcgis/core/popup/content/Content';
-import type ActionButton from '@arcgis/core/support/actions/ActionButton';
 
 
 // Augment window for ArcGIS globals if needed
