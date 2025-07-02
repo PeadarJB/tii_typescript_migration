@@ -62,7 +62,7 @@ interface AppStore {
   // Actions - Filters
   setFilters: (filters: Partial<FilterState>) => void;
   applyFilters: () => Promise<void>;
-  clearAllFilters: () => void;
+  clearAllFilters: (options?: { silent?: boolean }) => void;
 
   // Actions - Swipe
   enterSwipeMode: () => void;
@@ -164,14 +164,24 @@ export const useAppStore = create<AppStore>()(
           // UI Actions
           setSiderCollapsed: (collapsed) => set({ siderCollapsed: collapsed }),
           setActivePage: (page) => {
-            get().clearAllFilters();
+            // Clear filters silently on page change
+            get().clearAllFilters({ silent: true });
+            
             set({
               activePage: page,
-              showFilters: true, // Default to showing filters on new page
+              showFilters: true,
               showStats: false,
               showChart: false,
               showSwipe: false,
             });
+
+            // Reset map extent on page change
+            const { mapView, initialExtent } = get();
+            if (mapView && initialExtent) {
+                mapView.goTo(initialExtent).catch(error => {
+                    console.error("Failed to reset map extent:", error);
+                });
+            }
           },
           setShowFilters: (show) => set({ showFilters: show }),
           setShowStats: (show) => set({ showStats: show }),
@@ -251,8 +261,9 @@ export const useAppStore = create<AppStore>()(
             }
           },
 
-          clearAllFilters: () => {
-            const { roadLayer, mapView, initialExtent } = get();
+          clearAllFilters: (options) => {
+            const { roadLayer, mapView, initialExtent, hasActiveFilters } = get();
+            const wereFiltersActive = hasActiveFilters();
             
             if (roadLayer) {
               roadLayer.definitionExpression = '1=1';
@@ -270,7 +281,9 @@ export const useAppStore = create<AppStore>()(
               filterPanelKey: Date.now(),
             });
             
-            message.info('All filters have been cleared.');
+            if (wereFiltersActive && !options?.silent) {
+                message.info('All filters have been cleared.');
+            }
           },
 
           // Swipe Actions
@@ -351,6 +364,7 @@ export const useMapState = () => useAppStore((state) => ({
   roadLayerSwipe: state.roadLayerSwipe,
   loading: state.loading,
   error: state.error,
+  initialExtent: state.initialExtent,
 }));
 
 export const useUIState = () => useAppStore((state) => ({
