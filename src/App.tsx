@@ -99,12 +99,12 @@ function AppContent(): ReactElement {
         if (!mapView && mapContainerRef.current) {
             // If no map view exists, initialize it
             initializeMap('viewDiv');
-        } else if (mapView && mapContainerRef.current) {
+        } else if (mapView && mapContainerRef.current && mapView.container !== mapContainerRef.current) {
             // If map view exists but is detached, re-attach it to the container
             mapView.container = mapContainerRef.current;
         }
     }
-  }, [activePage, mapView, initializeMap]);
+  }, [activePage, mapView, initializeMap]); // Added activePage to dependency array
 
   // Panel Toggles
   const { showFilters, showStats, showChart, showSwipe } = useUIState();
@@ -285,7 +285,15 @@ function AppContent(): ReactElement {
           </Header>
 
           <Content style={{ position: 'relative' }}>
-            <div style={{ display: activePage === 'explore' ? 'none' : 'block', width: '100%', height: '100%', position: 'relative' }}>
+            {/* The map container and its related UI are now always in the DOM */}
+            <div style={{
+                visibility: activePage === 'explore' ? 'hidden' : 'visible',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%'
+            }}>
                 <div
                     ref={mapContainerRef}
                     id="viewDiv"
@@ -298,6 +306,8 @@ function AppContent(): ReactElement {
                 )}
                 <MapWidgets />
             </div>
+            
+            {/* The active page content is rendered on top */}
             {renderPageContent()}
           </Content>
         </Layout>
