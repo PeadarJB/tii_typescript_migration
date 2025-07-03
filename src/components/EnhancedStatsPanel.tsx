@@ -15,7 +15,7 @@ import {
   Col,
   Tooltip,
   Button,
-  List,
+  List
 } from 'antd';
 import {
   WarningOutlined,
@@ -27,7 +27,8 @@ import {
   RightOutlined,
   ToolOutlined,
   PushpinOutlined,
-  EyeOutlined
+  EyeOutlined,
+  CloudOutlined,
 } from '@ant-design/icons';
 import type { CarouselRef } from 'antd/lib/carousel';
 import classNames from 'classnames';
@@ -57,8 +58,9 @@ const PastEventStats: React.FC<{ stats: PastEventStatistics }> = ({ stats }) => 
   
     const eventCountLabels: Record<string, { label: string, icon: React.ReactNode }> = {
       drainageDefects: { label: 'Drainage Defects', icon: <ToolOutlined /> },
-      opwPoints: { label: 'OPW Flood Points', icon: <PushpinOutlined /> },
-      nraPoints: { label: 'NRA Flood Points', icon: <EyeOutlined /> },
+      opwPoints: { label: 'OPW Points', icon: <PushpinOutlined /> },
+      nraPoints: { label: 'NRA Points', icon: <EyeOutlined /> },
+      moccPoints: { label: 'MOCC Events', icon: <CloudOutlined /> },
     };
   
     const getEventCount = (label: string): number => {
@@ -96,7 +98,7 @@ const PastEventStats: React.FC<{ stats: PastEventStatistics }> = ({ stats }) => 
             <Text strong>Key Event Counts:</Text>
             <Row gutter={8} style={{ marginTop: theme.marginXS }}>
               {Object.keys(eventCountLabels).map(key => (
-                <Col span={8} key={key}>
+                <Col span={6} key={key}>
                   <Card size="small" style={{ textAlign: 'center' }}>
                     <Statistic
                       title={<Space size={4}>{eventCountLabels[key].icon} {eventCountLabels[key].label}</Space>}
@@ -399,7 +401,7 @@ const EnhancedStatsPanel: React.FC<EnhancedStatsPanelProps> = () => {
       }
       size="small"
       className={panelStyles.statsPanel}
-      bodyStyle={{ padding: activePage === 'future' ? '8px 0 30px 0' : '8px', position: 'relative' }}
+      styles={{ body: { padding: activePage === 'future' ? '8px 0 30px 0' : '8px', position: 'relative' } }}
     >
       {renderContent()}
     </Card>

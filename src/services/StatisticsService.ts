@@ -27,11 +27,9 @@ export class StatisticsService {
     layer: FeatureLayer,
     definitionExpression: string = '1=1'
   ): Promise<NetworkStatistics> {
-    // Check which type of filter is active to decide which stats to calculate
     const activeFilters = useAppStore.getState().currentFilters;
     const isPastEventFilterActive = activeFilters['past-flood-event'] && activeFilters['past-flood-event'].length > 0;
 
-    // Get total network stats first
     const totalStats = await QueryService.getStatistics(
       layer,
       definitionExpression,
@@ -45,17 +43,15 @@ export class StatisticsService {
     const totalLengthKm = totalSegments * CONFIG.defaultSettings.segmentLengthKm;
     
     if (isPastEventFilterActive) {
-      // Calculate Past Event Statistics
       const pastEvents = await this.calculatePastEventStatistics(layer, definitionExpression, totalSegments);
       return {
         totalSegments,
         totalLengthKm,
-        pastEvents, // Add the past events data
-        scenarios: [], // Ensure scenarios is empty
+        pastEvents,
+        scenarios: [],
         lastUpdated: new Date()
       };
     } else {
-      // Default to calculating Future Scenario Statistics
       const [rcp85Stats, rcp45Stats] = await Promise.all([
         this.calculateScenarioStatistics(layer, definitionExpression, 'rcp85', totalSegments),
         this.calculateScenarioStatistics(layer, definitionExpression, 'rcp45', totalSegments)
@@ -70,26 +66,25 @@ export class StatisticsService {
   }
 
   /**
-   * NEW: Calculate statistics for past flood events
+   * Calculate statistics for past flood events by summing event counts.
    */
   public static async calculatePastEventStatistics(
     layer: FeatureLayer,
     baseWhere: string,
     totalSegmentsInFilter: number
   ): Promise<PastEventStatistics> {
-    const TOTAL_NETWORK_LENGTH_KM = 5338.2; // Fixed total network length
+    const TOTAL_NETWORK_LENGTH_KM = 5338.2;
 
-    // Define which fields correspond to the summary counts
     const summaryEventFields: Record<string, string> = {
-        drainageDefects: CONFIG.fields.dms_defects,
-        opwPoints: CONFIG.fields.opw_jba_points,
-        nraPoints: CONFIG.fields.jba_historic_floods,
+        drainageDefects: CONFIG.fields.dms_defects_count,
+        opwPoints: CONFIG.fields.opw_points_count,
+        nraPoints: CONFIG.fields.nra_points_count,
+        moccPoints: CONFIG.fields.mocc_points_count,
     };
 
-    // 1. Get breakdown for all 6 individual event types
     const eventBreakdown: SegmentStatistic[] = [];
     const pastEventFilterConfig = CONFIG.filterConfig.find(f => f.id === 'past-flood-event');
-    if (pastEventFilterConfig && pastEventFilterConfig.items) {
+    if (pastEventFilterConfig?.items) {
         for (const item of pastEventFilterConfig.items) {
             const stats = await QueryService.getStatistics(
                 layer,
@@ -108,24 +103,22 @@ export class StatisticsService {
         }
     }
 
-    // 2. Get total affected length and count (already available from the totalSegmentsInFilter)
     const totalAffectedLengthKm = totalSegmentsInFilter * CONFIG.defaultSettings.segmentLengthKm;
     const totalAffectedPercentage = TOTAL_NETWORK_LENGTH_KM > 0 ? (totalAffectedLengthKm / TOTAL_NETWORK_LENGTH_KM) * 100 : 0;
 
-    // 3. Get the summary counts for the 3 specific event types
-    const eventCounts: EventCountStatistic[] = [];
-    for (const [key, field] of Object.entries(summaryEventFields)) {
-        const stats = await QueryService.getStatistics(
-            layer,
-            `(${baseWhere}) AND (${field} = 1)`,
-            [{ statisticType: 'count', onStatisticField: CONFIG.fields.object_id, outStatisticFieldName: 'event_count' }]
-        );
-        eventCounts.push({
-            label: key,
-            count: stats.event_count || 0,
-            field: field,
-        });
-    }
+    const statisticDefinitions = Object.values(summaryEventFields).map(field => ({
+        statisticType: 'sum' as const,
+        onStatisticField: field,
+        outStatisticFieldName: `sum_${field}`
+    }));
+
+    const sumStats = await QueryService.getStatistics(layer, baseWhere, statisticDefinitions);
+
+    const eventCounts: EventCountStatistic[] = Object.entries(summaryEventFields).map(([key, field]) => ({
+        label: key,
+        count: sumStats[`sum_${field}`] || 0,
+        field: field,
+    }));
 
     return {
         title: 'Past Flood Events Analysis',
@@ -140,8 +133,7 @@ export class StatisticsService {
         eventBreakdown,
         riskLevel: this.calculateRiskLevel(totalAffectedPercentage)
     };
-}
-
+  }
 
   /**
    * Calculate statistics for a specific climate scenario
@@ -152,15 +144,13 @@ export class StatisticsService {
     scenario: ClimateScenarioType,
     totalSegments: number
   ): Promise<ScenarioStatistics> {
-    const TOTAL_NETWORK_LENGTH_KM = 5338.2; // Fixed total network length
+    const TOTAL_NETWORK_LENGTH_KM = 5338.2;
     const fields = this.getScenarioFields(scenario);
     const modelBreakdown: SegmentStatistic[] = [];
     let totalAffectedCount = 0;
 
-    // Get statistics for each model
     for (const [modelKey, field] of Object.entries(fields)) {
       if (!field) continue;
-
       const stats = await QueryService.getStatistics(
         layer,
         `(${baseWhere}) AND (${field} = 1)`,
@@ -170,9 +160,7 @@ export class StatisticsService {
           outStatisticFieldName: 'affected_count'
         }]
       );
-
       const count = stats.affected_count || 0;
-      
       if (modelKey === 'any') {
         totalAffectedCount = count;
       } else if (count > 0) {
@@ -187,18 +175,12 @@ export class StatisticsService {
     }
 
     const totalAffectedLengthKm = totalAffectedCount * CONFIG.defaultSettings.segmentLengthKm;
-    const totalAffectedPercentage = totalSegments > 0 
-      ? (totalAffectedLengthKm / TOTAL_NETWORK_LENGTH_KM) * 100 
-      : 0;
+    const totalAffectedPercentage = totalSegments > 0 ? (totalAffectedLengthKm / TOTAL_NETWORK_LENGTH_KM) * 100 : 0;
 
     return {
       scenario,
-      title: scenario === 'rcp45' 
-        ? 'RCP 4.5 Flood Scenario' 
-        : 'RCP 8.5 Flood Scenario',
-      returnPeriod: scenario === 'rcp45' 
-        ? '10-20 year return period' 
-        : '100-200 year return period',
+      title: scenario === 'rcp45' ? 'RCP 4.5 Flood Scenario' : 'RCP 8.5 Flood Scenario',
+      returnPeriod: scenario === 'rcp45' ? '10-20 year return period' : '100-200 year return period',
       totalAffected: {
         count: totalAffectedCount,
         lengthKm: totalAffectedLengthKm,
@@ -210,9 +192,6 @@ export class StatisticsService {
     };
   }
 
-  /**
-   * Get field mappings for a climate scenario
-   */
   private static getScenarioFields(scenario: ClimateScenarioType): Record<string, string | undefined> {
     if (scenario === 'rcp45') {
       return {
@@ -233,9 +212,6 @@ export class StatisticsService {
     }
   }
 
-  /**
-   * Get human-readable model label
-   */
   private static getModelLabel(modelKey: string): string {
     const labels: Record<string, string> = {
       cfram_f: 'CFRAM Fluvial Model',
@@ -246,18 +222,12 @@ export class StatisticsService {
     return labels[modelKey] || modelKey;
   }
 
-  /**
-   * Calculate risk level based on percentage affected
-   */
   private static calculateRiskLevel(percentage: number): RiskLevelType {
     if (percentage < 5) return 'low';
     if (percentage < 15) return 'medium';
     return 'high';
   }
 
-  /**
-   * Calculate statistics for a specific area (e.g., county)
-   */
   public static async calculateAreaStatistics(
     layer: FeatureLayer,
     areaField: string,
@@ -267,9 +237,6 @@ export class StatisticsService {
     return this.calculateNetworkStatistics(layer, whereClause);
   }
 
-  /**
-   * Compare statistics between two scenarios
-   */
   public static compareScenarios(
     stats1: ScenarioStatistics,
     stats2: ScenarioStatistics
@@ -290,16 +257,12 @@ export class StatisticsService {
     };
   }
 
-  /**
-   * Export statistics to CSV format
-   */
   public static exportToCSV(statistics: NetworkStatistics): string {
     const headers = ['Scenario', 'Model', 'Affected Segments', 'Length (km)', 'Percentage'];
     const rows: string[][] = [];
 
     if (statistics?.scenarios) {
       statistics.scenarios.forEach(scenario => {
-        // Add total row for scenario
         rows.push([
           scenario.title,
           'Total',
@@ -307,8 +270,6 @@ export class StatisticsService {
           scenario.totalAffected.lengthKm.toFixed(2),
           scenario.totalAffected.percentage.toFixed(2) + '%'
         ]);
-
-        // Add model breakdown
         scenario.modelBreakdown.forEach(model => {
           rows.push([
             scenario.title,
@@ -321,7 +282,6 @@ export class StatisticsService {
       });
     }
 
-    // Convert to CSV
     const csvContent = [
       headers.join(','),
       ...rows.map(row => row.join(','))

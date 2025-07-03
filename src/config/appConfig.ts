@@ -66,6 +66,11 @@ interface AppConfiguration {
     gsi_groundwater: string;
     jba_historic_floods: string;
     mocc_events: string;
+    // Past Event Count Fields
+    dms_defects_count: string;
+    opw_points_count: string;
+    nra_points_count: string;
+    mocc_points_count: string;
     // Precipitation Fields
     rainfall_absolute_cat: string;
     rainfall_change_cat: string;
@@ -326,11 +331,16 @@ export const CONFIG: AppConfiguration = {
     gsi_groundwater: 'GSI_Hist_Groundwater',
     jba_historic_floods: 'JBA_Hist_Floods_NRA_Points',
     mocc_events: 'MOCC_100m',
+    // Past Event Count Fields
+    dms_defects_count: 'Drainage_Defects_count',
+    opw_points_count: 'OPW_flood_points_count',
+    nra_points_count: 'NRA_flood_points_count',
+    mocc_points_count: 'mocc_point_count',
     // Precipitation Fields
     rainfall_absolute_cat: 'Rainfall_Absolute_category',
     rainfall_change_cat: 'Rainfall_Change_category',
-    inundation_depth_rcp45_cat: 'inundation_depth_rcp45_cat',
-    inundation_depth_rcp85_cat: 'inundation_depth_rcp85_cat',
+    inundation_depth_rcp45_cat: 'avg_dep_45',
+    inundation_depth_rcp85_cat: 'avg_dep_85',
   },
 
   // --- Charting Features ---
