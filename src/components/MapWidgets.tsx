@@ -24,9 +24,11 @@ const MapWidgets = () => {
         // Set default layer visibility for the current page
         // This runs whenever the activePage changes, but not if a swipe session is active.
         if (!isSwipeActive) {
+            // Capture the current extent before changing layer visibility
+            const currentExtent = mapView.extent.clone();
+            
             const defaultVisibleLayers = CONFIG.defaultLayerVisibility[activePage] || [];
             
-            // ** CORRECTED LOGIC **
             // Iterate only over the map's operational layers, not allLayers (which includes the basemap).
             mapView.map.layers.forEach(layer => {
                 const layerTitle = layer.title;
@@ -38,6 +40,14 @@ const MapWidgets = () => {
                     // If a layer has no title, it cannot be in the list, so ensure it's not visible.
                     layer.visible = false;
                 }
+            });
+
+            // Restore the extent after layer visibility changes
+            // Use immediate transition to prevent any zoom animation
+            mapView.goTo(currentExtent, {
+                animate: false
+            }).catch(error => {
+                console.error("Failed to maintain map extent after layer visibility change:", error);
             });
         }
 
