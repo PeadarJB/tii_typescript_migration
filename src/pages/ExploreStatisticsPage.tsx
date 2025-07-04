@@ -2,7 +2,7 @@
 
 import { FC, useState, useEffect, useRef } from 'react';
 import { Layout, Row, Col, Card, Typography, Radio, Space, Spin, Tooltip, Empty } from 'antd';
-import { BarChartOutlined, PieChartOutlined, RiseOutlined, ApartmentOutlined, DotChartOutlined } from '@ant-design/icons';
+import { BarChartOutlined, PieChartOutlined, RiseOutlined, ApartmentOutlined, SwapOutlined } from '@ant-design/icons';
 import type { RadioChangeEvent } from 'antd';
 import Chart from 'chart.js/auto';
 
@@ -15,6 +15,11 @@ const { Content } = Layout;
 const { Title, Text } = Typography;
 
 type RcpScenario = 'rcp45' | 'rcp85';
+
+interface RiskCompositionData {
+    features: any[];
+    sortedCounties: string[];
+}
 
 // Helper function to create a placeholder for loading charts
 const ChartPlaceholder: FC<{ title: string }> = ({ title }) => (
@@ -40,15 +45,15 @@ const ExploreStatisticsPage: FC = () => {
   // State for chart data
   const [topCountiesData, setTopCountiesData] = useState<any[] | null>(null);
   const [vulnerabilityData, setVulnerabilityData] = useState<any | null>(null);
-  const [riskBreakdownData, setRiskBreakdownData] = useState<any[] | null>(null);
-  const [criticalityData, setCriticalityData] = useState<any[] | null>(null);
+  const [riskCompositionData, setRiskCompositionData] = useState<RiskCompositionData | null>(null);
+  const [riskEscalationData, setRiskEscalationData] = useState<any | null>(null);
   const [rainfallData, setRainfallData] = useState<any | null>(null);
 
   // Refs for charts
   const topCountiesChartRef = useRef<HTMLCanvasElement>(null);
   const vulnerabilityChartRef = useRef<HTMLCanvasElement>(null);
-  const riskBreakdownChartRef = useRef<HTMLCanvasElement>(null);
-  const criticalityChartRef = useRef<HTMLCanvasElement>(null);
+  const riskCompositionChartRef = useRef<HTMLCanvasElement>(null);
+  const riskEscalationChartRef = useRef<HTMLCanvasElement>(null);
   const rainfallChartRef = useRef<HTMLCanvasElement>(null);
   
   // Chart instances
@@ -79,29 +84,31 @@ const ExploreStatisticsPage: FC = () => {
       const [
         fetchedTopCounties,
         fetchedVulnerability,
-        fetchedRiskBreakdown,
-        fetchedCriticality,
+        fetchedRiskComposition,
+        fetchedRiskEscalation,
         fetchedRainfall
       ] = await Promise.all([
         fetchTopCounties(scenario),
         fetchVulnerabilityByRoadType(),
-        fetchRiskBreakdown(scenario),
-        fetchCriticalityVsSeverity(scenario),
+        fetchRiskComposition(scenario),
+        fetchRiskEscalationData(),
         fetchRainfallVsInundation(scenario)
       ]);
 
       setTopCountiesData(fetchedTopCounties);
       setVulnerabilityData(fetchedVulnerability);
-      setRiskBreakdownData(fetchedRiskBreakdown);
-      setCriticalityData(fetchedCriticality);
+      setRiskCompositionData(fetchedRiskComposition);
+      setRiskEscalationData(fetchedRiskEscalation);
       setRainfallData(fetchedRainfall);
       
       setLoading(false);
     };
 
-    fetchData();
+    // Debounce fetch to prevent rapid re-renders on scenario change
+    const timer = setTimeout(fetchData, 100);
 
     return () => {
+      clearTimeout(timer);
       Object.keys(chartInstances.current).forEach(destroyChart);
     };
   }, [roadLayer, scenario]);
@@ -109,8 +116,8 @@ const ExploreStatisticsPage: FC = () => {
   // Render charts when their data updates
   useEffect(() => { if (topCountiesData) renderTopCountiesChart(topCountiesData) }, [topCountiesData, theme]);
   useEffect(() => { if (vulnerabilityData) renderVulnerabilityChart(vulnerabilityData) }, [vulnerabilityData, theme]);
-  useEffect(() => { if (riskBreakdownData) renderRiskBreakdownChart(riskBreakdownData) }, [riskBreakdownData, theme]);
-  useEffect(() => { if (criticalityData) renderCriticalityChart(criticalityData) }, [criticalityData, theme]);
+  useEffect(() => { if (riskCompositionData) renderRiskCompositionChart(riskCompositionData) }, [riskCompositionData, theme]);
+  useEffect(() => { if (riskEscalationData) renderRiskEscalationChart(riskEscalationData) }, [riskEscalationData, theme]);
   useEffect(() => { if (rainfallData) renderRainfallChart(rainfallData) }, [rainfallData, theme]);
 
 
@@ -190,7 +197,7 @@ const ExploreStatisticsPage: FC = () => {
     }
   };
 
-  const fetchRiskBreakdown = async (currentScenario: RcpScenario) => {
+  const fetchRiskComposition = async (currentScenario: RcpScenario): Promise<RiskCompositionData | null> => {
     if (!roadLayer) return null;
     const floodField = currentScenario === 'rcp45' ? 'future_flood_intersection_m' : 'future_flood_intersection_h';
     const query = roadLayer.createQuery();
@@ -203,46 +210,66 @@ const ExploreStatisticsPage: FC = () => {
         const results = await roadLayer.queryFeatures(query);
         const allFeatures = results.features.map(f => f.attributes);
         
-        // Get top 10 counties by total risk
         const countyTotals: {[key: string]: number} = {};
         allFeatures.forEach(f => {
             countyTotals[f.COUNTY] = (countyTotals[f.COUNTY] || 0) + f.totalLength;
         });
-        const top10Counties = Object.entries(countyTotals).sort(([,a],[,b]) => b-a).slice(0,10).map(([name]) => name);
+        
+        const sortedCounties = Object.entries(countyTotals)
+            .sort(([,a],[,b]) => b-a)
+            .map(([name]) => name);
 
-        // Filter data for top 10 counties
-        return allFeatures.filter(f => top10Counties.includes(f.COUNTY));
+        return {
+            features: allFeatures,
+            sortedCounties: sortedCounties
+        };
 
     } catch (error) {
-        console.error("Failed to fetch risk breakdown data:", error);
+        console.error("Failed to fetch risk composition data:", error);
         return null;
     }
   };
 
-  const fetchCriticalityVsSeverity = async (currentScenario: RcpScenario) => {
+  const fetchRiskEscalationData = async () => {
     if (!roadLayer) return null;
-    const floodField = currentScenario === 'rcp45' ? 'future_flood_intersection_m' : 'future_flood_intersection_h';
-    const depthField = currentScenario === 'rcp45' ? 'avg_dep_45' : 'avg_dep_85';
+    
+    const historicQuery = roadLayer.createQuery();
+    historicQuery.where = `historic_flooding_any = 1`;
+    historicQuery.groupByFieldsForStatistics = ['COUNTY'];
+    historicQuery.outStatistics = [{ statisticType: 'sum', onStatisticField: 'Shape__Length', outStatisticFieldName: 'totalLength' }];
 
-    const query = roadLayer.createQuery();
-    query.where = `${floodField} = 1 AND ${depthField} > 0`;
-    query.groupByFieldsForStatistics = ['Route', 'Criticality_Rating_Num1'];
-    query.outStatistics = [
-        { statisticType: 'sum', onStatisticField: 'Shape__Length', outStatisticFieldName: 'totalLength' },
-        { statisticType: 'avg', onStatisticField: depthField, outStatisticFieldName: 'avgDepth' }
-    ];
-    query.num = 2000; // Limit for performance
+    const futureQuery = roadLayer.createQuery();
+    futureQuery.where = `future_flood_intersection_h = 1`;
+    futureQuery.groupByFieldsForStatistics = ['COUNTY'];
+    futureQuery.outStatistics = [{ statisticType: 'sum', onStatisticField: 'Shape__Length', outStatisticFieldName: 'totalLength' }];
 
     try {
-        const results = await roadLayer.queryFeatures(query);
-        return results.features.map(f => ({
-            x: f.attributes.Criticality_Rating_Num1,
-            y: f.attributes.avgDepth,
-            r: Math.sqrt(f.attributes.totalLength / 1000) * 2, // Scale bubble size
-            label: f.attributes.Route,
-        }));
+        const [historicResults, futureResults] = await Promise.all([
+            roadLayer.queryFeatures(historicQuery),
+            roadLayer.queryFeatures(futureQuery)
+        ]);
+
+        const data: { [county: string]: { past: number, future: number } } = {};
+
+        historicResults.features.forEach(f => {
+            const county = f.attributes.COUNTY;
+            if (!data[county]) data[county] = { past: 0, future: 0 };
+            data[county].past = f.attributes.totalLength / 1000;
+        });
+
+        futureResults.features.forEach(f => {
+            const county = f.attributes.COUNTY;
+            if (!data[county]) data[county] = { past: 0, future: 0 };
+            data[county].future = f.attributes.totalLength / 1000;
+        });
+
+        return Object.entries(data)
+            .map(([county, values]) => ({ county, ...values }))
+            .sort((a, b) => b.future - a.future)
+            .slice(0, 20);
+
     } catch (error) {
-        console.error("Failed to fetch criticality data:", error);
+        console.error("Failed to fetch risk escalation data:", error);
         return null;
     }
   };
@@ -296,17 +323,17 @@ const ExploreStatisticsPage: FC = () => {
 
   // --- Chart Rendering Functions ---
 
-  const getChartOptions = (title: string) => ({
+  const getChartOptions = (title: string, scales = true) => ({
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
         legend: { labels: { color: theme.colorText } },
-        title: { display: true, text: title, color: theme.colorText }
+        title: { display: true, text: title, color: theme.colorText, font: {size: 14} }
     },
-    scales: {
+    scales: scales ? {
         x: { ticks: { color: theme.colorTextSecondary }, grid: { color: theme.colorBorderSecondary } },
         y: { ticks: { color: theme.colorTextSecondary }, grid: { color: theme.colorBorderSecondary } }
-    }
+    } : undefined
   });
 
   const renderTopCountiesChart = (data: any[]) => {
@@ -325,7 +352,7 @@ const ExploreStatisticsPage: FC = () => {
           borderWidth: 1
         }]
       },
-      options: { ...getChartOptions(''), indexAxis: 'y', plugins: { legend: { display: false } } }
+      options: { ...getChartOptions(''), indexAxis: 'y', plugins: { ...getChartOptions('').plugins, legend: { display: false } } }
     });
   };
 
@@ -346,9 +373,11 @@ const ExploreStatisticsPage: FC = () => {
     });
   };
 
-  const renderRiskBreakdownChart = (data: any[]) => {
-    const ctx = riskBreakdownChartRef.current?.getContext('2d');
-    if (!ctx || data.length === 0) return;
+  const renderRiskCompositionChart = (data: RiskCompositionData) => {
+    const ctx = riskCompositionChartRef.current?.getContext('2d');
+    if (!ctx || !data || !data.features || data.features.length === 0) return;
+
+    const { features, sortedCounties } = data;
 
     const subnetMap = CONFIG.filterConfig.find(f => f.id === 'subnet')?.options?.reduce((acc, opt) => {
         acc[opt.value] = opt.label;
@@ -356,19 +385,19 @@ const ExploreStatisticsPage: FC = () => {
     }, {} as Record<string, string>) ?? {};
 
     const subnets = Object.values(subnetMap);
-    const counties = [...new Set(data.map(d => d.COUNTY))];
+    const counties = sortedCounties;
 
     const datasets = subnets.map((subnetLabel, i) => ({
         label: subnetLabel,
-        data: counties.map(county => {
-            const item = data.find(d => d.COUNTY === county && (subnetMap[d.Subnet] || `Unknown (${d.Subnet})`) === subnetLabel);
+        data: counties.map((county: string) => {
+            const item = features.find((d: any) => d.COUNTY === county && (subnetMap[d.Subnet] || `Unknown (${d.Subnet})`) === subnetLabel);
             return item ? item.totalLength / 1000 : 0;
         }),
-        backgroundColor: styleUtils.getChartColor(i, 0.7)
+        backgroundColor: styleUtils.getChartColor(i, 0.8)
     }));
 
-    destroyChart('riskBreakdown');
-    chartInstances.current.riskBreakdown = new Chart(ctx, {
+    destroyChart('riskComposition');
+    chartInstances.current.riskComposition = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: counties,
@@ -378,39 +407,57 @@ const ExploreStatisticsPage: FC = () => {
             ...getChartOptions(''),
             indexAxis: 'y',
             scales: {
-                x: { stacked: true, ...getChartOptions('').scales.x },
-                y: { stacked: true, ...getChartOptions('').scales.y }
+                x: { 
+                    stacked: true, 
+                    ...(getChartOptions('').scales?.x ?? {}), 
+                    title: { display: true, text: 'At-Risk Road Length (km)', color: theme.colorTextSecondary } 
+                },
+                y: { 
+                    stacked: true, 
+                    ...(getChartOptions('').scales?.y ?? {}) 
+                }
             }
         }
     });
   };
 
-  const renderCriticalityChart = (data: any[]) => {
-    const ctx = criticalityChartRef.current?.getContext('2d');
+  const renderRiskEscalationChart = (data: any[]) => {
+    const ctx = riskEscalationChartRef.current?.getContext('2d');
     if (!ctx) return;
-    destroyChart('criticality');
-    chartInstances.current.criticality = new Chart(ctx, {
-        type: 'bubble',
+
+    const labels = data.map(d => d.county);
+    
+    destroyChart('riskEscalation');
+    chartInstances.current.riskEscalation = new Chart(ctx, {
+        type: 'bar',
         data: {
-            datasets: [{
-                label: 'Routes',
-                data: data,
-                backgroundColor: styleUtils.getChartColor(4, 0.6)
-            }]
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Past vs. Future Risk',
+                    data: data.map(d => [d.past, d.future]),
+                    backgroundColor: 'rgba(128, 128, 128, 0.2)',
+                    borderColor: 'rgba(128, 128, 128, 0.5)',
+                    borderWidth: 1,
+                    borderSkipped: false,
+                },
+                {
+                    type: 'scatter',
+                    label: 'Past Events',
+                    data: data.map(d => d.past),
+                    backgroundColor: styleUtils.getChartColor(1, 1),
+                },
+                {
+                    type: 'scatter',
+                    label: 'Future (RCP 8.5)',
+                    data: data.map(d => d.future),
+                    backgroundColor: styleUtils.getChartColor(3, 1),
+                }
+            ]
         },
         options: {
             ...getChartOptions(''),
-            scales: {
-                x: { title: { display: true, text: 'Criticality Rating (1-5)', color: theme.colorTextSecondary }, min: 0, max: 6, ticks: { color: theme.colorTextSecondary }, grid: { color: theme.colorBorderSecondary } },
-                y: { title: { display: true, text: 'Average Inundation Depth (m)', color: theme.colorTextSecondary }, ticks: { color: theme.colorTextSecondary }, grid: { color: theme.colorBorderSecondary } }
-            },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: (c: any) => `${c.raw.label}: Criticality ${c.raw.x}, Depth ${c.raw.y.toFixed(2)}m`
-                    }
-                }
-            }
+            indexAxis: 'y',
         }
     });
   };
@@ -460,12 +507,18 @@ const ExploreStatisticsPage: FC = () => {
     flexDirection: 'column',
   };
 
+  const largeChartCardStyle: React.CSSProperties = {
+    ...chartCardStyle,
+    height: '600px',
+  }
+
   const chartBodyStyle: React.CSSProperties = {
     flex: 1,
     padding: '16px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'auto',
   };
 
   return (
@@ -496,13 +549,13 @@ const ExploreStatisticsPage: FC = () => {
             </Col>
 
             <Col xs={24} xl={16}>
-              <Card title={<Tooltip title="Showing risk composition for the Top 10 at-risk counties"><Space><PieChartOutlined />Risk Composition by County</Space></Tooltip>} style={chartCardStyle} bodyStyle={chartBodyStyle}>
-                {loading ? <ChartPlaceholder title="Risk Breakdown" /> : (riskBreakdownData && riskBreakdownData.length > 0 ? <canvas ref={riskBreakdownChartRef}></canvas> : <ChartEmpty />)}
+              <Card title={<Tooltip title="Showing risk composition for all at-risk counties, sorted by total risk."><Space><PieChartOutlined />Risk Composition by County</Space></Tooltip>} style={largeChartCardStyle} bodyStyle={chartBodyStyle}>
+                {loading ? <ChartPlaceholder title="Risk Composition" /> : (riskCompositionData && riskCompositionData.features.length > 0 ? <canvas ref={riskCompositionChartRef}></canvas> : <ChartEmpty />)}
               </Card>
             </Col>
             <Col xs={24} xl={8}>
-              <Card title={<Tooltip title="Bubble size represents total length of the route"><Space><DotChartOutlined />Criticality vs. Flood Severity</Space></Tooltip>} style={chartCardStyle} bodyStyle={chartBodyStyle}>
-                {loading ? <ChartPlaceholder title="Criticality" /> : (criticalityData && criticalityData.length > 0 ? <canvas ref={criticalityChartRef}></canvas> : <ChartEmpty />)}
+              <Card title={<Tooltip title="Compares roads affected by past events vs. future (RCP 8.5) projections."><Space><SwapOutlined />Risk Escalation</Space></Tooltip>} style={largeChartCardStyle} bodyStyle={chartBodyStyle}>
+                {loading ? <ChartPlaceholder title="Risk Escalation" /> : (riskEscalationData && riskEscalationData.length > 0 ? <canvas ref={riskEscalationChartRef}></canvas> : <ChartEmpty />)}
               </Card>
             </Col>
             
