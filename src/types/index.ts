@@ -32,7 +32,7 @@ declare global {
 // ====================================
 // Application State & Page Types
 // ====================================
-export type AppPage = 'future' | 'past' | 'precipitation' | 'explore';
+export type AppPage = 'future' | 'past' | 'precipitation' | 'explore' | 'overview';
 
 
 // ====================================
@@ -395,6 +395,17 @@ export interface ServiceResponse<T> {
     duration: number;
     cached: boolean;
   };
+}
+
+// ====================================
+// Data & Metadata Types
+// ====================================
+
+export interface FieldMetadata {
+  fieldName: string;
+  friendlyName: string;
+  description: string;
+  dataType?: string;
 }
 
 // ====================================

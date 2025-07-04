@@ -293,7 +293,91 @@ export const usePanelStyles = createStyles(({ token, css }: { token: any; css: a
       margin-bottom: ${token.margin}px;
     }
   `,
+
+  dataOverviewPage: css`
+    padding: ${token.marginLG}px;
+    max-width: 1400px;
+    margin: 0 auto;
+    background-color: ${token.colorBgContainer};
+    min-height: 100vh;
+    overflow-y: auto;
+    
+    .header-section {
+      margin-bottom: ${token.marginXL}px;
+      
+      .page-title {
+        display: flex;
+        align-items: center;
+        gap: ${token.marginSM}px;
+        margin-bottom: ${token.margin}px;
+        
+        .icon {
+          font-size: 32px;
+          color: ${token.colorPrimary};
+        }
+        
+        h2 {
+          margin: 0;
+        }
+      }
+      
+      .intro-text {
+        font-size: 15px;
+        line-height: 1.8;
+        color: ${token.colorTextSecondary};
+      }
+    }
+    
+    .data-section-card {
+      margin-bottom: ${token.marginLG}px;
+      box-shadow: ${token.boxShadowTertiary};
+      
+      .section-title {
+        color: ${token.colorPrimary};
+        margin-bottom: ${token.margin}px;
+      }
+      
+      .section-description {
+        color: ${token.colorTextSecondary};
+        margin-bottom: ${token.margin}px;
+      }
+    }
+    
+    .data-table {
+      .ant-table {
+        font-size: 13px;
+      }
+      
+      .ant-table-thead > tr > th {
+        background-color: ${token.colorFillAlter};
+        font-weight: 600;
+      }
+      
+      code {
+        font-size: 12px;
+        padding: 2px 4px;
+        background-color: ${token.colorFillTertiary};
+        border-radius: ${token.borderRadiusSM}px;
+      }
+    }
+    
+    .data-type-tag {
+      font-size: 11px;
+    }
+    
+    .system-fields-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: ${token.marginXS}px;
+      
+      .ant-tag {
+        margin: 0;
+      }
+    }
+  `,
 }));
+
+
 
 // Utility style functions
 export const styleUtils = {

@@ -13,6 +13,7 @@ import {
   CloudOutlined,
   AreaChartOutlined,
   SwapOutlined,
+  BookOutlined, // Import new icon
 } from '@ant-design/icons';
 import { ErrorBoundary } from 'react-error-boundary';
 import { ThemeProvider } from 'antd-style';
@@ -22,7 +23,7 @@ import tiiLogo from './assets/Logo_of_Transport_Infrastructure_Ireland.png';
 import { lightTheme, darkTheme } from './config/themeConfig';
 
 // Page and Widget imports
-import { FutureHazardPage, PastFloodPage, PrecipitationPage, ExploreStatisticsPage } from '@/pages';
+import { FutureHazardPage, PastFloodPage, PrecipitationPage, ExploreStatisticsPage, DataOverviewPage } from '@/pages';
 import MapWidgets from '@/components/MapWidgets'; // Import the new component
 import { PAGE_CONFIG } from './config/appConfig'; // Import the new page config
 
@@ -97,7 +98,7 @@ function AppContent(): ReactElement {
   
   // Handles map initialization and re-attachment
   useEffect(() => {
-    if (activePage !== 'explore') {
+    if (activePage !== 'explore' && activePage !== 'overview') {
         if (!mapView && mapContainerRef.current) {
             // If no map view exists, initialize it
             initializeMap('viewDiv');
@@ -153,9 +154,10 @@ function AppContent(): ReactElement {
     { key: 'past', icon: <FieldTimeOutlined />, label: 'Past Flood Events' },
     { key: 'precipitation', icon: <CloudOutlined />, label: 'Precipitation' },
     { key: 'explore', icon: <AreaChartOutlined />, label: 'Explore Statistics' },
+    { key: 'overview', icon: <BookOutlined />, label: 'Data Overview' },
   ];
 
-  if (error && activePage !== 'explore') {
+  if (error && activePage !== 'explore' && activePage !== 'overview') {
     return (
       <div className={styles.errorContainer}>
         <Card>
@@ -176,6 +178,7 @@ function AppContent(): ReactElement {
         case 'past': return <PastFloodPage />;
         case 'precipitation': return <PrecipitationPage />;
         case 'explore': return <ExploreStatisticsPage />;
+        case 'overview': return <DataOverviewPage />;
         default: return <FutureHazardPage />;
     }
   }
@@ -276,7 +279,7 @@ function AppContent(): ReactElement {
                 unCheckedChildren={<SunOutlined />}
               />
               </Tooltip>
-              {activePage !== 'explore' && (
+              {activePage !== 'explore' && activePage !== 'overview' && (
                 <Button
                     type="primary"
                     icon={<DownloadOutlined />}
@@ -291,7 +294,7 @@ function AppContent(): ReactElement {
           <Content style={{ position: 'relative' }}>
             {/* The map container and its related UI are now always in the DOM */}
             <div style={{
-                visibility: activePage === 'explore' ? 'hidden' : 'visible',
+                visibility: (activePage === 'explore' || activePage === 'overview') ? 'hidden' : 'visible',
                 position: 'absolute',
                 top: 0,
                 left: 0,
