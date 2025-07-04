@@ -287,7 +287,7 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
           <Button 
             size="small" 
             icon={<ClearOutlined />} 
-            onClick={clearAllFilters} 
+            onClick={() => clearAllFilters()}
             disabled={!hasActiveFilters} 
             danger
           >
