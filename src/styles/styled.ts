@@ -171,7 +171,7 @@ export const useCommonStyles = createStyles(({ token, css }: { token: any; css: 
     height: 64px;
     ${mixins.flexCenter()}
     border-bottom: 1px solid ${token.colorBorderSecondary};
-    background: ${token.colorPrimary};
+    background: ${token.colorWhite};
     color: ${token.colorWhite};
     font-weight: bold;
     font-size: 20px;

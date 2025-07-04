@@ -16,6 +16,8 @@ import {
 } from '@ant-design/icons';
 import { ErrorBoundary } from 'react-error-boundary';
 import { ThemeProvider } from 'antd-style';
+// Asset imports
+import tiiLogo from './assets/Logo_of_Transport_Infrastructure_Ireland.png';
 
 import { lightTheme, darkTheme } from './config/themeConfig';
 
@@ -190,7 +192,9 @@ function AppContent(): ReactElement {
           onMouseEnter={() => setSiderCollapsed(false)}
           onMouseLeave={() => setSiderCollapsed(true)}
         >
-          <div className={styles.siderLogo}>TII</div>
+          <div className={styles.siderLogo}>
+            <img src={tiiLogo} alt="TII Logo" style={{ height: '40px', transition: 'all 0.2s' }} />
+          </div>
           <Menu
             theme={themeMode}
             mode="inline"
