@@ -107,18 +107,22 @@ export interface FilterConfigItem {
 
 export interface ActiveFilter {
   field: string;
-  value: string | number;
+  value: string | number | (string | number)[];
   dataType: 'string' | 'number';
   operator?: 'IN' | 'BETWEEN' | 'EQUALS' | 'LIKE';
 }
 
 export interface FilterState {
-  'flood-scenario': string[];
-  'past-flood-event': string[];
-  counties: string[];
-  criticality: [number, number];
-  subnet: string[];
-  lifeline: boolean | null;
+  'flood-scenario'?: string[];
+  'past-flood-event'?: string[];
+  county?: string[];
+  criticality?: [number, number];
+  subnet?: string[];
+  lifeline?: (string | number)[];
+  'rainfall-absolute-cat'?: string[];
+  'rainfall-change-cat'?: string[];
+  'inundation-depth-45'?: [number, number];
+  'inundation-depth-85'?: [number, number];
 }
 
 export interface AppliedFilters {

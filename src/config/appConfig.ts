@@ -75,8 +75,8 @@ interface AppConfiguration {
     // Precipitation Fields
     rainfall_absolute_cat: string;
     rainfall_change_cat: string;
-    inundation_depth_rcp45_cat: string; // Placeholder
-    inundation_depth_rcp85_cat: string; // Placeholder
+    inundation_depth_rcp45: string;
+    inundation_depth_rcp85: string;
   }>;
   readonly chartingFeatures: ReadonlyArray<ChartFeature>;
   readonly swipeLayerConfig: Readonly<{
@@ -251,22 +251,26 @@ export const CONFIG: AppConfiguration = {
         ]
     },
     {
-        id: 'inundation-depth-45-cat',
-        label: 'Inundation Depth Category (RCP 4.5)',
-        type: 'multi-select',
-        field: 'inundation_depth_rcp45_cat',
+        id: 'inundation-depth-45',
+        label: 'Inundation Depth (RCP 4.5)',
+        type: 'range-slider',
+        field: 'avg_dep_45',
         dataType: 'number',
-        description: 'Filter by inundation depth. (Placeholder - data field to be calculated).',
-        options: [] // Placeholder
+        description: 'Filter by average inundation depth (in meters) for the RCP 4.5 scenario.',
+        min: 0,
+        max: 5,
+        step: 0.1,
     },
     {
-        id: 'inundation-depth-85-cat',
-        label: 'Inundation Depth Category (RCP 8.5)',
-        type: 'multi-select',
-        field: 'inundation_depth_rcp85_cat',
+        id: 'inundation-depth-85',
+        label: 'Inundation Depth (RCP 8.5)',
+        type: 'range-slider',
+        field: 'avg_dep_85',
         dataType: 'number',
-        description: 'Filter by inundation depth. (Placeholder - data field to be calculated).',
-        options: [] // Placeholder
+        description: 'Filter by average inundation depth (in meters) for the RCP 8.5 scenario.',
+        min: 0,
+        max: 5,
+        step: 0.1,
     },
     {
       id: 'county',
@@ -353,8 +357,8 @@ export const CONFIG: AppConfiguration = {
     // Precipitation Fields
     rainfall_absolute_cat: 'Rainfall_Absolute_category',
     rainfall_change_cat: 'Rainfall_Change_category',
-    inundation_depth_rcp45_cat: 'avg_dep_45',
-    inundation_depth_rcp85_cat: 'avg_dep_85',
+    inundation_depth_rcp45: 'avg_dep_45',
+    inundation_depth_rcp85: 'avg_dep_85',
   },
 
   // --- Charting Features ---

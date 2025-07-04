@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
-import { Card, Select, Button, Space, Divider, Badge, Tooltip, message, Collapse, Row, Col } from 'antd';
+import { Card, Select, Button, Space, Divider, Badge, Tooltip, message, Collapse, Row, Col, Slider } from 'antd';
 import type { CollapseProps } from 'antd';
 import {
   FilterOutlined,
@@ -25,6 +25,7 @@ import { usePanelStyles, useCommonStyles } from '@/styles/styled';
 // Type imports
 import type FeatureSet from '@arcgis/core/rest/support/FeatureSet';
 import { CONFIG } from '@/config/appConfig';
+import type { FilterState } from '@/types';
 
 // Component Props Interface
 interface EnhancedFilterPanelProps {
@@ -50,10 +51,14 @@ interface DynamicOptions {
 }
 
 // Helper to get initial state for filter values
-const getInitialFilterState = (): Record<string, string[]> => {
-  const initialState: Record<string, string[]> = {};
+const getInitialFilterState = (): Partial<FilterState> => {
+  const initialState: Partial<FilterState> = {};
   CONFIG.filterConfig.forEach(filter => {
-    initialState[filter.id] = [];
+    if (filter.type === 'range-slider') {
+        initialState[filter.id as keyof FilterState] = [filter.min ?? 0, filter.max ?? 5] as any;
+    } else {
+        initialState[filter.id as keyof FilterState] = [] as any;
+    }
   });
   return initialState;
 };
@@ -74,7 +79,7 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [applyingFilters, setApplyingFilters] = useState<boolean>(false);
   const [dynamicOptions, setDynamicOptions] = useState<DynamicOptions>({ county: [] });
-  const [filterValues, setFilterValues] = useState<Record<string, string[]>>(getInitialFilterState());
+  const [filterValues, setFilterValues] = useState<Partial<FilterState>>(getInitialFilterState());
   const [expandedPanels, setExpandedPanels] = useState<string[]>([]);
 
   useEffect(() => {
@@ -83,7 +88,7 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
     } else if (activePage === 'past') {
       setExpandedPanels(['past-flood-event']);
     } else if (activePage === 'precipitation') {
-        setExpandedPanels(['rainfall-absolute-cat', 'rainfall-change-cat']);
+        setExpandedPanels(['rainfall-absolute-cat', 'rainfall-change-cat', 'inundation-depth-45', 'inundation-depth-85']);
     }
   }, [activePage]);
   
@@ -97,7 +102,6 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
         return;
     }
     
-    // Assign to a new constant to guarantee the type for the rest of the function
     const fieldName = countyConfig.field;
 
     try {
@@ -127,17 +131,14 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
     }
   }, [roadLayer]);
   
-  // Load dynamic filter options
   useEffect(() => {
     void loadDynamicOptions();
   }, [loadDynamicOptions]);
 
-  // Sync local filter state with store
   useEffect(() => {
-    setFilterValues(currentFilters as Record<string, string[]>);
+    setFilterValues(currentFilters);
   }, [currentFilters]);
 
-  // Clear filters when panel is hidden
   useEffect(() => {
     if (!showFilters && hasActiveFilters) {
       clearAllFilters();
@@ -145,7 +146,7 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
     }
   }, [showFilters, hasActiveFilters, clearAllFilters]);
   
-  const handleFilterChange = (id: string, value: string[]): void => {
+  const handleFilterChange = (id: string, value: any): void => {
     const newFilterValues = {
       ...filterValues,
       [id]: value,
@@ -164,10 +165,22 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
   };
   
   const clearFilterGroup = (id: string): void => {
-    handleFilterChange(id, []);
+    const filterConfig = CONFIG.filterConfig.find(f => f.id === id);
+    if (filterConfig?.type === 'range-slider') {
+        handleFilterChange(id, [filterConfig.min ?? 0, filterConfig.max ?? 5]);
+    } else {
+        handleFilterChange(id, []);
+    }
   };
 
-  const activeFilterCount = Object.values(filterValues).filter(v => v.length > 0).length;
+  const activeFilterCount = Object.values(filterValues).filter(v => {
+    if (!Array.isArray(v)) return false;
+    const filterConfig = CONFIG.filterConfig.find(f => f.id === Object.keys(filterValues).find(key => filterValues[key as keyof FilterState] === v)!);
+    if (filterConfig?.type === 'range-slider') {
+        return Number(v[0]) > (filterConfig.min ?? 0) || Number(v[1]) < (filterConfig.max ?? 5);
+    }
+    return v.length > 0;
+  }).length;
   
   const icons: Record<string, React.ReactNode> = {
     'flood-scenario': <WarningOutlined />,
@@ -178,8 +191,8 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
     'lifeline': <HeartOutlined />,
     'rainfall-absolute-cat': <CloudOutlined />,
     'rainfall-change-cat': <CloudOutlined />,
-    'inundation-depth-45-cat': <CloudOutlined />,
-    'inundation-depth-85-cat': <CloudOutlined />,
+    'inundation-depth-45': <CloudOutlined />,
+    'inundation-depth-85': <CloudOutlined />,
   };
 
   const getVisibleFilters = () => {
@@ -193,21 +206,36 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
         const precipitationFilters = [
             'rainfall-absolute-cat',
             'rainfall-change-cat',
-            'inundation-depth-45-cat',
-            'inundation-depth-85-cat',
-            'county' // Only include county as a common filter here
+            'inundation-depth-45',
+            'inundation-depth-85',
+            'county'
         ];
         return CONFIG.filterConfig.filter(f => precipitationFilters.includes(f.id));
     }
-    // Default to 'future' page filters
     return CONFIG.filterConfig.filter(
       f => f.id === 'flood-scenario' || commonFilterIds.includes(f.id)
     );
   };
 
   const collapseItems: CollapseProps['items'] = getVisibleFilters().map(filter => {
-    const selected = filterValues[filter.id] ?? [];
+    const selected = filterValues[filter.id as keyof FilterState] as any[] ?? [];
     
+    let isFilterActive = false;
+    let badgeCount = 0;
+
+    if (filter.type === 'range-slider') {
+        const [min, max] = selected as [number, number];
+        const defaultMin = filter.min ?? 0;
+        const defaultMax = filter.max ?? 5;
+        if (min > defaultMin || max < defaultMax) {
+            isFilterActive = true;
+            badgeCount = 1;
+        }
+    } else if (Array.isArray(selected) && selected.length > 0) {
+        isFilterActive = true;
+        badgeCount = selected.length;
+    }
+
     let options: readonly (FilterOption | ScenarioItem)[] | undefined;
     if (filter.type === 'multi-select' && filter.id === 'county') {
         options = dynamicOptions.county;
@@ -225,10 +253,10 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
         <Space>
           {icons[filter.id]}
           <span>{filter.label}</span>
-          {selected.length > 0 && <Badge count={selected.length} className="filter-badge" />}
+          {isFilterActive && <Badge count={badgeCount} className="filter-badge" />}
         </Space>
       ),
-      extra: selected.length > 0 ? (
+      extra: isFilterActive ? (
         <Button 
           type="link" 
           size="small" 
@@ -248,21 +276,36 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
             </Tooltip>
           </Col>
           <Col flex="auto">
-            <Select
-              mode="multiple"
-              style={{ width: '100%' }}
-              placeholder={`Select ${filter.label.toLowerCase()}...`}
-              value={selected}
-              onChange={(value: string[]) => handleFilterChange(filter.id, value)}
-              options={options?.map((opt: any) => ({
-                label: opt.label,
-                value: opt[valueProp]
-              }))}
-              showSearch={filter.id === 'county'}
-              maxTagCount={3}
-              maxTagPlaceholder={omitted => `+${omitted.length} more`}
-              disabled={!options || options.length === 0}
-            />
+            {filter.type === 'multi-select' || filter.type === 'scenario-select' ? (
+                <Select
+                  mode="multiple"
+                  style={{ width: '100%' }}
+                  placeholder={`Select ${filter.label.toLowerCase()}...`}
+                  value={selected}
+                  onChange={(value: string[]) => handleFilterChange(filter.id, value)}
+                  options={options?.map((opt: any) => ({
+                    label: opt.label,
+                    value: opt[valueProp]
+                  }))}
+                  showSearch={filter.id === 'county'}
+                  maxTagCount={3}
+                  maxTagPlaceholder={omitted => `+${omitted.length} more`}
+                  disabled={!options || options.length === 0}
+                />
+            ) : filter.type === 'range-slider' ? (
+                <Slider
+                    range
+                    min={filter.min}
+                    max={filter.max}
+                    step={filter.step}
+                    value={selected as [number, number] || [filter.min!, filter.max!]}
+                    onChange={(value: number | number[]) => handleFilterChange(filter.id, value)}
+                    marks={{
+                        [filter.min!]: `${filter.min}m`,
+                        [filter.max!]: `${filter.max}m`
+                    }}
+                />
+            ) : null}
           </Col>
         </Row>
       )
@@ -287,7 +330,7 @@ const EnhancedFilterPanel: FC<EnhancedFilterPanelProps> = () => {
           <Button 
             size="small" 
             icon={<ClearOutlined />} 
-            onClick={() => clearAllFilters()}
+            onClick={() => clearAllFilters()} 
             disabled={!hasActiveFilters} 
             danger
           >

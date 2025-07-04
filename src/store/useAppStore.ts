@@ -80,6 +80,18 @@ interface AppStore {
   resetError: () => void;
 }
 
+const getInitialFilterStateFromConfig = (): Partial<FilterState> => {
+    const initialState: Partial<FilterState> = {};
+    CONFIG.filterConfig.forEach(filter => {
+      if (filter.type === 'range-slider') {
+          initialState[filter.id as keyof FilterState] = [filter.min ?? 0, filter.max ?? 5] as any;
+      } else {
+          initialState[filter.id as keyof FilterState] = [] as any;
+      }
+    });
+    return initialState;
+};
+
 // Create the store with persist middleware
 export const useAppStore = create<AppStore>()(
   devtools(
@@ -104,7 +116,7 @@ export const useAppStore = create<AppStore>()(
           showReportModal: false,
           isSwipeActive: false,
           themeMode: 'light',
-          currentFilters: {},
+          currentFilters: getInitialFilterStateFromConfig(),
           currentStats: null,
           filterPanelKey: Date.now(),
 
@@ -194,14 +206,6 @@ export const useAppStore = create<AppStore>()(
           // Filter Actions
           setFilters: (filters) => {
             set({ currentFilters: filters });
-            
-            const hasFilters = Object.values(filters).some(
-              (value) => Array.isArray(value) && value.length > 0
-            );
-            
-            if (!hasFilters) {
-              set({ showStats: false });
-            }
           },
 
           applyFilters: async () => {
@@ -213,27 +217,48 @@ export const useAppStore = create<AppStore>()(
             try {
               const whereClauses: string[] = [];
 
-              Object.entries(currentFilters).forEach(([key, values]) => {
-                if (!values || !Array.isArray(values) || values.length === 0) return;
-
-                if (key === 'flood-scenario' || key === 'past-flood-event') {
-                  const scenarioClauses = values.map(field => `${field} = 1`);
-                  whereClauses.push(`(${scenarioClauses.join(' OR ')})`);
-                } else {
-                  const filterConfig = CONFIG.filterConfig.find(f => f.id === key);
-                  if (filterConfig && 'field' in filterConfig && filterConfig.field) {
-                    const formattedValues = values.map(val => 
-                      filterConfig.dataType === 'string' ? `'${val}'` : val
-                    ).join(',');
-                    whereClauses.push(`${filterConfig.field} IN (${formattedValues})`);
-                  }
+              for (const [key, values] of Object.entries(currentFilters)) {
+                if (!values || !Array.isArray(values) || values.length === 0) {
+                    continue;
                 }
-              });
+
+                const filterConfig = CONFIG.filterConfig.find(f => f.id === key);
+                if (!filterConfig) {
+                    continue;
+                }
+
+                switch (filterConfig.type) {
+                    case 'scenario-select': {
+                        const scenarioClauses = values.map(field => `${field} = 1`);
+                        if (scenarioClauses.length > 0) {
+                            whereClauses.push(`(${scenarioClauses.join(' OR ')})`);
+                        }
+                        break;
+                    }
+                    case 'range-slider': {
+                        if (filterConfig.field && values.length === 2 && typeof values[0] === 'number' && typeof values[1] === 'number') {
+                            if (values[0] > (filterConfig.min ?? 0) || values[1] < (filterConfig.max ?? 5)) {
+                                whereClauses.push(`${filterConfig.field} BETWEEN ${values[0]} AND ${values[1]}`);
+                            }
+                        }
+                        break;
+                    }
+                    case 'multi-select': {
+                        if (filterConfig.field) {
+                            const formattedValues = values.map(val => 
+                                filterConfig.dataType === 'string' ? `'${val}'` : val
+                            ).join(',');
+                            whereClauses.push(`${filterConfig.field} IN (${formattedValues})`);
+                        }
+                        break;
+                    }
+                }
+              }
 
               const finalWhereClause = whereClauses.length > 0 ? whereClauses.join(' AND ') : '1=1';
               roadLayer.definitionExpression = finalWhereClause;
 
-              if (whereClauses.length > 0) {
+              if (finalWhereClause !== '1=1') {
                 roadLayer.visible = true;
                 set({ showStats: true });
                 message.success('Filters applied successfully');
@@ -249,8 +274,8 @@ export const useAppStore = create<AppStore>()(
                 await get().calculateStatistics();
               } else {
                 roadLayer.visible = false;
-                message.info('No filters applied - road layer hidden');
-                
+                set({ showStats: false, currentStats: null });
+                message.info('Filters cleared or set to default. Road layer hidden.');
                 if (initialExtent) {
                   await mapView.goTo(initialExtent);
                 }
@@ -275,7 +300,7 @@ export const useAppStore = create<AppStore>()(
             }
             
             set({
-              currentFilters: {},
+              currentFilters: getInitialFilterStateFromConfig(),
               showStats: false,
               currentStats: null,
               filterPanelKey: Date.now(),
@@ -333,10 +358,22 @@ export const useAppStore = create<AppStore>()(
 
           // Computed values
           hasActiveFilters: () => {
-            const filters = get().currentFilters;
-            return Object.values(filters).some(
-              (value) => Array.isArray(value) && value.length > 0
-            );
+            const { currentFilters } = get();
+            return Object.entries(currentFilters).some(([key, value]) => {
+                if (!Array.isArray(value)) return false;
+                
+                const filterConfig = CONFIG.filterConfig.find(f => f.id === key);
+                if (!filterConfig) return false;
+
+                if (filterConfig.type === 'range-slider') {
+                    const [currentMin, currentMax] = value as [number, number];
+                    const defaultMin = filterConfig.min ?? 0;
+                    const defaultMax = filterConfig.max ?? 5;
+                    return currentMin > defaultMin || currentMax < defaultMax;
+                }
+                
+                return value.length > 0;
+            });
           },
 
           // Reset actions
