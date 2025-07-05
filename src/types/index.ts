@@ -165,11 +165,74 @@ export interface PastEventStatistics {
   riskLevel: RiskLevelType;
 }
 
+// NEW: Precipitation Statistics Types
+export interface RainfallCategoryDistribution {
+  category: number;
+  count: number;
+  lengthKm: number;
+  percentage: number;
+  label: string;
+}
+
+export interface RainfallAnalysis {
+  type: 'change' | 'absolute';
+  average: number;
+  min: number;
+  max: number;
+  unit: string;
+  categoryDistribution: RainfallCategoryDistribution[];
+  highRiskSegments: SegmentStatistic; // Category 4-5
+}
+
+export interface InundationAnalysis {
+  scenario: ClimateScenarioType;
+  averageDepth: number;
+  maxDepth: number;
+  segmentsWithDepth: SegmentStatistic;
+  highRiskSegments: SegmentStatistic; // >0.5m depth
+  criticalRiskSegments: SegmentStatistic; // >1.0m depth
+}
+
+export interface CombinedRiskAnalysis {
+  highRainfallHighInundation: SegmentStatistic;
+  criticalInfrastructureAtRisk: SegmentStatistic;
+  lifelineRoutesAffected: SegmentStatistic;
+}
+
+export interface GeographicBreakdown {
+  county: string;
+  totalLength: number;
+  averageRainfallChange?: number;
+  averageRainfallAbsolute?: number;
+  averageInundationRcp45?: number;
+  averageInundationRcp85?: number;
+  riskLevel: RiskLevelType;
+}
+
+export interface PrecipitationStatistics {
+  title: string;
+  description: string;
+  totalAffected: SegmentStatistic;
+  rainfallAnalysis: {
+    change?: RainfallAnalysis;
+    absolute?: RainfallAnalysis;
+  };
+  inundationAnalysis: {
+    rcp45?: InundationAnalysis;
+    rcp85?: InundationAnalysis;
+  };
+  geographicBreakdown: GeographicBreakdown[];
+  subnetBreakdown: SegmentStatistic[];
+  combinedRisk: CombinedRiskAnalysis;
+  riskLevel: RiskLevelType;
+}
+
 export interface NetworkStatistics {
   totalSegments: number;
   totalLengthKm: number;
   scenarios?: ScenarioStatistics[];
   pastEvents?: PastEventStatistics;
+  precipitation?: PrecipitationStatistics; // NEW
   lastUpdated: Date;
 }
 

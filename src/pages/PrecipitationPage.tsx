@@ -11,6 +11,7 @@ import { useCommonStyles } from '@/styles/styled';
 // Lazy loaded components
 const EnhancedFilterPanel = lazy(() => import('@/components/EnhancedFilterPanel'));
 const SimpleSwipePanel = lazy(() => import('@/components/SimpleSwipePanel'));
+const EnhancedStatsPanel = lazy(() => import('@/components/EnhancedStatsPanel')); // Using the unified component
 
 const LoadingFallback: FC = () => {
     const { styles } = useCommonStyles();
@@ -25,9 +26,10 @@ const PrecipitationPage: FC = () => {
     const { mapView, webmap, roadLayer, loading } = useMapState();
     const { 
         showFilters, 
+        showStats,
         showSwipe, 
     } = useUIState();
-    const { filterPanelKey } = useFilterState();
+    const { filterPanelKey, hasActiveFilters } = useFilterState();
 
     return (
         <>
@@ -40,6 +42,12 @@ const PrecipitationPage: FC = () => {
             {showSwipe && mapView && webmap && !loading && (
                 <Suspense fallback={<LoadingFallback />}>
                     <SimpleSwipePanel />
+                </Suspense>
+            )}
+
+            {showStats && hasActiveFilters && roadLayer && !loading && (
+                <Suspense fallback={<LoadingFallback />}>
+                    <EnhancedStatsPanel />
                 </Suspense>
             )}
         </>
