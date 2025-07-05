@@ -233,29 +233,30 @@ function AppContent(): ReactElement {
                     />
                     </Tooltip>
 
+                    {(activePage === 'future' || activePage === 'past' || activePage === 'precipitation') && (
+                        <Tooltip title={!hasActiveFilters ? 'Apply filters to view statistics' : ''}>
+                        <Switch
+                            size="small"
+                            checked={showStats}
+                            onChange={setShowStats}
+                            checkedChildren="Stats"
+                            unCheckedChildren="Stats"
+                            disabled={!hasActiveFilters || isSwipeActive}
+                        />
+                        </Tooltip>
+                    )}
+
                     {(activePage === 'future' || activePage === 'past') && (
-                        <>
-                            <Tooltip title={!hasActiveFilters ? 'Apply filters to view statistics' : ''}>
+                        <Tooltip title="Show advanced data visualization and analysis">
                             <Switch
                                 size="small"
-                                checked={showStats}
-                                onChange={setShowStats}
-                                checkedChildren="Stats"
-                                unCheckedChildren="Stats"
-                                disabled={!hasActiveFilters || isSwipeActive}
+                                checked={showChart}
+                                onChange={handleChartToggle}
+                                checkedChildren="Chart"
+                                unCheckedChildren="Chart"
+                                disabled={isSwipeActive}
                             />
-                            </Tooltip>
-                            <Tooltip title="Show advanced data visualization and analysis">
-                                <Switch
-                                    size="small"
-                                    checked={showChart}
-                                    onChange={handleChartToggle}
-                                    checkedChildren="Chart"
-                                    unCheckedChildren="Chart"
-                                    disabled={isSwipeActive}
-                                />
-                            </Tooltip>
-                        </>
+                        </Tooltip>
                     )}
 
                     {(activePage === 'future' || activePage === 'precipitation') && (

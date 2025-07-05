@@ -201,10 +201,15 @@ export const usePanelStyles = createStyles(({ token, css }: { token: any; css: a
     bottom: ${token.margin}px;
     left: ${token.margin}px;
     width: 450px;
+    max-height: calc(100vh - 100px);
+    display: flex;
+    flex-direction: column;
 
     .ant-card-body {
       padding: ${token.paddingSM}px 0 30px 0;
       position: relative;
+      overflow-y: auto;
+      flex: 1;
     }
 
     .navigation-button {
