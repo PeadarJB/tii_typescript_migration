@@ -210,36 +210,71 @@ export const useAppStore = create<AppStore>()(
 
           applyFilters: async () => {
             const state = get();
-            const { roadLayer, mapView, initialExtent, currentFilters } = state;
+            const { roadLayer, mapView, initialExtent, currentFilters, activePage } = state;
             
-            if (!roadLayer || !mapView) return;
+            console.log('🔍 [FILTER DEBUG] Starting applyFilters...');
+            console.log('🔍 [FILTER DEBUG] Active page:', activePage);
+            console.log('🔍 [FILTER DEBUG] Current filters raw:', currentFilters);
+            
+            if (!roadLayer || !mapView) {
+              console.log('❌ [FILTER DEBUG] Missing roadLayer or mapView');
+              return;
+            }
 
             try {
               const whereClauses: string[] = [];
 
+              console.log('🔍 [FILTER DEBUG] Processing filters...');
+              
               for (const [key, values] of Object.entries(currentFilters)) {
+                console.log(`🔍 [FILTER DEBUG] Processing filter: ${key}`, values);
+                
                 if (!values || !Array.isArray(values) || values.length === 0) {
+                    console.log(`🔍 [FILTER DEBUG] Skipping ${key} - no values`);
                     continue;
                 }
 
                 const filterConfig = CONFIG.filterConfig.find(f => f.id === key);
                 if (!filterConfig) {
+                    console.log(`🔍 [FILTER DEBUG] No config found for filter: ${key}`);
                     continue;
                 }
+
+                console.log(`🔍 [FILTER DEBUG] Filter config for ${key}:`, filterConfig);
 
                 switch (filterConfig.type) {
                     case 'scenario-select': {
                         const scenarioClauses = values.map(field => `${field} = 1`);
                         if (scenarioClauses.length > 0) {
-                            whereClauses.push(`(${scenarioClauses.join(' OR ')})`);
+                            const clause = `(${scenarioClauses.join(' OR ')})`;
+                            whereClauses.push(clause);
+                            console.log(`🔍 [FILTER DEBUG] Scenario clause for ${key}:`, clause);
                         }
                         break;
                     }
                     case 'range-slider': {
                         if (filterConfig.field && values.length === 2 && typeof values[0] === 'number' && typeof values[1] === 'number') {
-                            if (values[0] > (filterConfig.min ?? 0) || values[1] < (filterConfig.max ?? 5)) {
-                                whereClauses.push(`${filterConfig.field} BETWEEN ${values[0]} AND ${values[1]}`);
+                            const [min, max] = values as [number, number];
+                            const defaultMin = filterConfig.min ?? 0;
+                            const defaultMax = filterConfig.max ?? 5;
+                            
+                            console.log(`🔍 [FILTER DEBUG] Range slider ${key}:`);
+                            console.log(`  - Field: ${filterConfig.field}`);
+                            console.log(`  - Current range: [${min}, ${max}]`);
+                            console.log(`  - Default range: [${defaultMin}, ${defaultMax}]`);
+                            console.log(`  - Is different from default: ${min > defaultMin || max < defaultMax}`);
+                            
+                            // CHANGED: Always apply range filter if values are set, regardless of defaults
+                            // This helps debug if the field has data
+                            if (min >= defaultMin && max <= defaultMax) {
+                                const clause = `${filterConfig.field} BETWEEN ${min} AND ${max}`;
+                                whereClauses.push(clause);
+                                console.log(`🔍 [FILTER DEBUG] Range clause for ${key}:`, clause);
+                            } else {
+                                console.log(`🔍 [FILTER DEBUG] Range ${key} outside bounds, skipping`);
                             }
+                        } else {
+                            console.log(`🔍 [FILTER DEBUG] Invalid range data for ${key}:`, values);
                         }
                         break;
                     }
@@ -248,31 +283,51 @@ export const useAppStore = create<AppStore>()(
                             const formattedValues = values.map(val => 
                                 filterConfig.dataType === 'string' ? `'${val}'` : val
                             ).join(',');
-                            whereClauses.push(`${filterConfig.field} IN (${formattedValues})`);
+                            const clause = `${filterConfig.field} IN (${formattedValues})`;
+                            whereClauses.push(clause);
+                            console.log(`🔍 [FILTER DEBUG] Multi-select clause for ${key}:`, clause);
                         }
                         break;
                     }
+                    default:
+                        console.log(`🔍 [FILTER DEBUG] Unknown filter type for ${key}:`, filterConfig.type);
                 }
               }
 
               const finalWhereClause = whereClauses.length > 0 ? whereClauses.join(' AND ') : '1=1';
+              
+              console.log('🔍 [FILTER DEBUG] Generated WHERE clauses:', whereClauses);
+              console.log('🔍 [FILTER DEBUG] Final WHERE clause:', finalWhereClause);
+              
+              // Apply the filter
+              console.log('🔍 [FILTER DEBUG] Applying definitionExpression to roadLayer...');
               roadLayer.definitionExpression = finalWhereClause;
+              console.log('🔍 [FILTER DEBUG] Road layer definitionExpression set to:', roadLayer.definitionExpression);
 
               if (finalWhereClause !== '1=1') {
+                console.log('🔍 [FILTER DEBUG] Filters applied - making road layer visible');
                 roadLayer.visible = true;
                 set({ showStats: true });
                 message.success('Filters applied successfully');
 
+                // Query extent
+                console.log('🔍 [FILTER DEBUG] Querying extent for filtered results...');
                 const Query = (await import('@arcgis/core/rest/support/Query.js')).default;
                 const query = new Query({ where: finalWhereClause });
                 const extentResult = await roadLayer.queryExtent(query);
                 
+                console.log('🔍 [FILTER DEBUG] Extent query result:', extentResult);
+                
                 if (extentResult?.extent) {
+                  console.log('🔍 [FILTER DEBUG] Zooming to extent:', extentResult.extent);
                   await mapView.goTo(extentResult.extent.expand(1.2));
+                } else {
+                  console.log('🔍 [FILTER DEBUG] No extent returned - possibly no features match the filter');
                 }
 
                 await get().calculateStatistics();
               } else {
+                console.log('🔍 [FILTER DEBUG] No filters applied - hiding road layer');
                 roadLayer.visible = false;
                 set({ showStats: false, currentStats: null });
                 message.info('Filters cleared or set to default. Road layer hidden.');
@@ -281,7 +336,7 @@ export const useAppStore = create<AppStore>()(
                 }
               }
             } catch (error) {
-              console.error('Failed to apply filters:', error);
+              console.error('❌ [FILTER DEBUG] Failed to apply filters:', error);
               message.error('Failed to apply filters');
             }
           },
