@@ -2,7 +2,7 @@
 
 import { FC, useState, useEffect, useRef } from 'react';
 import { Layout, Row, Col, Card, Typography, Radio, Space, Spin, Tooltip, Empty } from 'antd';
-import { BarChartOutlined, PieChartOutlined, RiseOutlined, ApartmentOutlined, SwapOutlined } from '@ant-design/icons';
+import { BarChartOutlined, PieChartOutlined, RiseOutlined, ApartmentOutlined, SwapOutlined, CloudOutlined } from '@ant-design/icons';
 import type { RadioChangeEvent } from 'antd';
 import Chart from 'chart.js/auto';
 
@@ -48,6 +48,8 @@ const ExploreStatisticsPage: FC = () => {
   const [riskCompositionData, setRiskCompositionData] = useState<RiskCompositionData | null>(null);
   const [riskEscalationData, setRiskEscalationData] = useState<any | null>(null);
   const [rainfallData, setRainfallData] = useState<any | null>(null);
+  const [rainfallChangeData, setRainfallChangeData] = useState<any | null>(null);
+  const [rainfallAbsoluteData, setRainfallAbsoluteData] = useState<any | null>(null);
 
   // Refs for charts
   const topCountiesChartRef = useRef<HTMLCanvasElement>(null);
@@ -55,6 +57,8 @@ const ExploreStatisticsPage: FC = () => {
   const riskCompositionChartRef = useRef<HTMLCanvasElement>(null);
   const riskEscalationChartRef = useRef<HTMLCanvasElement>(null);
   const rainfallChartRef = useRef<HTMLCanvasElement>(null);
+  const rainfallChangeChartRef = useRef<HTMLCanvasElement>(null);
+  const rainfallAbsoluteChartRef = useRef<HTMLCanvasElement>(null);
   
   // Chart instances
   const chartInstances = useRef<Record<string, Chart | null>>({});
@@ -86,13 +90,17 @@ const ExploreStatisticsPage: FC = () => {
         fetchedVulnerability,
         fetchedRiskComposition,
         fetchedRiskEscalation,
-        fetchedRainfall
+        fetchedRainfall,
+        fetchedRainfallChange,
+        fetchedRainfallAbsolute
       ] = await Promise.all([
         fetchTopCounties(scenario),
         fetchVulnerabilityByRoadType(),
         fetchRiskComposition(scenario),
         fetchRiskEscalationData(),
-        fetchRainfallVsInundation(scenario)
+        fetchRainfallVsInundation(scenario),
+        fetchRainfallBubbleData(CONFIG.fields.rainfall_change_2050),
+        fetchRainfallBubbleData(CONFIG.fields.rainfall_absolute_2050)
       ]);
 
       setTopCountiesData(fetchedTopCounties);
@@ -100,6 +108,8 @@ const ExploreStatisticsPage: FC = () => {
       setRiskCompositionData(fetchedRiskComposition);
       setRiskEscalationData(fetchedRiskEscalation);
       setRainfallData(fetchedRainfall);
+      setRainfallChangeData(fetchedRainfallChange);
+      setRainfallAbsoluteData(fetchedRainfallAbsolute);
       
       setLoading(false);
     };
@@ -119,6 +129,8 @@ const ExploreStatisticsPage: FC = () => {
   useEffect(() => { if (riskCompositionData) renderRiskCompositionChart(riskCompositionData) }, [riskCompositionData, theme]);
   useEffect(() => { if (riskEscalationData) renderRiskEscalationChart(riskEscalationData) }, [riskEscalationData, theme]);
   useEffect(() => { if (rainfallData) renderRainfallChart(rainfallData) }, [rainfallData, theme]);
+  useEffect(() => { if (rainfallChangeData) renderRainfallBubbleChart(rainfallChangeData, 'rainfallChange') }, [rainfallChangeData, theme]);
+  useEffect(() => { if (rainfallAbsoluteData) renderRainfallBubbleChart(rainfallAbsoluteData, 'rainfallAbsolute') }, [rainfallAbsoluteData, theme]);
 
 
   // --- Data Fetching Functions ---
@@ -321,6 +333,88 @@ const ExploreStatisticsPage: FC = () => {
     }
   };
 
+  // NEW: Fetch data for rainfall bubble charts
+  const fetchRainfallBubbleData = async (rainfallField: string) => {
+    if (!roadLayer) return null;
+
+    const subnetMap = CONFIG.filterConfig.find(f => f.id === 'subnet')?.options?.reduce((acc, opt) => {
+        acc[opt.value] = opt.label;
+        return acc;
+    }, {} as Record<string, string>) ?? {};
+
+    // Query for RCP 4.5
+    const queryRcp45 = roadLayer.createQuery();
+    queryRcp45.where = `future_flood_intersection_m = 1 AND ${rainfallField} IS NOT NULL AND ${rainfallField} > 0`;
+    queryRcp45.groupByFieldsForStatistics = ['Subnet'];
+    queryRcp45.outStatistics = [
+        { statisticType: 'sum', onStatisticField: 'Shape__Length', outStatisticFieldName: 'totalLength' },
+        { statisticType: 'avg', onStatisticField: rainfallField, outStatisticFieldName: 'avgRainfall' }
+    ];
+
+    // Query for RCP 8.5
+    const queryRcp85 = roadLayer.createQuery();
+    queryRcp85.where = `future_flood_intersection_h = 1 AND ${rainfallField} IS NOT NULL AND ${rainfallField} > 0`;
+    queryRcp85.groupByFieldsForStatistics = ['Subnet'];
+    queryRcp85.outStatistics = [
+        { statisticType: 'sum', onStatisticField: 'Shape__Length', outStatisticFieldName: 'totalLength' },
+        { statisticType: 'avg', onStatisticField: rainfallField, outStatisticFieldName: 'avgRainfall' }
+    ];
+
+    try {
+        const [results45, results85] = await Promise.all([
+            roadLayer.queryFeatures(queryRcp45),
+            roadLayer.queryFeatures(queryRcp85)
+        ]);
+
+        const bubbleData: any[] = [];
+
+        // Process RCP 4.5 data
+        results45.features.forEach(f => {
+            const subnetLabel = subnetMap[f.attributes.Subnet] || `Unknown (${f.attributes.Subnet})`;
+            const lengthKm = f.attributes.totalLength / 1000;
+            const rainfall = f.attributes.avgRainfall;
+            
+            if (lengthKm > 0 && rainfall > 0) {
+                bubbleData.push({
+                    x: f.attributes.Subnet, // Subnet category (0-4)
+                    y: parseFloat(rainfall.toFixed(2)), // Rainfall value (2 decimal places)
+                    r: Math.max(5, Math.min(50, lengthKm / 10)), // Bubble size based on length
+                    length: lengthKm,
+                    scenario: 'RCP 4.5',
+                    subnet: subnetLabel
+                });
+            }
+        });
+
+        // Process RCP 8.5 data
+        results85.features.forEach(f => {
+            const subnetLabel = subnetMap[f.attributes.Subnet] || `Unknown (${f.attributes.Subnet})`;
+            const lengthKm = f.attributes.totalLength / 1000;
+            const rainfall = f.attributes.avgRainfall;
+            
+            if (lengthKm > 0 && rainfall > 0) {
+                bubbleData.push({
+                    x: f.attributes.Subnet, // Subnet category (0-4)
+                    y: parseFloat(rainfall.toFixed(2)), // Rainfall value (2 decimal places)
+                    r: Math.max(5, Math.min(50, lengthKm / 10)), // Bubble size based on length
+                    length: lengthKm,
+                    scenario: 'RCP 8.5',
+                    subnet: subnetLabel
+                });
+            }
+        });
+
+        return {
+            bubbleData,
+            subnetLabels: Object.values(subnetMap)
+        };
+
+    } catch (error) {
+        console.error("Failed to fetch rainfall bubble data:", error);
+        return null;
+    }
+  };
+
   // --- Chart Rendering Functions ---
 
   const getChartOptions = (title: string, scales = true) => ({
@@ -499,6 +593,95 @@ const ExploreStatisticsPage: FC = () => {
         }
     });
   };
+
+  // NEW: Render rainfall bubble charts
+  const renderRainfallBubbleChart = (data: any, chartKey: string) => {
+    const ctx = chartKey === 'rainfallChange' 
+        ? rainfallChangeChartRef.current?.getContext('2d')
+        : rainfallAbsoluteChartRef.current?.getContext('2d');
+    if (!ctx || !data) return;
+
+    destroyChart(chartKey);
+
+    const rcp45Data = data.bubbleData.filter((d: any) => d.scenario === 'RCP 4.5');
+    const rcp85Data = data.bubbleData.filter((d: any) => d.scenario === 'RCP 8.5');
+
+    const subnetLabels = ['Motorway/Dual (0)', 'Engineered (1)', 'Urban (2)', 'Legacy High (3)', 'Legacy Low (4)'];
+
+    chartInstances.current[chartKey] = new Chart(ctx, {
+        type: 'bubble',
+        data: {
+            datasets: [
+                {
+                    label: 'RCP 4.5',
+                    data: rcp45Data,
+                    backgroundColor: styleUtils.getChartColor(1, 0.6),
+                    borderColor: styleUtils.getChartColor(1, 1),
+                    borderWidth: 1,
+                },
+                {
+                    label: 'RCP 8.5',
+                    data: rcp85Data,
+                    backgroundColor: styleUtils.getChartColor(3, 0.6),
+                    borderColor: styleUtils.getChartColor(3, 1),
+                    borderWidth: 1,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { color: theme.colorText } },
+                title: { 
+                    display: true, 
+                    text: `${chartKey === 'rainfallChange' ? 'Rainfall Change 2050' : 'Rainfall Absolute 2050'} vs Road Subnet`,
+                    color: theme.colorText, 
+                    font: {size: 14} 
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (context: any) => {
+                            const point = context.raw;
+                            return [
+                                `${context.dataset.label}`,
+                                `Subnet: ${point.subnet}`,
+                                `Rainfall: ${point.y.toFixed(2)} mm`,
+                                `Affected Length: ${point.length.toFixed(1)} km`
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { 
+                    type: 'linear',
+                    min: -0.5,
+                    max: 4.5,
+                    ticks: { 
+                        stepSize: 1,
+                        callback: function(value: any) {
+                            const index = parseInt(value);
+                            return subnetLabels[index] || '';
+                        },
+                        color: theme.colorTextSecondary 
+                    },
+                    title: { display: true, text: 'Road Subnet Category', color: theme.colorTextSecondary },
+                    grid: { color: theme.colorBorderSecondary }
+                },
+                y: { 
+                    ticks: { color: theme.colorTextSecondary },
+                    title: { 
+                        display: true, 
+                        text: `${chartKey === 'rainfallChange' ? 'Rainfall Change' : 'Absolute Rainfall'} (mm)`,
+                        color: theme.colorTextSecondary 
+                    },
+                    grid: { color: theme.colorBorderSecondary }
+                }
+            }
+        }
+    });
+  };
   
   const chartCardStyle: React.CSSProperties = {
     width: '100%',
@@ -562,6 +745,18 @@ const ExploreStatisticsPage: FC = () => {
             <Col xs={24}>
               <Card title={<Space><RiseOutlined />Causal Factors: Rainfall Change vs. Inundation Depth</Space>} style={chartCardStyle} bodyStyle={chartBodyStyle}>
                 {loading ? <ChartPlaceholder title="Causal Factors" /> : (rainfallData && rainfallData.labels.length > 0 ? <canvas ref={rainfallChartRef}></canvas> : <ChartEmpty />)}
+              </Card>
+            </Col>
+
+            {/* NEW: Rainfall bubble charts */}
+            <Col xs={24} xl={12}>
+              <Card title={<Space><CloudOutlined />Rainfall Change 2050 vs Subnet Types</Space>} style={largeChartCardStyle} bodyStyle={chartBodyStyle}>
+                {loading ? <ChartPlaceholder title="Rainfall Change Bubble Chart" /> : (rainfallChangeData && rainfallChangeData.bubbleData.length > 0 ? <canvas ref={rainfallChangeChartRef}></canvas> : <ChartEmpty />)}
+              </Card>
+            </Col>
+            <Col xs={24} xl={12}>
+              <Card title={<Space><CloudOutlined />Rainfall Absolute 2050 vs Subnet Types</Space>} style={largeChartCardStyle} bodyStyle={chartBodyStyle}>
+                {loading ? <ChartPlaceholder title="Rainfall Absolute Bubble Chart" /> : (rainfallAbsoluteData && rainfallAbsoluteData.bubbleData.length > 0 ? <canvas ref={rainfallAbsoluteChartRef}></canvas> : <ChartEmpty />)}
               </Card>
             </Col>
           </Row>

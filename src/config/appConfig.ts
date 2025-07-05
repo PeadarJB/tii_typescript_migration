@@ -1,3 +1,5 @@
+// src/config/appConfig.ts
+
 import type { FilterConfigItem, ChartFeature, LayerConfig, AppPage, FieldMetadata } from '@/types';
 
 /**
@@ -75,6 +77,8 @@ interface AppConfiguration {
     // Precipitation Fields
     rainfall_absolute_cat: string;
     rainfall_change_cat: string;
+    rainfall_change_2050: string;
+    rainfall_absolute_2050: string;
     inundation_depth_rcp45: string;
     inundation_depth_rcp85: string;
   }>;
@@ -357,6 +361,8 @@ export const CONFIG: AppConfiguration = {
     // Precipitation Fields
     rainfall_absolute_cat: 'Rainfall_Absolute_category',
     rainfall_change_cat: 'Rainfall_Change_category',
+    rainfall_change_2050: 'Rainfall_Change_2050',
+    rainfall_absolute_2050: 'Rainfall_Absolute_2050',
     inundation_depth_rcp45: 'avg_dep_45',
     inundation_depth_rcp85: 'avg_dep_85',
   },
@@ -516,6 +522,8 @@ export const CONFIG: AppConfiguration = {
     precipitationFields: [
         { fieldName: 'Rainfall_Absolute_category', friendlyName: 'Rainfall Absolute Category', description: 'A numerical category (1-5) representing the predicted absolute rainfall by 2050.' },
         { fieldName: 'Rainfall_Change_category', friendlyName: 'Rainfall Change Category', description: 'A numerical category (1-5) representing the predicted percentage change in rainfall by 2050.' },
+        { fieldName: 'Rainfall_Change_2050', friendlyName: 'Rainfall Change 2050', description: 'The predicted percentage change in rainfall by 2050 (in mm).' },
+        { fieldName: 'Rainfall_Absolute_2050', friendlyName: 'Rainfall Absolute 2050', description: 'The predicted absolute rainfall values by 2050 (in mm).' },
     ],
     crossAnalysisNote: {
         description: 'These fields represent the count of specific past events that occurred on road segments predicted to be flooded by a specific future scenario. The pattern continues for all combinations of future models and past event types.',
