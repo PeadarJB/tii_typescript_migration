@@ -37,6 +37,17 @@ export const PRECIPITATION_SWIPE_CONFIG = {
             fluvial: 'CFRAM dep f h 1pc Projected',
             coastal: 'CFRAM dep c h 0 5pc Projected'
         }
+    },
+    // Mapping from inundation models to road network field names
+    roadNetworkFields: {
+        rcp45: {
+            fluvial: 'cfram_f_m_0010',
+            coastal: 'cfram_c_m_0010'
+        },
+        rcp85: {
+            fluvial: 'cfram_f_h_0100',
+            coastal: 'cfram_c_h_0200'
+        }
     }
 } as const;
 

@@ -62,7 +62,24 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = () => {
 
   const findLayer = (title: string): Layer | undefined => {
     if (!webmap) return undefined;
-    return webmap.allLayers.find((l: Layer) => l.title === title);
+    
+    // Try exact match first
+    let layer = webmap.allLayers.find((l: Layer) => l.title === title);
+    
+    // If not found and it's the RCP 8.5 coastal layer, try alternative formats
+    if (!layer && title === 'CFRAM dep c h 0 5pc Projected') {
+      // Try with decimal point instead of space
+      layer = webmap.allLayers.find((l: Layer) => l.title === 'CFRAM dep c h 0.5pc Projected');
+    }
+    
+    if (!layer && import.meta.env.DEV) {
+      console.warn(`Layer "${title}" not found. Available CFRAM and Rx1day layers:`, 
+        webmap.allLayers
+          .map(l => l.title)
+          .filter((t): t is string => typeof t === 'string' && (t.includes('CFRAM') || t.includes('Rx1day'))));
+    }
+    
+    return layer;
   };
 
   const startSwipe = async () => {
@@ -100,20 +117,57 @@ const SimpleSwipePanel: FC<SimpleSwipePanelProps> = () => {
             trailingLayers = [...rightFloodLayers, roadLayerSwipe];
 
         } else if (activePage === 'precipitation') {
+            if (!roadLayerSwipe) {
+                message.error("Road network layer for swipe not found.");
+                exitSwipeMode();
+                return;
+            }
+
             const rainfallConfig = PRECIPITATION_SWIPE_CONFIG.rainfallLayers[precipRcp];
             const rainfallLayerTitle = rainfallType in rainfallConfig ? rainfallConfig[rainfallType as keyof typeof rainfallConfig] : rainfallConfig.change;
             const inundationLayerTitle = PRECIPITATION_SWIPE_CONFIG.inundationLayers[precipRcp][floodModel];
+
+            if (import.meta.env.DEV) {
+                console.log('Precipitation swipe config:', {
+                    precipRcp,
+                    floodModel,
+                    rainfallType,
+                    rainfallLayerTitle,
+                    inundationLayerTitle
+                });
+            }
 
             const rainfallLayer = findLayer(rainfallLayerTitle);
             const inundationLayer = findLayer(inundationLayerTitle);
 
             if (!rainfallLayer || !inundationLayer) {
+                console.error('Missing layers:', {
+                    rainfallLayer: rainfallLayer ? 'found' : 'NOT FOUND',
+                    inundationLayer: inundationLayer ? 'found' : 'NOT FOUND',
+                    rainfallLayerTitle,
+                    inundationLayerTitle
+                });
                 message.error('Required precipitation or inundation layers not found in the web map.');
                 exitSwipeMode();
                 return;
             }
+
+            // Get the corresponding road network field for the selected inundation model
+            const roadNetworkField = PRECIPITATION_SWIPE_CONFIG.roadNetworkFields[precipRcp][floodModel];
+            
+            // Apply filter to road layer for the right side (inundation side)
+            roadLayerSwipe.definitionExpression = `${roadNetworkField} = 1`;
+            roadLayerSwipe.visible = true;
+
+            if (import.meta.env.DEV) {
+                console.log('Road layer filter applied:', {
+                    field: roadNetworkField,
+                    expression: roadLayerSwipe.definitionExpression
+                });
+            }
+
             leadingLayers = [rainfallLayer];
-            trailingLayers = [inundationLayer];
+            trailingLayers = [inundationLayer, roadLayerSwipe];
         }
 
         [...leadingLayers, ...trailingLayers].forEach(layer => { if(layer) layer.visible = true; });
