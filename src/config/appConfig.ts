@@ -429,20 +429,20 @@ export const CONFIG: AppConfiguration = {
       scenario: 'rcp45'
     },
     {
-      label: "CFRAM Fluvial Model (High-Range, 10yr)",
-      field: "cfram_f_h_0010",
+      label: "CFRAM Fluvial Model (High-Range, 100yr)",
+      field: "cfram_f_h_0100",
       description: "Segments affected by the CFRAM Fluvial model under RCP 8.5.",
       scenario: 'rcp85'
     },
     {
-      label: "CFRAM Coastal Model (High-Range, 10yr)",
-      field: "cfram_c_h_0010",
+      label: "CFRAM Coastal Model (High-Range, 100yr)",
+      field: "cfram_c_h_0100",
       description: "Segments affected by the CFRAM Coastal model under RCP 8.5.",
       scenario: 'rcp85'
     },
     {
-      label: "NIFM Fluvial Model (High-Range, 20yr)",
-      field: "nifm_f_h_0020",
+      label: "NIFM Fluvial Model (High-Range, 200yr)",
+      field: "nifm_f_h_0200",
       description: "Segments affected by the NIFM Fluvial model under RCP 8.5.",
       scenario: 'rcp85'
     }
