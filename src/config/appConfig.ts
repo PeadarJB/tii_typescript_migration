@@ -164,32 +164,32 @@ export const CONFIG: AppConfiguration = {
       description: 'Select one or more flood scenarios to analyze.',
       items: [
         { 
-          label: 'Future Flooding (Mid-Range, RCP 4.5%)', 
+          label: 'Future Flooding (Mid-Range, 10-20yr)', 
           field: 'future_flood_intersection_m', 
           value: 1 
         },
         { 
-          label: 'Future Flooding (High-Range, RCP 8.5%)', 
+          label: 'Future Flooding (High-Range, 100-200yr)', 
           field: 'future_flood_intersection_h', 
           value: 1 
         },
         { 
-          label: 'Historic & Future (Mid-Range, RCP 4.5%)', 
+          label: 'Historic & Future (Mid-Range, 10-20yr)', 
           field: 'historic_intersection_m', 
           value: 1 
         },
         { 
-          label: 'Historic & Future (High-Range, RCP 8.5%)', 
+          label: 'Historic & Future (High-Range, 100-200yr)', 
           field: 'historic_intersection_h', 
           value: 1 
         },
         { 
-          label: 'Historic Only (Mid-Range, RCP 4.5%)', 
+          label: 'Historic Only (Mid-Range, 10-20yr)', 
           field: 'hist_no_future_m', 
           value: 1 
         },
         { 
-          label: 'Historic Only (High-Range, RCP 8.5%)', 
+          label: 'Historic Only (High-Range, 100-200yr)', 
           field: 'hist_no_future_h', 
           value: 1 
         },
@@ -381,67 +381,67 @@ export const CONFIG: AppConfiguration = {
   // --- Charting Features ---
   chartingFeatures: [
     {
-      label: "Any Future Flood Intersection (4.5%)",
+      label: "Any Future Flood Intersection (Mid-Range, 10-20yr)",
       field: "future_flood_intersection_m",
       description: "Any segment affected by a mid-range future flood model.",
       scenario: 'rcp45'
     },
     {
-      label: "Any Future Flood Intersection (8.5%)",
+      label: "Any Future Flood Intersection (High-Range, 100-200yr)",
       field: "future_flood_intersection_h",
       description: "Any segment affected by a high-range future flood model.",
       scenario: 'rcp85'
     },
     {
-      label: "Future and Historic Flood Intersection (4.5%)",
+      label: "Future and Historic Flood Intersection (Mid-Range, 10-20yr)",
       field: "historic_intersection_m",
       description: "Segments affected by both future and historic flood models under RCP 4.5.",
       scenario: 'rcp45'
     },
     {
-      label: "Future and Historic Flood Intersection (8.5%)",
+      label: "Future and Historic Flood Intersection (High-Range, 100-200yr)",
       field: "historic_intersection_h",
       description: "Segments affected by both future and historic flood models under RCP 8.5.",
       scenario: 'rcp85'
     },
     {
-      label: "CFRAM Fluvial Model (4.5%)",
+      label: "CFRAM Fluvial Model (Mid-Range, 10yr)",
       field: "cfram_f_m_0010",
       description: "Segments affected by the CFRAM Fluvial model under RCP 4.5.",
       scenario: 'rcp45'
     },
     {
-      label: "CFRAM Coastal Model (4.5%)",
+      label: "CFRAM Coastal Model (Mid-Range, 10yr)",
       field: "cfram_c_m_0010",
       description: "Segments affected by the CFRAM Coastal model under RCP 4.5.",
       scenario: 'rcp45'
     },
     {
-      label: "NIFM Fluvial Model (4.5%)",
+      label: "NIFM Fluvial Model (Mid-Range, 20yr)",
       field: "nifm_f_m_0020",
       description: "Segments affected by the NIFM Fluvial model under RCP 4.5.",
       scenario: 'rcp45'
     },
     {
-      label: "NCFHM Coastal Model",
+      label: "NCFHM Coastal Model (Mid-Range, 10yr)",
       field: "ncfhm_c_m_0010",
       description: "Segments affected by the NCFHM Coastal model under RCP 4.5.",
       scenario: 'rcp45'
     },
     {
-      label: "CFRAM Fluvial Model (8.5%)",
+      label: "CFRAM Fluvial Model (High-Range, 10yr)",
       field: "cfram_f_h_0010",
       description: "Segments affected by the CFRAM Fluvial model under RCP 8.5.",
       scenario: 'rcp85'
     },
     {
-      label: "CFRAM Coastal Model (8.5%)",
+      label: "CFRAM Coastal Model (High-Range, 10yr)",
       field: "cfram_c_h_0010",
       description: "Segments affected by the CFRAM Coastal model under RCP 8.5.",
       scenario: 'rcp85'
     },
     {
-      label: "NIFM Fluvial Model (8.5%)",
+      label: "NIFM Fluvial Model (High-Range, 20yr)",
       field: "nifm_f_h_0020",
       description: "Segments affected by the NIFM Fluvial model under RCP 8.5.",
       scenario: 'rcp85'
@@ -451,7 +451,7 @@ export const CONFIG: AppConfiguration = {
   // --- Swipe Layer Configuration ---
   swipeLayerConfig: {
     leftPanel: {
-      label: 'Left/Top Layer(s) (RCP 4.5)',
+      label: 'Left/Top Layer(s) (Mid-Range, 10-20yr)',
       layers: [
         { title: "CFRAM f m 0010", label: "CFRAM Fluvial (10yr, RCP 4.5)", roadNetworkFieldName: "cfram_f_m_0010" },
         { title: "CFRAM c m 0010", label: "CFRAM Coastal (10yr, RCP 4.5)", roadNetworkFieldName: "cfram_c_m_0010" },
@@ -460,7 +460,7 @@ export const CONFIG: AppConfiguration = {
       ]
     },
     rightPanel: {
-      label: 'Right/Bottom Layer(s) (RCP 8.5)',
+      label: 'Right/Bottom Layer(s) (High-Range, 100-200yr)',
       layers: [
         { title: "CFRAM f h 0100", label: "CFRAM Fluvial (100yr, RCP 8.5)", roadNetworkFieldName: "cfram_f_h_0100" },
         { title: "CFRAM c h 0200", label: "CFRAM Coastal (200yr, RCP 8.5)", roadNetworkFieldName: "cfram_c_h_0200" },
@@ -509,10 +509,10 @@ export const CONFIG: AppConfiguration = {
         { fieldName: 'mocc_point_count', friendlyName: 'MOCC Events Count', description: 'The total number of MOCC flood events recorded for the segment.' },
     ],
     futureScenarioIndicators: [
-        { fieldName: 'future_flood_intersection_m', friendlyName: 'Any Future Flood (Mid-Range)', description: 'Intersects with any flood model under the RCP 4.5 scenario.' },
-        { fieldName: 'future_flood_intersection_h', friendlyName: 'Any Future Flood (High-Range)', description: 'Intersects with any flood model under the RCP 8.5 scenario.' },
-        { fieldName: 'historic_intersection_m', friendlyName: 'Historic & Future (Mid-Range)', description: 'Intersects with both a past event and a future (RCP 4.5) flood model.' },
-        { fieldName: 'historic_intersection_h', friendlyName: 'Historic & Future (High-Range)', description: 'Intersects with both a past event and a future (RCP 8.5) flood model.' },
+        { fieldName: 'future_flood_intersection_m', friendlyName: 'Any Future Flood (Mid-Range, 10-20yr)', description: 'Intersects with any flood model under the RCP 4.5 scenario.' },
+        { fieldName: 'future_flood_intersection_h', friendlyName: 'Any Future Flood (High-Range, 100-200yr)', description: 'Intersects with any flood model under the RCP 8.5 scenario.' },
+        { fieldName: 'historic_intersection_m', friendlyName: 'Historic & Future (Mid-Range, 10-20yr)', description: 'Intersects with both a past event and a future (RCP 4.5) flood model.' },
+        { fieldName: 'historic_intersection_h', friendlyName: 'Historic & Future (High-Range, 100-200yr)', description: 'Intersects with both a past event and a future (RCP 8.5) flood model.' },
         { fieldName: 'cfram_f_m_0010', friendlyName: 'CFRAM Fluvial (Mid, 10-yr)', description: 'Affected by the CFRAM Fluvial model, mid-range scenario (RCP 4.5), 10-year return period.' },
         { fieldName: 'cfram_c_m_0010', friendlyName: 'CFRAM Coastal (Mid, 10-yr)', description: 'Affected by the CFRAM Coastal model, mid-range scenario (RCP 4.5), 10-year return period.' },
         { fieldName: 'nifm_f_m_0020', friendlyName: 'NIFM Fluvial (Mid, 20-yr)', description: 'Affected by the NIFM Fluvial model, mid-range scenario (RCP 4.5), 20-year return period.' },
@@ -523,10 +523,10 @@ export const CONFIG: AppConfiguration = {
         { fieldName: 'ncfhm_c_c_0200', friendlyName: 'NCFHM Coastal (High, 200-yr)', description: 'Affected by the NCFHM Coastal model, high-range scenario (RCP 8.5), 200-year return period.' },
     ],
     inundationDepthFields: [
-        { fieldName: 'f_m_10pc', friendlyName: 'Fluvial Depth (Mid, 10-yr)', description: 'Average inundation depth from the CFRAM Fluvial model (RCP 4.5, 10-yr).' },
-        { fieldName: 'f_h_1pc', friendlyName: 'Fluvial Depth (High, 100-yr)', description: 'Average inundation depth from the CFRAM Fluvial model (RCP 8.5, 100-yr).' },
-        { fieldName: 'c_m_10pc', friendlyName: 'Coastal Depth (Mid, 10-yr)', description: 'Average inundation depth from the CFRAM Coastal model (RCP 4.5, 10-yr).' },
-        { fieldName: 'c_h_0_5pc', friendlyName: 'Coastal Depth (High, 200-yr)', description: 'Average inundation depth from the CFRAM Coastal model (RCP 8.5, 200-yr).' },
+        { fieldName: 'f_m_10pc', friendlyName: 'Fluvial Depth (Mid-range, 10-yr)', description: 'Average inundation depth from the CFRAM Fluvial model (RCP 4.5, 10-yr).' },
+        { fieldName: 'f_h_1pc', friendlyName: 'Fluvial Depth (High-range, 100-yr)', description: 'Average inundation depth from the CFRAM Fluvial model (RCP 8.5, 100-yr).' },
+        { fieldName: 'c_m_10pc', friendlyName: 'Coastal Depth (Mid-range, 10-yr)', description: 'Average inundation depth from the CFRAM Coastal model (RCP 4.5, 10-yr).' },
+        { fieldName: 'c_h_0_5pc', friendlyName: 'Coastal Depth (High-range, 200-yr)', description: 'Average inundation depth from the CFRAM Coastal model (RCP 8.5, 200-yr).' },
         { fieldName: 'avg_dep_45', friendlyName: 'Avg. Depth (RCP 4.5)', description: 'The average of all applicable inundation depths for the RCP 4.5 scenario.' },
         { fieldName: 'avg_dep_85', friendlyName: 'Avg. Depth (RCP 8.5)', description: 'The average of all applicable inundation depths for the RCP 8.5 scenario.' },
     ],

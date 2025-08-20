@@ -1,4 +1,4 @@
-// App.tsx - Refactored for Multi-Page Structure
+// App.tsx - Refactored for Multi-Page Structure with Post-Auth Loading
 
 import { useEffect, useRef } from 'react';
 import type { ReactElement } from 'react';
@@ -13,7 +13,7 @@ import {
   CloudOutlined,
   AreaChartOutlined,
   SwapOutlined,
-  BookOutlined, // Import new icon
+  BookOutlined,
 } from '@ant-design/icons';
 import { ErrorBoundary } from 'react-error-boundary';
 import { ThemeProvider } from 'antd-style';
@@ -24,8 +24,8 @@ import { lightTheme, darkTheme } from './config/themeConfig';
 
 // Page and Widget imports
 import { FutureHazardPage, PastFloodPage, PrecipitationPage, ExploreStatisticsPage, DataOverviewPage } from '@/pages';
-import MapWidgets from '@/components/MapWidgets'; // Import the new component
-import { PAGE_CONFIG } from './config/appConfig'; // Import the new page config
+import MapWidgets from '@/components/MapWidgets';
+import { PAGE_CONFIG } from './config/appConfig';
 
 // Store imports
 import { useAppStore, useMapState, useUIState, useFilterState, useThemeState } from '@/store/useAppStore';
@@ -95,7 +95,29 @@ function AppContent(): ReactElement {
 
   // Refs
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const isInitializing = useRef(false);
   
+  // Handle post-authentication loading
+  useEffect(() => {
+    // Show post-auth loader when starting map initialization
+    if (loading && !mapView && !isInitializing.current) {
+      isInitializing.current = true;
+      if (typeof window.showPostAuthLoader === 'function') {
+        window.showPostAuthLoader();
+      }
+    }
+
+    // Hide post-auth loader when map is ready
+    if (!loading && mapView && isInitializing.current) {
+      isInitializing.current = false;
+      if (typeof window.hidePostAuthLoader === 'function') {
+        window.hidePostAuthLoader();
+      }
+      // Dispatch app-ready event
+      window.dispatchEvent(new CustomEvent('app-ready'));
+    }
+  }, [loading, mapView]);
+
   // Handles map initialization and re-attachment
   useEffect(() => {
     if (activePage !== 'explore' && activePage !== 'overview') {
@@ -107,7 +129,7 @@ function AppContent(): ReactElement {
             mapView.container = mapContainerRef.current;
         }
     }
-  }, [activePage, mapView, initializeMap]); // Added activePage to dependency array
+  }, [activePage, mapView, initializeMap]);
 
   // Panel Toggles
   const { showFilters, showStats, showChart, showSwipe } = useUIState();
@@ -157,6 +179,7 @@ function AppContent(): ReactElement {
     { key: 'overview', icon: <BookOutlined />, label: 'Data Overview' },
   ];
 
+  // Show error for map-based pages only
   if (error && activePage !== 'explore' && activePage !== 'overview') {
     return (
       <div className={styles.errorContainer}>
@@ -307,9 +330,10 @@ function AppContent(): ReactElement {
                     id="viewDiv"
                     className={styles.mapContainer}
                 />
-                {loading && (
-                    <div className={styles.loadingContainer}>
-                        <Spin size="large" />
+                {/* Only show in-app loading for edge cases - main loading is handled by post-auth loader */}
+                {loading && mapView && (
+                    <div className={styles.loadingContainer} style={{ background: 'rgba(255, 255, 255, 0.8)' }}>
+                        <Spin size="large" tip="Updating map..." />
                     </div>
                 )}
                 <MapWidgets />
@@ -322,6 +346,14 @@ function AppContent(): ReactElement {
       </Layout>
     </ErrorBoundary>
   );
+}
+
+// Add type declarations for the global functions
+declare global {
+  interface Window {
+    showPostAuthLoader?: () => void;
+    hidePostAuthLoader?: () => void;
+  }
 }
 
 export default App;
