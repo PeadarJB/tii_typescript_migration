@@ -172,8 +172,8 @@ function AppContent(): ReactElement {
   const pageTitle = PAGE_CONFIG[activePage]?.title || 'Dashboard';
 
   const menuItems: MenuProps['items'] = [
-    { key: 'future', icon: <WarningOutlined />, label: 'Future Flood Hazard' },
     { key: 'past', icon: <FieldTimeOutlined />, label: 'Past Flood Events' },
+    { key: 'future', icon: <WarningOutlined />, label: 'Future Flood Hazard' },    
     { key: 'precipitation', icon: <CloudOutlined />, label: 'Precipitation' },
     { key: 'explore', icon: <AreaChartOutlined />, label: 'Explore Statistics' },
     { key: 'overview', icon: <BookOutlined />, label: 'Data Overview' },
@@ -202,7 +202,7 @@ function AppContent(): ReactElement {
         case 'precipitation': return <PrecipitationPage />;
         case 'explore': return <ExploreStatisticsPage />;
         case 'overview': return <DataOverviewPage />;
-        default: return <FutureHazardPage />;
+        default: return <PastFloodPage />;
     }
   }
 

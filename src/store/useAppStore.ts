@@ -108,7 +108,7 @@ export const useAppStore = create<AppStore>()(
           error: null,
           preSwipeDefinitionExpression: null,
           siderCollapsed: true,
-          activePage: 'future', // Set default page
+          activePage: 'past', // Set default page
           showFilters: true,
           showStats: false,
           showChart: false,
